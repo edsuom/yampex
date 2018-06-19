@@ -177,10 +177,11 @@ class Plotter(OptsBase):
     I provide a Figure with one or more time-vector and XY subplots of
     Numpy vectors using Matplotlib.
 
-    If you supply an object that houses vectors and provides access to
-    them by name as items (i.e., a dict or a Vectors object from the
-    I{pingspice} package) as a third argument, I will convert vector
-    names to vectors for you in each plotting call.
+    If you supply an object other than a list or tuple that houses
+    vectors and provides access to them by name as items (i.e., a dict
+    or a Vectors object from the I{pingspice} package) as a third
+    argument, I will convert vector names to vectors for you in each
+    plotting call.
 
     Any keywords you supply to the constructor are used to C{set_X}
     the axes for all subplots. For example, C{yticks=[1,2,3]} results
@@ -245,6 +246,7 @@ class Plotter(OptsBase):
         self.sp = Subplotter(self, Nx, Ny)
         self.annotators = {}
         self.kw = kw
+        self._isFigTitle = False
         
     def __getattr__(self, name):
         return self.opts[name]
@@ -276,7 +278,7 @@ class Plotter(OptsBase):
             self.plt.show()
             return
         self.fig.tight_layout()
-        if getattr(self, '_isFigTitle', False):
+        if self._isFigTitle:
             self.fig.subplots_adjust(top=0.93)
         self.plt.draw()
         for annotator in self.annotators.values():
@@ -318,7 +320,7 @@ class Plotter(OptsBase):
 
     def parseArgs(self, args):
         vectors = []
-        if hasattr(args[0], '__getitem__'):
+        if not isinstance(args[0], (list, tuple, np.ndarray)):
             V = args[0]
             names = args[1:]
             for name in names:
