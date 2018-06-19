@@ -1,17 +1,39 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2017 by Edwin A. Suominen
+# yampex:
+# Yet Another Matplotlib Extension
+#
+# Copyright (C) 2017-2018 by Edwin A. Suominen,
+# http://edsuom.com/yampex
+#
+# See edsuom.com for API documentation as well as information about
+# Ed's background and other projects, software and otherwise.
+# 
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the
+# License. You may obtain a copy of the License at
+# 
+#   http://www.apache.org/licenses/LICENSE-2.0
+# 
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an "AS
+# IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+# express or implied. See the License for the specific language
+# governing permissions and limitations under the License.
+
+"""
+Do everything with a Plotter in context.
+"""
 
 from copy import deepcopy
 import importlib
 
 import numpy as np
 
-from annotate import Annotator
-from subplot import Subplotter
-from pingspice.analysis.sim import VectorsBase
-from pingspice.util import sub
+from yampex.annotate import Annotator
+from yampex.subplot import Subplotter
+from yampex.util import sub
 
 
 class OptsBase(object):
@@ -155,9 +177,10 @@ class Plotter(OptsBase):
     I provide a Figure with one or more time-vector and XY subplots of
     Numpy vectors using Matplotlib.
 
-    If you supply a L{analysis.sim.Vectors} object as a third
-    argument, I will convert vector names to vectors for you in each
-    plotting call.
+    If you supply an object that houses vectors and provides access to
+    them by name as items (i.e., a dict or a Vectors object from the
+    I{pingspice} package) as a third argument, I will convert vector
+    names to vectors for you in each plotting call.
 
     Any keywords you supply to the constructor are used to C{set_X}
     the axes for all subplots. For example, C{yticks=[1,2,3]} results
@@ -295,7 +318,7 @@ class Plotter(OptsBase):
 
     def parseArgs(self, args):
         vectors = []
-        if isinstance(args[0], VectorsBase):
+        if hasattr(args[0], '__getitem__'):
             V = args[0]
             names = args[1:]
             for name in names:
@@ -328,9 +351,11 @@ class Plotter(OptsBase):
     def __call__(self, *args, **kw):
         """
         Plots the second supplied vector (and any further ones) versus the
-        first in the next subplot. If you supply an instance of
-        L{analysis.sim.Vectors} as the first argument, you can supply
-        vector names instead of the vectors themselves.
+        first in the next subplot. If you supply an object that houses
+        vectors and provides access to them as items, e.g.,
+        C{analysis.sim.Vectors} of the I{pingspice} package, as the
+        first argument, you can supply vector names instead of the
+        vectors themselves.
         
         Options are set via the methods in L{OptsBase}, including a
         I{title}, a list of plot I{markers} and I{linestyles}, and a
