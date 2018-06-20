@@ -234,8 +234,7 @@ class Plotter(OptsBase):
         self.V = args[0] if args else None
         self._plotters.append(self)
         self.opts = deepcopy(self._opts)
-        filePath = kw.pop('filePath', None)
-        self.fh = open(filePath, 'w') if filePath else None
+        self.filePath = kw.pop('filePath', None)
         self.plt = importlib.import_module("matplotlib.pyplot")
         figSize = list(self.figSize)
         if 'width' in kw:
@@ -283,16 +282,17 @@ class Plotter(OptsBase):
         self.plt.draw()
         for annotator in self.annotators.values():
             annotator.update()
-        if self.fh is None:
+        if self.filePath is None:
             self.plt.draw()
             if title:
                 self.fig.canvas.set_window_title(title)
             if not subcall:
                 self.plt.show()
             return
-        self.fig.savefig(self.fh, format='png', bbox_inches='tight')
+        fh = open(self.filePath, 'wb+')
+        self.fig.savefig(fh, format='png')
         self.plt.close()
-        self.fh.close()
+        fh.close()
 
     def getColor(self, k):
         return self.colors[k % len(self.colors)]
