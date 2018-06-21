@@ -10,41 +10,20 @@ simply construct a `Plotter` object with the number of subplot rows
 and columns you want, and do a context call on it to get a version of
 the object that's all set up to do your subplots. Like this:
 
+    import numpy as np
     from yampex import Plotter
+    
+    funcNames = ('sin', 'cos')
+    X = np.linspace(0, 4*np.pi)
     pt = Plotter(1, 2)
+    pt.set_xlabel("X"); pt.set_grid()
     with pt as p:
-        for k in (1, 2):
-            V = self.ev.txy[:,k]
-            I = np.argsort(V)
-            V = V[I]
-            xName = sub("V{:d}", k)
-            ax = self.plot(V, T[I], p, xName)
-            t_curve = self.ev.curve_k(values, k)
-            ax.plot(V, t_curve[I], 'r-')
-    self.pt.figTitle(", ".join(self.titleParts))
-    self.pt.show()
-
+        for funcName in funcNames:
+            Y = getattr(np, funcName)(X)
+            p.set_ylabel("{}(X)".format(funcName))
+            p(X, Y)
+    pt.show("Sin and Cosine")
     
-    
-
-
-
-Here's one example, `unique-visitors-by-url-recent.sql`:
-
-    SELECT year(e.dt) YR, month(e.dt) MO, count(distinct e.ip) N, url.value URL
-    FROM entries e INNER JOIN vhost ON e.id_vhost = vhost.id
-    INNER JOIN url ON e.id_url = url.id
-    WHERE vhost.value REGEXP '^(www\.)?edsuom\.com'
-     AND e.http != 404
-     AND url.value NOT REGEXP '\.(jpg|png|gif|ico|css)'
-    GROUP BY URL, YR, MO
-    HAVING N > 1
-    ORDER BY YR DESC, MO DESC, N DESC;
-
-Obviously, change *edsuom.com* to one of your virtual hosts. This SQL
-query will show you how many unique IP addresses were fetching the
-most popular URLs on that virtual host, for each year and month.
-
 
 ### License
 
