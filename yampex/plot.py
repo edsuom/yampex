@@ -183,9 +183,9 @@ class Plotter(OptsBase):
     argument, I will convert vector names to vectors for you in each
     plotting call.
 
-    Any keywords you supply to the constructor are used to C{set_X}
+    Any keywords you supply to the constructor are used to C{set\_X}
     the axes for all subplots. For example, C{yticks=[1,2,3]} results
-    in a C{set_yticks([1,2,3]) command to the C{axes} object for all
+    in a C{set\_yticks([1,2,3])} command to the C{axes} object for all
     subplots.
     """
     figSize = (10.0, 7.0)
@@ -394,10 +394,9 @@ class Plotter(OptsBase):
         'xlabel' keyword is disregarded in such case because the x
         label is set automatically.
         
-        Any keywords you supply to this call are used to C{set_X} the
-        axes, e.g., C{yticks=[1,2,3]} results in a
-        C{set_yticks([1,2,3]) command to the C{axes} object, for this
-        subplot only.
+        Any keywords you supply to this call are used to C{set\_X} the
+        axes, e.g., C{ylabel="foo"} results in a C{set\_ylabel("foo")}
+        command to the C{axes} object, for this subplot only.
 
         If you want to do everything with the next subplot on your own
         and only want a reference to its C{Axes} object, just call

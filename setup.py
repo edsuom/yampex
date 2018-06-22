@@ -34,7 +34,7 @@ required = ['numpy', 'matplotlib',]
 
 
 ### Define setup options
-kw = {'version':'0.9',
+kw = {'version':'0.8',
       'license':'Apache License (2.0)',
       'platforms':'OS Independent',
 
@@ -77,7 +77,19 @@ Yet Another Matplotlib Extension, with simplified subplotting.
 """.split("\n"))
 
 kw['long_description'] = """
-TODO
+yampex makes Matplotlib_ easier to use, especially with subplots. You
+simply construct a Plotter_ object with the number of subplot rows
+and columns you want, and do a context call on it to get a version of
+the object that's all set up to do your subplots.
+
+There's a quick example on the project page_ at edsuom.com.
+
+.. _Matplotlib: https://matplotlib.org/
+
+.. _Plotter: http://edsuom.com/yampex/yampex.plot.Plotter.html
+
+.. _page: http://edsuom.com/yampex.html
+
 """
 
 ### Finally, run the setup

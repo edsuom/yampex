@@ -26,7 +26,6 @@
 Smart plot annotations.
 """
 
-import math
 from copy import copy
 
 import numpy as np
@@ -495,7 +494,7 @@ class Annotator(object):
 
         def radiusPenalty(radius):
             if radius > 2:
-                return 0.2*math.sqrt(radius)
+                return 0.2*np.sqrt(radius)
             return 0
 
         best = {'score': 1E9}
