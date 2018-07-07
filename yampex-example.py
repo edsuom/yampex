@@ -26,12 +26,18 @@ import numpy as np
 from yampex import Plotter
 
 funcNames = ('sin', 'cos')
-X = np.linspace(0, 4*np.pi)
+X = np.linspace(0, 4*np.pi, 200)
 pt = Plotter(1, 2, width=7, height=5)
 pt.set_xlabel("X"); pt.set_grid()
+pt.add_annotation(199, "Last")
 with pt as p:
     for funcName in funcNames:
         Y = getattr(np, funcName)(X)
         p.set_ylabel("{}(X)".format(funcName))
+        k0 = 0 if funcName == 'sin' else 75
+        p.add_annotation(k0, "Pos ZC")
+        p.add_annotation(k0+25, "Max")
+        p.add_annotation(k0+50, "Neg ZC")
+        p.add_annotation(k0+75, "Min")
         p(X, Y)
 pt.show("Sin and Cosine")
