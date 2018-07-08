@@ -38,69 +38,168 @@ from yampex.util import sub
 
 class OptsBase(object):
     def set_loglog(self, yes=True):
+        """
+        Makes both axes logarithmic, unless called with C{False}.
+        """
         self.opts['loglog'] = yes
 
     def set_semilogx(self, yes=True):
+        """
+        Makes x-axis logarithmic, unless called with C{False}.
+        """
         self.opts['semilogx'] = yes
 
     def set_semilogy(self, yes=True):
+        """
+        Makes y-axis logarithmic, unless called with C{False}.
+        """
         self.opts['semilogy'] = yes
         
     def set_useLabels(self, yes=True):
+        """
+        Has annotation labels point to each plot line instead of a legend,
+        with text taken from the legend list. Call with C{False} to
+        revert to default legend-box behavior.
+        """
         self.opts['useLabels'] = yes
 
     def set_grid(self, yes=True):
+        """
+        Adds a grid, unless called with C{False}.
+        """
         self.opts['grid'] = yes
 
     def set_timex(self, yes=True):
+        """
+        Uses intelligent time scaling for the x-axis, unless called with
+        C{False}.
+        """
         self.opts['timex'] = yes
 
     def set_firstVectorTop(self):
+        """
+        Has the first dependent vector (the second argument to the
+        L{Plotter} object call) determine the top (maximum) of the
+        displayed plot boundary.
+        """
         self.opts['firstVectorTop'] = True
         
     def set_bump(self, yes=True):
+        """
+        If you don't manually set a yscale with a call to L{set_yscale},
+        you can call this method to bump the common y-axis upper limit
+        to 120% of what Matplotlib decides. Call with C{False} to
+        disable the bump.
+        """
         self.opts['bump'] = yes
 
     def set_zeroBottom(self, yes=True):
+        """
+        Sets the bottom (minimum) of the Y-axis range to zero, unless
+        called with C{False}. This is useful for plotting values that
+        are never negative and where zero is a meaningful absolute
+        minimum.
+        """
         self.opts['zeroBottom'] = yes
 
     def add_marker(self, x):
+        """
+        Appends the supplied marker style character to the list of markers
+        being used. The first and possibly only marker in the list
+        applies to the first vector plotted within a given subplot. If
+        there is an additional vector being plotted within a given
+        subplot (three or more arguments supplied when calling the
+        L{Plotter} object, and more than one marker has been added to
+        the list, then the second marker in the list is used for that
+        second vector plot line. Otherwise, the first (only) marker in
+        the list is used for the second plot line as well.
+        """
         self.opts['markers'].append(x)
 
     def add_line(self, x):
+        """
+        Appends the supplied line style character to the list of line
+        styles being used. The first and possibly only line style in
+        the list applies to the first vector plotted within a given
+        subplot. If there is an additional vector being plotted within
+        a given subplot (three or more arguments supplied when calling
+        the L{Plotter} object, and more than one line style has been
+        added to the list, then the second line style in the list is
+        used for that second vector plot line. Otherwise, the first
+        (only) line style in the list is used for the second plot line
+        as well.
+        """
         self.opts['linestyles'].append(x)
 
     def set_yscale(self, x):
+        """
+        Manually sets the y-axis scaling.
+        """
         self.opts['yscale'] = x
 
-    def set_axvline(self, x):
-        self.opts['axvline'] = x
+    def set_axvline(self, k):
+        """
+        Adds a vertical dashed line at the data point with index I{k}.
+        """
+        self.opts['axvline'] = k
         
     def set_xlabel(self, x):
+        """
+        Sets the x-axis label. (Ignored if time-x mode has been activated
+        with a call to L{set_timex}.)
+        """
         self.opts['xlabel'] = x
 
     def set_ylabel(self, x):
+        """
+        Sets the y-axis label.
+        """
         self.opts['ylabel'] = x
 
-    def set_legend(self, yes=True):
-        self.opts['legend'] = yes
-        
     def add_legend(self, proto, *args):
+        """
+        Adds the supplied format-substituted text to the list of legend
+        entries. You may include a text I{proto}type with
+        format-substitution I{args}, or just supply the final text
+        string with no further arguments.
+        """
         text = sub(proto, *args)
         self.opts['legend'].append(text)
 
     def clear_legend(self):
+        """
+        Clears the list of legend entries.
+        """
         self.opts['legend'] = []
         
-    def clear_annotations(self):
-        self.opts['annotations'] = []
-        
     def add_annotation(self, k, text, kVector=0):
+        """
+        Adds the supplied I{text} as an annotation at index I{k} of the
+        plotted vector. If there is more than one vector being plotted
+        within the same subplot, you can have the annotation refer to
+        a vector other than the first one by supplying an additional
+        integer argument.
+        """
         self.opts['annotations'].append((k, text, kVector))
 
+    def clear_annotations(self):
+        """
+        Clears the list of annotations.
+        """
+        self.opts['annotations'] = []
+        
     def set_title(self, proto, *args):
+        """
+        Sets a subplot title. You may include a text I{proto}type
+        with format-substitution I{args}, or just supply the final
+        text string with no further arguments.
+        """
         text = sub(proto, *args)
-        self.opts['title'] = text
+        if self._isSubplot:
+            self.opts['title'] = text
+        else:
+            self._isFigTitle = True
+            self.fig.suptitle(text)
 
 
 class ContextOpts(object):
@@ -246,17 +345,20 @@ class Plotter(OptsBase):
         self.annotators = {}
         self.kw = kw
         self._isFigTitle = False
+        self._isSubplot = False
         
     def __getattr__(self, name):
         return self.opts[name]
         
     def __enter__(self):
         self.sp.setup()
+        self._isSubplot = True
         self.originalOpts = self.opts.copy()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.sp.postOp()
+        self._isSubplot = False
         self.opts = self.originalOpts
 
     def N_cols(self, N):
@@ -266,14 +368,10 @@ class Plotter(OptsBase):
             return 2
         return 1
 
-    def figTitle(self, title):
-        self.fig.suptitle(title)
-        self._isFigTitle = True
-    
-    def show(self, title=None, subcall=False):
+    def show(self, windowTitle=None, subcall=False):
         if not subcall and len(self._plotters) > 1:
             for p in self._plotters:
-                p.show(title, subcall=True)
+                p.show(windowTitle, subcall=True)
             self.plt.show()
             return
         self.fig.tight_layout()
@@ -284,8 +382,8 @@ class Plotter(OptsBase):
             annotator.update()
         if self.filePath is None:
             self.plt.draw()
-            if title:
-                self.fig.canvas.set_window_title(title)
+            if windowTitle:
+                self.fig.canvas.set_window_title(windowTitle)
             if not subcall:
                 self.plt.show()
             return
@@ -385,9 +483,6 @@ class Plotter(OptsBase):
         C{True} to bump the common y-axis upper limit to 120% of what
         Matplotlib decides.
 
-        Draw a dashed vertical line at a specified sample point by
-        setting I{axvline} to an integer.
-
         If your x-axis is for time with units in seconds, you can set
         I{timex} to C{True} and the x values will be in set to the
         most sensible units, e.g., nanoseconds for values < 1E-6. Any
@@ -401,7 +496,7 @@ class Plotter(OptsBase):
         If you want to do everything with the next subplot on your own
         and only want a reference to its C{Axes} object, just call
         this with no args. You can still supply keywords to do
-        C{set_X} stuff if you wish.
+        C{set\_X} stuff if you wish.
         """
         def getLast(obj, k):
             return obj[k] if k < len(obj) else obj[-1]

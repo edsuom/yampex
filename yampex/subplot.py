@@ -49,7 +49,8 @@ class Subplotter(object):
     def postOp(self):
         ax = self.ax
         if ax is None: return
-        if self.kLast >= len(self.p.minorTicks) or self.p.minorTicks[self.kLast]:
+        if self.kLast >= len(self.p.minorTicks) \
+           or self.p.minorTicks[self.kLast]:
             ax.minorticks_on()
         if self.p.grid:
             ax.grid(True, which='major')
