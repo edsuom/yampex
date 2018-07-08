@@ -34,7 +34,7 @@ required = ['numpy', 'matplotlib',]
 
 
 ### Define setup options
-kw = {'version':'0.8',
+kw = {'version':'0.8.1',
       'license':'Apache License (2.0)',
       'platforms':'OS Independent',
 
@@ -52,7 +52,7 @@ kw = {'version':'0.8',
 
 kw['keywords'] = [
     'matplotlib', 'numpy',
-    'extension', 'subplots',
+    'extension', 'subplots', 'annotations', 'plotting',
 ]
 
 
