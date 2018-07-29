@@ -34,11 +34,16 @@ required = ['numpy', 'matplotlib',]
 
 
 ### Define setup options
-kw = {'version':'0.8.1',
+kw = {'version':'0.8.2',
       'license':'Apache License (2.0)',
       'platforms':'OS Independent',
 
       'url':"http://edsuom.com/{}.html".format(NAME),
+      'project_urls':      {
+          'GitHub':     "https://github.com/edsuom/{}".format(NAME),
+          'API':        "http://edsuom.com/{}/{}.html".format(
+              NAME, NAME.lower()),
+          },
       'author':"Edwin A. Suominen",
       'author_email':"foss@edsuom.com",
       'maintainer':'Edwin A. Suominen',
