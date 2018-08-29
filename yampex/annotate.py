@@ -229,6 +229,8 @@ class Positioner(object):
     def dataToPixels(self, ann=None, kAxes=None, ax=None, xyData=None):
         if ax is None:
             ax = self.axList[kAxes] if ann is None else ann.axes
+        if ax is None:
+            return
         if xyData is None:
             if kAxes is None:
                 xy = ann.xy
@@ -270,10 +272,11 @@ class Positioner(object):
             return x_y0 - self.rectanglePadding, x_y1 + self.rectanglePadding
         
         relpos = []
-        x, y = self.dataToPixels(ann=ann)
+        xy = self.dataToPixels(ann=ann)
+        if xy is None: return
         width, height = self.sizer(ann)
-        x01 = shift(x, dx, width)
-        y01 = shift(y, dy, height)
+        x01 = shift(xy[0], dx, width)
+        y01 = shift(xy[1], dy, height)
         r = Rectangle(ann, relpos, x01, y01)
         return r
 
@@ -284,7 +287,8 @@ class Positioner(object):
         """
         self.dx = dx
         self.ann = ann
-        self.r = self.rectangle(ann, dx, dy)
+        r = self.rectangle(ann, dx, dy)
+        if r: self.r = r
 
     def liveData(self, kAxes, *xy):
         xyLists = self.xyLists.setdefault(kAxes, [[], []])

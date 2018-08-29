@@ -277,7 +277,7 @@ class Plotter(OptsBase):
         'linestyle':            '-',
         'markers':              [],
         'linestyles':           [],
-        'minorTicks':           [],
+        'minorTicks':           False,
         'grid':                 False,
         'firstVectorTop':       False,
         'loglog':               False,
@@ -334,7 +334,7 @@ class Plotter(OptsBase):
         self.sp.setup()
         self._isSubplot = True
         self.global_opts = self.opts
-        self.copy_opts()
+        self.opts = deepcopy(self.global_opts)            
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -343,7 +343,6 @@ class Plotter(OptsBase):
         enabled for this subplot's axis, and restores global (all
         subplots) options.
         """
-        self.sp.postOp()
         self._isSubplot = False
         self.opts = self.global_opts
         del self.global_opts
@@ -355,11 +354,19 @@ class Plotter(OptsBase):
             return 2
         return 1
 
-    def copy_opts(self):
+    def post_op(self):
         """
-        Sets my I{opts} dict to a copy of the global (all subplots) options.
+        Call this once after each subplot: Adds minor ticks and a grid,
+        depending on the subplot-specific options. Then sets my
+        I{opts} dict to a copy of the global (all subplots) options.
         """
-        self.opts = deepcopy(self.global_opts)
+        ax = self.sp.ax
+        if ax is None: return
+        if self.minorTicks:
+            ax.minorticks_on()
+        if self.grid:
+            ax.grid(True, which='major')
+        self.opts = deepcopy(self.global_opts)            
     
     def show(self, windowTitle=None):
         """
@@ -561,6 +568,7 @@ class Plotter(OptsBase):
                     annotator(kAxis, x, y, text)
                     annotator.update()
                 except:
+                    import sys, traceback, pdb
                     type, value, tb = sys.exc_info()
                     traceback.print_exc()
                     pdb.post_mortem(tb)
@@ -588,7 +596,7 @@ class Plotter(OptsBase):
             if self.annotations:
                 doAnnotations(yscale)
             axList = [SpecialAx(ax, self.opts, V) for ax in axList]
-        self.copy_opts()
+        self.post_op()
         if len(axList) == 1:
             return axList[0]
         return axList

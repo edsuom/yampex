@@ -31,16 +31,19 @@ class Subplotter(object):
     """
     def __init__(self, plotter, Nx, Ny):
         self.p = plotter
-        N = Nx * Ny
+        self.Nx, self.Ny = Nx, Ny
+
+    def setup(self):
+        """
+        Clears the figure and sets up a new set of subplots.
+        """
         self.axes = []
         self.twins = {}
         self.kLast = None
-        for k in range(N):
-            ax = plotter.fig.add_subplot(Ny, Nx, k+1)
+        self.p.fig.clear()
+        for k in range(self.Nx * self.Ny):
+            ax = self.p.fig.add_subplot(self.Ny, self.Nx, k+1)
             self.axes.append(ax)
-
-    def setup(self):
-        self.kLast = None
         for ax in self.axes:
             ax.clear()
             for axTwin in self.getTwins(ax, mplRoster=True):
@@ -48,15 +51,6 @@ class Subplotter(object):
             if ax in self.twins:
                 self.twins[ax][0] = 0
 
-    def postOp(self):
-        ax = self.ax
-        if ax is None: return
-        if self.kLast >= len(self.p.minorTicks) \
-           or self.p.minorTicks[self.kLast]:
-            ax.minorticks_on()
-        if self.p.grid:
-            ax.grid(True, which='major')
-            
     @property
     def ax(self):
         if self.kLast is not None and self.kLast < len(self.axes):
@@ -66,19 +60,12 @@ class Subplotter(object):
         return len(self.axes)
 
     def __getitem__(self, k):
-        if self.kLast is None:
-            # First default is first element.
-            if k is None: k = 0
-        else:
-            # An element index previously has been specified: Do
-            # post-op on it
-            self.postOp()
-            # ...and default to the next element
-            if k is None: k = self.kLast+1
+        if k is None:
+            k = 0 if self.kLast is None else self.kLast + 1
         self.kLast = k
         if k < len(self.axes):
             return self.axes[k]
-
+    
     def set_(self, what, name, **kw):
         f = getattr(self.ax, "set_{}".format(what))
         f(name, **kw)
