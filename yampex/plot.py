@@ -297,7 +297,6 @@ class Plotter(OptsBase):
         'zeroBottom':           False,
     }
     _settings = {'title', 'xlabel', 'ylabel'}
-    _plotters = []
     
     def __init__(self, N, *args, **kw):
         args = list(args)
@@ -308,7 +307,6 @@ class Plotter(OptsBase):
             Nx = self.N_cols(N)
             Ny = int(np.ceil(float(N)/Nx))
         self.V = args[0] if args else None
-        self._plotters.append(self)
         self.opts = deepcopy(self._opts)
         self.filePath = kw.pop('filePath', None)
         self.plt = importlib.import_module("matplotlib.pyplot")
@@ -363,12 +361,12 @@ class Plotter(OptsBase):
         """
         self.opts = deepcopy(self.global_opts)
     
-    def show(self, windowTitle=None, subcall=False):
-        if not subcall and len(self._plotters) > 1:
-            for p in self._plotters:
-                p.show(windowTitle, subcall=True)
-            self.plt.show()
-            return
+    def show(self, windowTitle=None):
+        """
+        If I have a I{fc} attribute (which must reference an instance of
+        Qt's C{FigureCanvas}, then the FigureCanvas is drawn instead
+        of PyPlot doing a window show.
+        """
         self.fig.tight_layout()
         if self._isFigTitle:
             self.fig.subplots_adjust(top=0.93)
@@ -379,8 +377,9 @@ class Plotter(OptsBase):
             self.plt.draw()
             if windowTitle:
                 self.fig.canvas.set_window_title(windowTitle)
-            if not subcall:
-                self.plt.show()
+            if hasattr(self, 'fc'):
+                self.fc.draw()
+            else: self.plt.show()
             return
         fh = open(self.filePath, 'wb+')
         self.fig.savefig(fh, format='png')
@@ -558,8 +557,13 @@ class Plotter(OptsBase):
                 x = firstVector[k]
                 y = vectors[kVector+1][k]
                 kAxis = 0 if yscale is None or kVector == 0 else 1
-                annotator(kAxis, x, y, text)
-            annotator.update()
+                try:
+                    annotator(kAxis, x, y, text)
+                    annotator.update()
+                except:
+                    type, value, tb = sys.exc_info()
+                    traceback.print_exc()
+                    pdb.post_mortem(tb)
 
         ax = axFirst = self.sp[None]
         doSettings(kw)
@@ -588,3 +592,20 @@ class Plotter(OptsBase):
         if len(axList) == 1:
             return axList[0]
         return axList
+
+    def get_annotators(self, ax=None):
+        """
+        Returns the annotator for the supplied axes object, or a list of
+        all annotators if no axes object is supplied.
+        """
+        if ax is None:
+            return self.annotators.values()
+        if ax not in self.annotators:
+            axax = getattr(ax, 'ax', None)
+            if axax and axax in self.annotators:
+                ax = axax
+            else:
+                print sub("No annotator for axes object '{}'", repr(ax))
+                import pdb; pdb.set_trace()
+        return self.annotators[ax]
+        

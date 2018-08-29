@@ -27,6 +27,8 @@ Simple subplotting.
 """
 
 class Subplotter(object):
+    """
+    """
     def __init__(self, plotter, Nx, Ny):
         self.p = plotter
         N = Nx * Ny
