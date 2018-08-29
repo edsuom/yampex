@@ -116,7 +116,7 @@ class OptsBase(object):
         """
         self.opts['markers'].append(x)
 
-    def add_line(self, x):
+    def add_line(self, x=None):
         """
         Appends the supplied line style character to the list of line
         styles being used. The first and possibly only line style in
@@ -128,9 +128,15 @@ class OptsBase(object):
         used for that second vector plot line. Otherwise, the first
         (only) line style in the list is used for the second plot line
         as well.
-        """
-        self.opts['linestyles'].append(x)
 
+        If no line style character or C{None} is supplied, clears the
+        list of line styles.
+        """
+        if x is None:
+            self.opts['linestyles'] = []
+            return
+        self.opts['linestyles'].append(x)
+    
     def set_yscale(self, x):
         """
         Manually sets the y-axis scaling.
@@ -171,7 +177,13 @@ class OptsBase(object):
         Clears the list of legend entries.
         """
         self.opts['legend'] = []
-        
+
+    def set_legend(self, *args):
+        """
+        Sets the list of legend entries.
+        """
+        self.opts['legend'] = list(args)
+    
     def add_annotation(self, k, text, kVector=0):
         """
         Adds the supplied I{text} as an annotation at index I{k} of the
@@ -201,41 +213,6 @@ class OptsBase(object):
             self._isFigTitle = True
             self.fig.suptitle(text)
 
-
-class ContextOpts(object):
-    def __init__(self, p):
-        self.p = p
-        self.opts = {}
-        self._refresh()
-
-    def _refresh(self):
-        self.merged = self.opts.copy()
-        for key in self.p.opts:
-            if key not in self.merged:
-                self.merged[key] = self.p.opts[key]
-        
-    def __len__(self):
-        self._refresh()
-        return len(self.merged)
-
-    def __getitem__(self, name):
-        self._refresh()
-        return self.merged[name]
-
-    def __setitem__(self, name, value):
-        self.opts[name] = value
-
-    def __iter__(self):
-        return iter(self.merged)
-
-    def get(self, name, value, default):
-        self._refresh()
-        return self.merged.get(name, value, default)
-
-    def copy(self):
-        self._refresh()
-        return self.merged.copy()
-    
 
 class SpecialAx(object):
     """
@@ -351,15 +328,27 @@ class Plotter(OptsBase):
         return self.opts[name]
         
     def __enter__(self):
+        """
+        Upon context entry, sets up the next (first) subplot with cleared
+        axes, preserves a copy of my global (all subplots) options,
+        and returns a reference to myself.
+        """
         self.sp.setup()
         self._isSubplot = True
-        self.originalOpts = self.opts.copy()
+        self.global_opts = self.opts
+        self.copy_opts()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        """
+        Upon completion of context, turns minor ticks and grid on if
+        enabled for this subplot's axis, and restores global (all
+        subplots) options.
+        """
         self.sp.postOp()
         self._isSubplot = False
-        self.opts = self.originalOpts
+        self.opts = self.global_opts
+        del self.global_opts
 
     def N_cols(self, N):
         if N > 6:
@@ -368,6 +357,12 @@ class Plotter(OptsBase):
             return 2
         return 1
 
+    def copy_opts(self):
+        """
+        Sets my I{opts} dict to a copy of the global (all subplots) options.
+        """
+        self.opts = deepcopy(self.global_opts)
+    
     def show(self, windowTitle=None, subcall=False):
         if not subcall and len(self._plotters) > 1:
             for p in self._plotters:
@@ -567,28 +562,29 @@ class Plotter(OptsBase):
             annotator.update()
 
         ax = axFirst = self.sp[None]
-        if not args:
-            doSettings(kw)
-            return ax
-        lineInfo = [[],[]]
-        yscale = self.yscale
-        vectors, names, V = self.parseArgs(args)
-        firstVector = self.scaleTime(vectors)
-        N = len(firstVector)
-        yMax = -np.inf
-        for kVector, thisVector in enumerate(vectors[1:]):
-            thisMax = thisVector.max()
-            if thisMax > yMax:
-                yMax = thisMax
-            if yscale and kVector == 1:
-                ax = self.sp.twinx()
-            plotVector(kVector, thisVector, ax)
-        adjustPlots(yscale, self.axvline)
         doSettings(kw)
-        axList = self.sp.getTwins()
-        if self.annotations:
-            doAnnotations(yscale)
-        axList = [SpecialAx(ax, self.opts, V) for ax in axList]
+        if not args:
+            axList = [ax]
+        else:
+            lineInfo = [[],[]]
+            yscale = self.yscale
+            vectors, names, V = self.parseArgs(args)
+            firstVector = self.scaleTime(vectors)
+            N = len(firstVector)
+            yMax = -np.inf
+            for kVector, thisVector in enumerate(vectors[1:]):
+                thisMax = thisVector.max()
+                if thisMax > yMax:
+                    yMax = thisMax
+                if yscale and kVector == 1:
+                    ax = self.sp.twinx()
+                plotVector(kVector, thisVector, ax)
+            adjustPlots(yscale, self.axvline)
+            axList = self.sp.getTwins()
+            if self.annotations:
+                doAnnotations(yscale)
+            axList = [SpecialAx(ax, self.opts, V) for ax in axList]
+        self.copy_opts()
         if len(axList) == 1:
             return axList[0]
         return axList

@@ -34,6 +34,8 @@ pt.add_annotation(199, "Last")
 with pt as p:
     for funcName in funcNames:
         Y = getattr(np, funcName)(X)
+        if funcName == 'sin':
+            p.add_line(':')
         p.set_ylabel("{}(X)".format(funcName))
         k = 0 if funcName == 'sin' else 75
         for text in ("Pos ZC", "Max", "Neg ZC", "Min"):
