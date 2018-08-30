@@ -564,14 +564,8 @@ class Plotter(OptsBase):
                 x = firstVector[k]
                 y = vectors[kVector+1][k]
                 kAxis = 0 if yscale is None or kVector == 0 else 1
-                try:
-                    annotator(kAxis, x, y, text)
-                    annotator.update()
-                except:
-                    import sys, traceback, pdb
-                    type, value, tb = sys.exc_info()
-                    traceback.print_exc()
-                    pdb.post_mortem(tb)
+                annotator(kAxis, x, y, text)
+                annotator.update()
 
         ax = axFirst = self.sp[None]
         doSettings(kw)

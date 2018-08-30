@@ -229,8 +229,6 @@ class Positioner(object):
     def dataToPixels(self, ann=None, kAxes=None, ax=None, xyData=None):
         if ax is None:
             ax = self.axList[kAxes] if ann is None else ann.axes
-        if ax is None:
-            return
         if xyData is None:
             if kAxes is None:
                 xy = ann.xy
@@ -273,7 +271,6 @@ class Positioner(object):
         
         relpos = []
         xy = self.dataToPixels(ann=ann)
-        if xy is None: return
         width, height = self.sizer(ann)
         x01 = shift(xy[0], dx, width)
         y01 = shift(xy[1], dy, height)
