@@ -253,16 +253,24 @@ class Plotter(OptsBase):
     I provide a Figure with one or more time-vector and XY subplots of
     Numpy vectors using Matplotlib.
 
-    If you supply an object other than a list or tuple that houses
-    vectors and provides access to them by name as items (i.e., a dict
-    or a Vectors object from the I{pingspice} package) as a third
-    argument, I will convert vector names to vectors for you in each
-    plotting call.
+    Construct an instance of me with the total number of subplots (to
+    be intelligently apportioned into one or more rows and columns)
+    or, with two constructor arguments, the number of columns followed
+    by the number of rows.
 
-    Any keywords you supply to the constructor are used to C{set\_X}
-    the axes for all subplots. For example, C{yticks=[1,2,3]} results
-    in a C{set\_yticks([1,2,3])} command to the C{axes} object for all
-    subplots.
+    You can supply an open file-like object for PNG data to be written
+    to (instead of a Matplotlib Figure being displayed) with the I{fh}
+    keyword. (I close the file object when done writing to it.) Or,
+    with the I{filePath} keyword, you can specify the file path of a
+    PNG file for me to create or overwrite.
+    
+    You can set the I{width} and I{height} of the Figure in inches
+    (100 DPI) with constructor keywords.
+
+    Any other keywords you supply to the constructor are used to
+    C{set_X} the axes for all subplots. For example, C{yticks=[1,2,3]}
+    results in a C{set_yticks([1,2,3])} command to the C{axes} object
+    for all subplots.
     """
     figSize = (10.0, 7.0)
     colors = ['b', 'g', 'r', '#40C0C0', '#C0C040', '#C040C0', '#8080FF']
@@ -308,7 +316,9 @@ class Plotter(OptsBase):
             Ny = int(np.ceil(float(N)/Nx))
         self.V = args[0] if args else None
         self.opts = deepcopy(self._opts)
-        self.filePath = kw.pop('filePath', None)
+        self.fh = kw.pop('fh', None)
+        if self.fh is None and 'filePath' in kw:
+            self.fh = open(kw.pop('filePath'), 'wb+')
         self.plt = importlib.import_module("matplotlib.pyplot")
         figSize = list(self.figSize)
         if 'width' in kw:
@@ -380,7 +390,7 @@ class Plotter(OptsBase):
         self.plt.draw()
         for annotator in self.annotators.values():
             annotator.update()
-        if self.filePath is None:
+        if self.fh is None:
             self.plt.draw()
             if windowTitle:
                 self.fig.canvas.set_window_title(windowTitle)
@@ -388,10 +398,9 @@ class Plotter(OptsBase):
                 self.fc.draw()
             else: self.plt.show()
             return
-        fh = open(self.filePath, 'wb+')
-        self.fig.savefig(fh, format='png')
+        self.fig.savefig(self.fh, format='png')
         self.plt.close()
-        fh.close()
+        self.fh.close()
 
     def getColor(self, k):
         return self.colors[k % len(self.colors)]
@@ -490,14 +499,14 @@ class Plotter(OptsBase):
         'xlabel' keyword is disregarded in such case because the x
         label is set automatically.
         
-        Any keywords you supply to this call are used to C{set\_X} the
-        axes, e.g., C{ylabel="foo"} results in a C{set\_ylabel("foo")}
+        Any keywords you supply to this call are used to C{set_X} the
+        axes, e.g., C{ylabel="foo"} results in a C{set_ylabel("foo")}
         command to the C{axes} object, for this subplot only.
 
         If you want to do everything with the next subplot on your own
         and only want a reference to its C{Axes} object, just call
         this with no args. You can still supply keywords to do
-        C{set\_X} stuff if you wish.
+        C{set_X} stuff if you wish.
         """
         def getLast(obj, k):
             return obj[k] if k < len(obj) else obj[-1]
