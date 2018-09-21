@@ -55,6 +55,18 @@ class OptsBase(object):
         """
         self.opts['semilogy'] = yes
         
+    def set_bar(self, yes=True):
+        """
+        Specifies a bar plot, unless called with C{False}.
+        """
+        self.opts['bar'] = yes
+        
+    def set_step(self, yes=True):
+        """
+        Specifies a step plot, unless called with C{False}.
+        """
+        self.opts['step'] = yes
+        
     def set_useLabels(self, yes=True):
         """
         Has annotation labels point to each plot line instead of a legend,
@@ -147,7 +159,7 @@ class OptsBase(object):
         """
         Adds a vertical dashed line at the data point with index I{k}.
         """
-        self.opts['axvline'] = k
+        self.opts['axvlines'].append(k)
         
     def set_xlabel(self, x):
         """
@@ -180,8 +192,11 @@ class OptsBase(object):
 
     def set_legend(self, *args):
         """
-        Sets the list of legend entries.
+        Sets the list of legend entries. Supply a list of legend entries,
+        either as a single argument or with one entry per argument.
         """
+        if len(args) == 1 and hasattr(args[0], '__iter__'):
+            args = args[0]
         self.opts['legend'] = list(args)
     
     def add_annotation(self, k, text, kVector=0):
@@ -288,12 +303,14 @@ class Plotter(OptsBase):
         'loglog':               False,
         'semilogx':             False,
         'semilogy':             False,
+        'bar':                  False,
+        'step':                 False,
         'legend':               [],
         'annotations':          [],
         'xscale':               None,
         'yscale':               None,
         'useLabels':            False,
-        'axvline':              None,
+        'axvlines':             [],
         'bump':                 False,
         'timex':                False,
         'xlabel':               "",
@@ -440,27 +457,44 @@ class Plotter(OptsBase):
         self.opts['xscale'] = 1.0 / mult
         return V0 / mult 
 
+    def pickPlotter(self, ax, plotter, kw):
+        bogusMap = {
+            'bar': ('marker', 'linestyle', 'scaley'),
+            'step': ('marker', 'linestyle', 'scaley'),
+        }
+        for name in ('loglog', 'semilogx', 'semilogy', 'bar', 'step'):
+            if plotter == name or getattr(self, name, False):
+                for bogus in bogusMap.get(name, []):
+                    kw.pop(bogus, None)
+                return getattr(ax, name)
+        return ax.plot 
+    
     def parseArgs(self, args):
+        def arrayify(x):
+            if isinstance(x, np.ndarray):
+                return x
+            return np.array(x)
+        
         vectors = []
         if not isinstance(args[0], (list, tuple, np.ndarray)):
             V = args[0]
             names = args[1:]
             for name in names:
-                vectors.append(V[name])
+                vectors.append(arrayify(V[name]))
             return vectors, names, V
         if self.V is not None:
             names = []
             for arg in args:
                 if isinstance(arg, str) and arg in self.V:
                     names.append(arg)
-                    vectors.append(self.V[arg])
+                    vectors.append(arrayify(self.V[arg]))
                 else:
                     names.append(None)
-                    vectors.append(arg)
+                    vectors.append(arrayify(arg))
             if None in names:
                 names = None
             return vectors, names, self.V
-        return args, None, None
+        return [arrayify(x) for x in args], None, None
 
     def addLegend(thisVector, thisLegend):
         # Put an annotation at the right-most point where the
@@ -512,8 +546,12 @@ class Plotter(OptsBase):
         most sensible units, e.g., nanoseconds for values < 1E-6. Any
         'xlabel' keyword is disregarded in such case because the x
         label is set automatically.
+
+        You can override my default plotter by specifying the name of
+        another one with the I{plotter} keyword, e.g.,
+        C{plotter="step"}.
         
-        Any keywords you supply to this call are used to C{set_X} the
+        Any other keywords you supply to this call are used to C{set_X} the
         axes, e.g., C{ylabel="foo"} results in a C{set_ylabel("foo")}
         command to the C{axes} object, for this subplot only.
 
@@ -526,10 +564,6 @@ class Plotter(OptsBase):
             return obj[k] if k < len(obj) else obj[-1]
 
         def plotVector(k, vector, ax):
-            if self.loglog: plotter = ax.loglog
-            elif self.semilogx: plotter = ax.semilogx
-            elif self.semilogy: plotter = ax.semilogy
-            else: plotter = ax.plot 
             kw = {'scaley': not self.firstVectorTop}
             kw['marker'] = getLast(self.markers, k) \
                 if self.markers else self.marker
@@ -540,6 +574,7 @@ class Plotter(OptsBase):
             color = self.getColor(k)
             kw['color'] = color
             # Here is where the plotting actually happens
+            plotter = self.pickPlotter(ax, kw_plotter, kw)
             lineInfo[0].extend(plotter(firstVector, vector, **kw))
             if yscale:
                 ax.tick_params('y', colors=color)
@@ -549,24 +584,23 @@ class Plotter(OptsBase):
             if isinstance(self.legend, bool):
                 if self.legend and names:
                     legend = names[k+1]
-                else:
-                    return
+                else: return
             elif k < len(self.legend):
                 legend = self.legend[k]
-            else:
-                return
+            else: return
             lineInfo[1].append(legend)
             if yscale: ax.set_ylabel(legend, color=color)
             if self.useLabels: self.addLegend(vector, legend)
         
-        def adjustPlots(yscale, axvline):
+        def adjustPlots(yscale, axvlines):
             if self.bump and yscale is None:
                 self.yBounds(ax, bump=True, zeroBottom=self.zeroBottom)
             elif self.firstVectorTop:
                 self.yBounds(ax, Ymax=yMax, zeroBottom=self.zeroBottom)
-            if isinstance(axvline, int) and abs(axvline) < len(firstVector):
-                axFirst.axvline(
-                    x=firstVector[axvline], linestyle='--', color="#404040")
+            for axvline in axvlines:
+                if abs(axvline) < len(firstVector):
+                    axFirst.axvline(
+                        x=firstVector[axvline], linestyle='--', color="#404040")
             if self.legend and not self.annotations and not self.useLabels:
                 axFirst.legend(*lineInfo, **{'loc': "best"})
 
@@ -591,11 +625,12 @@ class Plotter(OptsBase):
                 annotator.update()
 
         ax = axFirst = self.sp[None]
+        kw_plotter = kw.pop('plotter', None)
         doSettings(kw)
         if not args:
             axList = [ax]
         else:
-            lineInfo = [[],[]]
+            lineInfo = [[], []]
             yscale = self.yscale
             vectors, names, V = self.parseArgs(args)
             firstVector = self.scaleTime(vectors)
@@ -608,7 +643,7 @@ class Plotter(OptsBase):
                 if yscale and kVector == 1:
                     ax = self.sp.twinx()
                 plotVector(kVector, thisVector, ax)
-            adjustPlots(yscale, self.axvline)
+            adjustPlots(yscale, self.axvlines)
             axList = self.sp.getTwins()
             if self.annotations:
                 doAnnotations(yscale)
