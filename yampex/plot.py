@@ -258,11 +258,8 @@ class Plotter(OptsBase):
     or, with two constructor arguments, the number of columns followed
     by the number of rows.
 
-    You can supply an open file-like object for PNG data to be written
-    to (instead of a Matplotlib Figure being displayed) with the I{fh}
-    keyword. (I close the file object when done writing to it.) Or,
-    with the I{filePath} keyword, you can specify the file path of a
-    PNG file for me to create or overwrite.
+    With the I{filePath} keyword, you can specify the file path of a
+    PNG file for me to create or overwrite with each call to L{show}.
     
     You can set the I{width} and I{height} of the Figure in inches
     (100 DPI) with constructor keywords.
@@ -316,9 +313,7 @@ class Plotter(OptsBase):
             Ny = int(np.ceil(float(N)/Nx))
         self.V = args[0] if args else None
         self.opts = deepcopy(self._opts)
-        self.fh = kw.pop('fh', None)
-        if self.fh is None and 'filePath' in kw:
-            self.fh = open(kw.pop('filePath'), 'wb+')
+        self.filePath = kw.pop('filePath', None)
         self.plt = importlib.import_module("matplotlib.pyplot")
         figSize = list(self.figSize)
         if 'width' in kw:
@@ -378,11 +373,20 @@ class Plotter(OptsBase):
             ax.grid(True, which='major')
         self.opts = deepcopy(self.global_opts)            
     
-    def show(self, windowTitle=None):
+    def show(self, windowTitle=None, fh=None, filePath=None):
         """
         If I have a I{fc} attribute (which must reference an instance of
         Qt's C{FigureCanvas}, then the FigureCanvas is drawn instead
         of PyPlot doing a window show.
+
+        You can supply an open file-like object for PNG data to be
+        written to (instead of a Matplotlib Figure being displayed)
+        with the I{fh} keyword. (It's up to you to close the file
+        object.)
+
+        Or, with the I{filePath} keyword, you can specify the file
+        path of a PNG file for me to create or overwrite. (That
+        overrides any I{filePath} you set in the constructor.)
         """
         self.fig.tight_layout()
         if self._isFigTitle:
@@ -390,7 +394,11 @@ class Plotter(OptsBase):
         self.plt.draw()
         for annotator in self.annotators.values():
             annotator.update()
-        if self.fh is None:
+        if fh is None:
+            if filePath is None: filePath = self.filePath
+            if filePath:
+                fh = open(filePath, 'wb+')
+        if fh is None:
             self.plt.draw()
             if windowTitle:
                 self.fig.canvas.set_window_title(windowTitle)
@@ -398,9 +406,11 @@ class Plotter(OptsBase):
                 self.fc.draw()
             else: self.plt.show()
             return
-        self.fig.savefig(self.fh, format='png')
+        self.fig.savefig(fh, format='png')
         self.plt.close()
-        self.fh.close()
+        if filePath is not None:
+            # Only close a file handle I opened myself
+            fh.close()
 
     def getColor(self, k):
         return self.colors[k % len(self.colors)]
