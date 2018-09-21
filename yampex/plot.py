@@ -391,9 +391,13 @@ class Plotter(OptsBase):
         self.fig.tight_layout()
         if self._isFigTitle:
             self.fig.subplots_adjust(top=0.93)
-        self.plt.draw()
-        for annotator in self.annotators.values():
-            annotator.update()
+        # Calling plt.draw massively slows things down when generating
+        # plot images on Rpi. And without it, the (un-annotated) plot
+        # still updates!
+        if self.annotators:
+            self.plt.draw()
+            for annotator in self.annotators.values():
+                annotator.update()
         if fh is None:
             if filePath is None: filePath = self.filePath
             if filePath:
