@@ -67,6 +67,14 @@ class OptsBase(object):
         """
         self.opts['step'] = yes
         
+    def set_error(self, yes=True):
+        """
+        Specifies an error bar plot, unless called with C{False}.
+
+        B{TODO:} Not yet supported.
+        """
+        self.opts['error'] = yes
+        
     def set_useLabels(self, yes=True):
         """
         Has annotation labels point to each plot line instead of a legend,
@@ -157,7 +165,8 @@ class OptsBase(object):
 
     def set_axvline(self, k):
         """
-        Adds a vertical dashed line at the data point with index I{k}.
+        Adds a vertical dashed line at the data point with integer index
+        I{k}. To set it to an x value, use a float.
         """
         self.opts['axvlines'].append(k)
         
@@ -305,6 +314,7 @@ class Plotter(OptsBase):
         'semilogy':             False,
         'bar':                  False,
         'step':                 False,
+        'error':                False,
         'legend':               [],
         'annotations':          [],
         'xscale':               None,
@@ -462,7 +472,7 @@ class Plotter(OptsBase):
             'bar': ('marker', 'linestyle', 'scaley'),
             'step': ('marker', 'linestyle', 'scaley'),
         }
-        for name in ('loglog', 'semilogx', 'semilogy', 'bar', 'step'):
+        for name in ('loglog', 'semilogx', 'semilogy', 'bar', 'step', 'error'):
             if plotter == name or getattr(self, name, False):
                 for bogus in bogusMap.get(name, []):
                     kw.pop(bogus, None)
@@ -558,7 +568,9 @@ class Plotter(OptsBase):
         If you want to do everything with the next subplot on your own
         and only want a reference to its C{Axes} object, just call
         this with no args. You can still supply keywords to do
-        C{set_X} stuff if you wish.
+        C{set_X} stuff if you wish. B{NOTE: } In this case, however,
+        you will need to call L{post_op} yourself after you're done
+        doing what this call would ordinarily do.
         """
         def getLast(obj, k):
             return obj[k] if k < len(obj) else obj[-1]
@@ -598,9 +610,13 @@ class Plotter(OptsBase):
             elif self.firstVectorTop:
                 self.yBounds(ax, Ymax=yMax, zeroBottom=self.zeroBottom)
             for axvline in axvlines:
-                if abs(axvline) < len(firstVector):
-                    axFirst.axvline(
-                        x=firstVector[axvline], linestyle='--', color="#404040")
+                x = None
+                if isinstance(axvline, int):
+                    if abs(axvline) < len(firstVector):
+                        x = firstVector[axvline]
+                else: x = axvline
+                if x is None: continue
+                axFirst.axvline(x=x, linestyle='--', color="#404040")
             if self.legend and not self.annotations and not self.useLabels:
                 axFirst.legend(*lineInfo, **{'loc': "best"})
 
@@ -648,7 +664,7 @@ class Plotter(OptsBase):
             if self.annotations:
                 doAnnotations(yscale)
             axList = [SpecialAx(ax, self.opts, V) for ax in axList]
-        self.post_op()
+            self.post_op()
         if len(axList) == 1:
             return axList[0]
         return axList
