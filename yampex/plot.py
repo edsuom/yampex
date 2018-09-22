@@ -353,6 +353,9 @@ class Plotter(OptsBase):
         self.kw = kw
         self._isFigTitle = False
         self._isSubplot = False
+
+    def __nonzero__(self):
+        return bool(len(self.sp))
         
     def __getattr__(self, name):
         return self.opts[name]
@@ -607,7 +610,7 @@ class Plotter(OptsBase):
         def adjustPlots(yscale, axvlines):
             if self.bump and yscale is None:
                 self.yBounds(ax, bump=True, zeroBottom=self.zeroBottom)
-            elif self.firstVectorTop:
+            elif self.firstVectorTop and yMax is not None:
                 self.yBounds(ax, Ymax=yMax, zeroBottom=self.zeroBottom)
             for axvline in axvlines:
                 x = None
@@ -651,11 +654,12 @@ class Plotter(OptsBase):
             vectors, names, V = self.parseArgs(args)
             firstVector = self.scaleTime(vectors)
             N = len(firstVector)
-            yMax = -np.inf
+            yMax = None
             for kVector, thisVector in enumerate(vectors[1:]):
-                thisMax = thisVector.max()
-                if thisMax > yMax:
-                    yMax = thisMax
+                if len(thisVector):
+                    thisMax = thisVector.max()
+                    if yMax is None or thisMax > yMax:
+                        yMax = thisMax
                 if yscale and kVector == 1:
                     ax = self.sp.twinx()
                 plotVector(kVector, thisVector, ax)

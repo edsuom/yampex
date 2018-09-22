@@ -32,6 +32,7 @@ class Subplotter(object):
     def __init__(self, plotter, Nx, Ny):
         self.p = plotter
         self.Nx, self.Ny = Nx, Ny
+        self.axes = []
 
     def setup(self):
         """
