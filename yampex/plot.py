@@ -122,6 +122,13 @@ class OptsBase(object):
         """
         self.opts['zeroBottom'] = yes
 
+    def set_zeroLine(self, yes=True):
+        """
+        Adds a horizontal line at y=0 if the Y-axis range includes zero,
+        unless called with C{False}.
+        """
+        self.opts['zeroLine'] = yes
+        
     def add_marker(self, x):
         """
         Appends the supplied marker style character to the list of markers
@@ -327,6 +334,7 @@ class Plotter(OptsBase):
         'ylabel':               "",
         'title':                "",
         'zeroBottom':           False,
+        'zeroLine':             False,
     }
     _settings = {'title', 'xlabel', 'ylabel'}
     
@@ -620,6 +628,12 @@ class Plotter(OptsBase):
                 else: x = axvline
                 if x is None: continue
                 axFirst.axvline(x=x, linestyle='--', color="#404040")
+            if self.zeroLine:
+                y0, y1 = axFirst.get_ylim()
+                if y0 < 0 and y1 > 0:
+                    axFirst.axhline(
+                        y=0, linestyle='--',
+                        linewidth=1, color="black", zorder=10)
             if self.legend and not self.annotations and not self.useLabels:
                 axFirst.legend(*lineInfo, **{'loc': "best"})
 
