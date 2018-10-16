@@ -31,6 +31,8 @@ import importlib
 
 import numpy as np
 
+import matplotlib.ticker as ticker
+
 from yampex.annotate import Annotator
 from yampex.subplot import Subplotter
 from yampex.util import sub
@@ -170,6 +172,26 @@ class OptsBase(object):
         """
         self.opts['yscale'] = x
 
+    def _axisOpt(self, optName, axisName, value):
+        axisName = axisName.lower()
+        if axisName not in "xy":
+            raise ValueError(sub("Invalid axisName '{}'", axisName))
+        self.opts[optName][axisName] = value
+        
+    def set_axisExact(self, axisName, yes=True):
+        """
+        Forces the limits of the named axis ("x" or "y") to exactly the
+        data range, unless called with C{False}.
+        """
+        self._axisOpt('axisExact', axisName, yes)
+        
+    def set_tickSpacing(self, axisName, major, minor=None):
+        """
+        Sets the major tick spacing for I{axisName} ("x" or "y"), and
+        minor tick spacing as well if I{minor} is set.
+        """
+        self._axisOpt('tickSpacings', axisName, [major, minor])
+        
     def set_axvline(self, k):
         """
         Adds a vertical dashed line at the data point with integer index
@@ -326,6 +348,8 @@ class Plotter(OptsBase):
         'annotations':          [],
         'xscale':               None,
         'yscale':               None,
+        'axisExact':            {},
+        'tickSpacings':         {},
         'useLabels':            False,
         'axvlines':             [],
         'bump':                 False,
@@ -405,8 +429,8 @@ class Plotter(OptsBase):
         """
         ax = self.sp.ax
         if ax is None: return
-        if self.minorTicks:
-            ax.minorticks_on()
+        if self.minorTicks: ax.minorticks_on()
+        if self.tickSpacings: self.setTicks(ax)
         if self.grid:
             ax.grid(True, which='major')
         self.opts = deepcopy(self.global_opts)            
@@ -517,7 +541,7 @@ class Plotter(OptsBase):
             return vectors, names, self.V
         return [arrayify(x) for x in args], None, None
 
-    def addLegend(thisVector, thisLegend):
+    def addLegend(self, thisVector, thisLegend):
         # Put an annotation at the right-most point where the
         # value is at least 99.9% of the vector maximum
         if max(thisVector) > 0:
@@ -526,7 +550,20 @@ class Plotter(OptsBase):
             m999 = np.less(thisVector, 0.999*min(thisVector))
         k = max(np.nonzero(m999)[0])
         self.annotations.append((kVector, k, thisLegend))
-    
+
+    def setTicks(self, ax):
+        """
+        """
+        for axisName in self.tickSpacings:
+            spacings = self.tickSpacings.get(axisName, [None, None])
+            for k, spacing in enumerate(spacings):
+                if spacing is None:
+                    continue
+                axis = getattr(ax, sub("{}axis", axisName))
+                setter = getattr(axis, sub(
+                    "set_{}_locator", "major" if k==0 else "minor"))
+                setter(ticker.MultipleLocator(spacing))
+        
     def __call__(self, *args, **kw):
         """
         Plots the second supplied vector (and any further ones) versus the
@@ -616,7 +653,12 @@ class Plotter(OptsBase):
             if self.useLabels: self.addLegend(vector, legend)
         
         def adjustPlots(yscale, axvlines):
-            if self.bump and yscale is None:
+            if self.axisExact.get('x', False):
+                ax.set_xlim(firstVector.min(), firstVector.max())
+            if self.axisExact.get('y', False):
+                V = np.array(vectors[1:])
+                ax.set_ylim(V.min(), V.max())
+            elif self.bump and yscale is None:
                 self.yBounds(ax, bump=True, zeroBottom=self.zeroBottom)
             elif self.firstVectorTop and yMax is not None:
                 self.yBounds(ax, Ymax=yMax, zeroBottom=self.zeroBottom)
@@ -635,7 +677,8 @@ class Plotter(OptsBase):
                         y=0, linestyle='--',
                         linewidth=1, color="black", zorder=10)
             if self.legend and not self.annotations and not self.useLabels:
-                axFirst.legend(*lineInfo, **{'loc': "best"})
+                axFirst.legend(
+                    *lineInfo, **{'loc': "best", 'fontsize': "small"})
 
         def doSettings(kw):
             for name in self.kw:
@@ -654,6 +697,10 @@ class Plotter(OptsBase):
                 x = firstVector[k]
                 y = vectors[kVector+1][k]
                 kAxis = 0 if yscale is None or kVector == 0 else 1
+                if isinstance(text, int):
+                    text = sub("{:d}", text)
+                elif isinstance(text, float):
+                    text = sub("{:.2f}", float)
                 annotator(kAxis, x, y, text)
                 annotator.update()
 
