@@ -235,9 +235,13 @@ class Positioner(object):
             else:
                 xy = np.column_stack(
                     (self.vectors[0], self.vectors[kAxes+1]))
-        else:
-            xy = xyData
-        XY = ax.transData.transform(xy)
+        else: xy = xyData
+        if isinstance(xy, list) and len(xy) == 2:
+            xy = [[x, y] for x, y in zip(*xy)]
+        try:
+            XY = ax.transData.transform(xy)
+        except:
+            raise Exception("Couldn't transform xy:\n" + repr(xy))
         if len(XY.shape) > 1:
             return [XY[:,k] for k in (0,1)]
         return XY

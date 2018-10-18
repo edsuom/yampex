@@ -228,14 +228,19 @@ class OptsBase(object):
         """
         self.opts['legend'] = []
 
-    def set_legend(self, *args):
+    def set_legend(self, *args, **kw):
         """
         Sets the list of legend entries. Supply a list of legend entries,
         either as a single argument or with one entry per argument.
+
+        You can set the I{fontsize} keyword to the desired fontsize of
+        the legend. The default is 'small'.
         """
         if len(args) == 1 and hasattr(args[0], '__iter__'):
             args = args[0]
         self.opts['legend'] = list(args)
+        if 'fontsize' in kw:
+            self.opts['fontsizes']['legend'] = kw['fontsize']
     
     def add_annotation(self, k, text, kVector=0):
         """
@@ -265,6 +270,13 @@ class OptsBase(object):
         else:
             self._isFigTitle = True
             self.fig.suptitle(text)
+
+    def set_fontsize(self, name, fontsize):
+        """
+        Sets the I{fontsize} of the specified artist I{name}. Recognized
+        names are 'legend' and 'annotations'.
+        """
+        self.opts['fontsizes'][name] = fontsize
 
 
 class SpecialAx(object):
@@ -359,6 +371,7 @@ class Plotter(OptsBase):
         'title':                "",
         'zeroBottom':           False,
         'zeroLine':             False,
+        'fontsizes':            {},
     }
     _settings = {'title', 'xlabel', 'ylabel'}
     
@@ -385,6 +398,7 @@ class Plotter(OptsBase):
         self.kw = kw
         self._isFigTitle = False
         self._isSubplot = False
+        self._an_xlabel_was_set = False
 
     def __nonzero__(self):
         return bool(len(self.sp))
@@ -451,8 +465,12 @@ class Plotter(OptsBase):
         overrides any I{filePath} you set in the constructor.)
         """
         self.fig.tight_layout()
+        kw = {}
         if self._isFigTitle:
-            self.fig.subplots_adjust(top=0.93)
+            kw['top'] = 0.93
+        if self._an_xlabel_was_set:
+            kw['hspace'] = 0.16
+        self.fig.subplots_adjust(**kw)
         # Calling plt.draw massively slows things down when generating
         # plot images on Rpi. And without it, the (un-annotated) plot
         # still updates!
@@ -677,8 +695,9 @@ class Plotter(OptsBase):
                         y=0, linestyle='--',
                         linewidth=1, color="black", zorder=10)
             if self.legend and not self.annotations and not self.useLabels:
-                axFirst.legend(
-                    *lineInfo, **{'loc': "best", 'fontsize': "small"})
+                axFirst.legend(*lineInfo, **{
+                    'loc': "best",
+                    'fontsize': self.fontsizes.get('legend', "small")})
 
         def doSettings(kw):
             for name in self.kw:
@@ -686,13 +705,16 @@ class Plotter(OptsBase):
             for name in self._settings:
                 if self.opts[name]:
                     kw.setdefault(name, self.opts[name])
+                    if name == 'xlabel':
+                        self._an_xlabel_was_set = True
             for name in kw:
                 self.sp.set_(name, kw[name])
 
         def doAnnotations(yscale):
             self.plt.draw()
             annotator = self.annotators[axFirst] = Annotator(
-                axList, [firstVector]+list(vectors[1:]))
+                axList, [firstVector]+list(vectors[1:]),
+                fontsize=self.fontsizes.get('annotations', 12))
             for k, text, kVector in self.annotations:
                 x = firstVector[k]
                 y = vectors[kVector+1][k]
@@ -700,7 +722,7 @@ class Plotter(OptsBase):
                 if isinstance(text, int):
                     text = sub("{:d}", text)
                 elif isinstance(text, float):
-                    text = sub("{:.2f}", float)
+                    text = sub("{:.2f}", text)
                 annotator(kAxis, x, y, text)
                 annotator.update()
 
