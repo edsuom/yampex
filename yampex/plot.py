@@ -31,8 +31,6 @@ import importlib
 
 import numpy as np
 
-import matplotlib.ticker as ticker
-
 from yampex.annotate import Annotator
 from yampex.subplot import Subplotter
 from yampex.util import sub
@@ -329,6 +327,14 @@ class Plotter(OptsBase):
     You can set the I{width} and I{height} of the Figure in inches
     (100 DPI) with constructor keywords.
 
+    Use the "Agg" backend by supplying the keyword I{useAgg} or
+    calling the L{useAgg} class method. This works better for plotting
+    to an image file, and is selected automatically if you supply a
+    I{filePath} to the constructor. Be aware that, once selected, that
+    backend will be used for all instances of me. If you're using the
+    "Agg" backend, you should specify it the first time an instance is
+    constructed, or beforehand with the L{useAgg} class method.
+    
     Any other keywords you supply to the constructor are used to
     C{set_X} the axes for all subplots. For example, C{yticks=[1,2,3]}
     results in a C{set_yticks([1,2,3])} command to the C{axes} object
@@ -374,6 +380,13 @@ class Plotter(OptsBase):
         'fontsizes':            {},
     }
     _settings = {'title', 'xlabel', 'ylabel'}
+
+    @classmethod
+    def useAgg(cls):
+        if not getattr(cls, '_usingAgg', False):
+            mpl = importlib.import_module("matplotlib")
+            mpl.use('Agg')
+            cls._usingAgg = True
     
     def __init__(self, N, *args, **kw):
         args = list(args)
@@ -386,6 +399,8 @@ class Plotter(OptsBase):
         self.V = args[0] if args else None
         self.opts = deepcopy(self._opts)
         self.filePath = kw.pop('filePath', None)
+        if self.filePath or kw.pop('useAgg', False):
+            self.useAgg()
         self.plt = importlib.import_module("matplotlib.pyplot")
         figSize = list(self.figSize)
         if 'width' in kw:
@@ -399,6 +414,8 @@ class Plotter(OptsBase):
         self._isFigTitle = False
         self._isSubplot = False
         self._an_xlabel_was_set = False
+        ticker = importlib.import_module("matplotlib.ticker")
+        self.MultipleLocator = ticker.MultipleLocator
 
     def __nonzero__(self):
         return bool(len(self.sp))
@@ -580,7 +597,7 @@ class Plotter(OptsBase):
                 axis = getattr(ax, sub("{}axis", axisName))
                 setter = getattr(axis, sub(
                     "set_{}_locator", "major" if k==0 else "minor"))
-                setter(ticker.MultipleLocator(spacing))
+                setter(self.MultipleLocator(spacing))
         
     def __call__(self, *args, **kw):
         """
