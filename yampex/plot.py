@@ -598,7 +598,7 @@ class Plotter(OptsBase):
                 setter = getattr(axis, sub(
                     "set_{}_locator", "major" if k==0 else "minor"))
                 setter(self.MultipleLocator(spacing))
-        
+                
     def __call__(self, *args, **kw):
         """
         Plots the second supplied vector (and any further ones) versus the
@@ -731,7 +731,7 @@ class Plotter(OptsBase):
             self.plt.draw()
             annotator = self.annotators[axFirst] = Annotator(
                 axList, [firstVector]+list(vectors[1:]),
-                fontsize=self.fontsizes.get('annotations', 12))
+                fontsize=self.fontsizes.get('annotations', 'small'))
             for k, text, kVector in self.annotations:
                 x = firstVector[k]
                 y = vectors[kVector+1][k]

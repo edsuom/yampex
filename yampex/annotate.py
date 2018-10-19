@@ -433,7 +433,17 @@ class Annotator(object):
     ]
     radii = [1.0, 2.0, 4.0, 8.0, 12.0, 16.0]
 
-    fontSize = 12 # points
+    fontsize = 12 # points
+    # Estimated mapping of string fontsizes to points
+    fontsizeMap = {
+        'xx-small':     6.0,
+        'x-small':      7.5,
+        'small':        10.0,
+        'medium':       12.0,
+        'large':        13.5,
+        'x-large':      18.0,
+        'xx-large':     24.0,
+        }
     fontWeight = 'normal'
     arrowprops = {
         'facecolor':            "#800000",
@@ -442,8 +452,9 @@ class Annotator(object):
         'connectionstyle':      "arc3",
         'relpos':               (0.5, 0.5),
     }
-    boxprops = {
-        'boxstyle':             "round",
+    _boxprops = {
+        # boxstyle is set in constructor based on fontsize
+        #'boxstyle':             "round,pad=0.15",
         'facecolor':            "white",
         'edgecolor':            "#800000",
         'lw':                   2,
@@ -461,6 +472,15 @@ class Annotator(object):
         self.p = Positioner(self.sizer, axList, vectors)
         for name in kw:
             setattr(self, name, kw[name])
+        self.boxprops = self._boxprops.copy()
+        self.boxprops['boxstyle'] = sub(
+            "round,pad={:0.3f}", self.paddingForSize())
+
+    def paddingForSize(self):
+        fs = self.fontsize
+        if fs in self.fontsizeMap:
+            fs = self. fontsizeMap[fs]
+        return min([0.20, 0.39 - 0.008*fs])
     
     def offseterator(self, radius):
         for k, offsets in enumerate(self.offsets):
@@ -545,7 +565,7 @@ class Annotator(object):
         ann = ax.annotate(
             text, xy=xy, xytext=offset,
             textcoords="offset pixels",
-            ha=ha, va=va, size=self.fontSize, weight=self.fontWeight,
+            ha=ha, va=va, size=self.fontsize, weight=self.fontWeight,
             arrowprops=arrowprops, bbox=self.boxprops, zorder=100)
         self.p.add(ann)
         ann.draw(ax.figure.canvas.get_renderer())
