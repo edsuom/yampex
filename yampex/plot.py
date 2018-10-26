@@ -37,6 +37,30 @@ from yampex.util import sub
 
 
 class OptsBase(object):
+    def set(self, name, value):
+        """
+        Before this subplot is drawn, do a C{set_name=value} command to the
+        axes. You can call this method as many times as you like with
+        a different attribute I{name} and I{value}.
+
+        Use this method in place of calling the Plotter instance with
+        keywords. Now, such keywords are sent directly to the
+        underlying Matplotlib plotting call.
+        """
+        self.opts['settings'][name] = value
+
+    def add_plotKeyword(self, name, value):
+        """
+        Add a keyword to the underlying Matplotlib plotting call.
+        """
+        self.opts['plotKeywords'][name] = value
+
+    def clear_plotKeywords(self):
+        """
+        Clears all keywords for this subplot.
+        """
+        self.opts['plotKeywords'].clear()
+        
     def set_loglog(self, yes=True):
         """
         Makes both axes logarithmic, unless called with C{False}.
@@ -335,10 +359,13 @@ class Plotter(OptsBase):
     "Agg" backend, you should specify it the first time an instance is
     constructed, or beforehand with the L{useAgg} class method.
     
-    Any other keywords you supply to the constructor are used to
-    C{set_X} the axes for all subplots. For example, C{yticks=[1,2,3]}
-    results in a C{set_yticks([1,2,3])} command to the C{axes} object
-    for all subplots.
+    Any other keywords you supply to the constructor are supplied to
+    the underlying Matplotlib plotting call for all
+    subplots. (B{NOTE:} This is a change from previous versions of
+    Yampex where constructor keywords were used to C{set_X} the axes,
+    e.g., C{ylabel="foo"} results in a C{set_ylabel("foo")} command to
+    the C{axes} object, for all subplots. Use the new L{OptsBase.set}
+    command instead, before the context call.)
     """
     figSize = (10.0, 7.0)
     colors = ['b', 'g', 'r', '#40C0C0', '#C0C040', '#C040C0', '#8080FF']
@@ -349,6 +376,8 @@ class Plotter(OptsBase):
     ]
 
     _opts = {
+        'settings':             {},
+        'plotKeywords':         {},
         'marker':               '',
         'linestyle':            '-',
         'markers':              [],
@@ -468,6 +497,9 @@ class Plotter(OptsBase):
     
     def show(self, windowTitle=None, fh=None, filePath=None):
         """
+        Call this to show the figure with suplots after the last call to
+        my instance.
+        
         If I have a I{fc} attribute (which must reference an instance of
         Qt's C{FigureCanvas}, then the FigureCanvas is drawn instead
         of PyPlot doing a window show.
@@ -644,22 +676,26 @@ class Plotter(OptsBase):
         another one with the I{plotter} keyword, e.g.,
         C{plotter="step"}.
         
-        Any other keywords you supply to this call are used to C{set_X} the
-        axes, e.g., C{ylabel="foo"} results in a C{set_ylabel("foo")}
-        command to the C{axes} object, for this subplot only.
+        Any other keywords you supply to this call are supplied to the
+        underlying Matplotlib plotting call. (B{NOTE:} This is a
+        change from previous versions of Yampex where keywords to this
+        method were used to C{set_X} the axes, e.g., C{ylabel="foo"}
+        results in a C{set_ylabel("foo")} command to the C{axes}
+        object, for this subplot only. Use the new L{OptsBase.set}
+        command instead.)
 
         If you want to do everything with the next subplot on your own
         and only want a reference to its C{Axes} object, just call
-        this with no args. You can still supply keywords to do
-        C{set_X} stuff if you wish. B{NOTE: } In this case, however,
-        you will need to call L{post_op} yourself after you're done
-        doing what this call would ordinarily do.
+        this with no args. In this case, however, you will need to
+        call L{post_op} yourself after you're done doing what this
+        call would ordinarily do.
         """
         def getLast(obj, k):
             return obj[k] if k < len(obj) else obj[-1]
 
-        def plotVector(k, vector, ax):
-            kw = {'scaley': not self.firstVectorTop}
+        def plotVector(k, vector, ax, kw_orig):
+            kw = {}
+            kw['scaley'] = not self.firstVectorTop
             kw['marker'] = getLast(self.markers, k) \
                 if self.markers else self.marker
             kw['linestyle'] = getLast(self.linestyles, k) \
@@ -668,6 +704,8 @@ class Plotter(OptsBase):
             if kw['linestyle'] == '-': kw['linewidth'] = 2
             color = self.getColor(k)
             kw['color'] = color
+            # Original keywords override any already set
+            kw.update(kw_orig)
             # Here is where the plotting actually happens
             plotter = self.pickPlotter(ax, kw_plotter, kw)
             lineInfo[0].extend(plotter(firstVector, vector, **kw))
@@ -716,16 +754,14 @@ class Plotter(OptsBase):
                     'loc': "best",
                     'fontsize': self.fontsizes.get('legend', "small")})
 
-        def doSettings(kw):
-            for name in self.kw:
-                kw.setdefault(name, self.kw[name])
+        def doSettings():
             for name in self._settings:
                 if self.opts[name]:
-                    kw.setdefault(name, self.opts[name])
+                    self.sp.set_(name, self.opts[name])
                     if name == 'xlabel':
                         self._an_xlabel_was_set = True
-            for name in kw:
-                self.sp.set_(name, kw[name])
+            for name in self.settings:
+                self.sp.set_(name, self.settings[name])
 
         def doAnnotations(yscale):
             self.plt.draw()
@@ -744,8 +780,18 @@ class Plotter(OptsBase):
                 annotator.update()
 
         ax = axFirst = self.sp[None]
+        # Apply plot keywords set via the set_plotKeyword call and
+        # then, with higher priority, those set via the constructor,
+        # if they don't conflict with explicitly set keywords to this
+        # call which takes highest priority
+        for thisDict in (self.kw, self.plotKeywords):
+            for name in thisDict:
+                if name not in kw:
+                    kw[name] = thisDict[name]
+        # The 'plotter' keyword is reserved for Yampex, unrecognized
+        # by Matplotlib
         kw_plotter = kw.pop('plotter', None)
-        doSettings(kw)
+        doSettings()
         if not args:
             axList = [ax]
         else:
@@ -762,7 +808,7 @@ class Plotter(OptsBase):
                         yMax = thisMax
                 if yscale and kVector == 1:
                     ax = self.sp.twinx()
-                plotVector(kVector, thisVector, ax)
+                plotVector(kVector, thisVector, ax, kw)
             adjustPlots(yscale, self.axvlines)
             axList = self.sp.getTwins()
             if self.annotations:
