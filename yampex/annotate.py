@@ -236,12 +236,16 @@ class Positioner(object):
                 xy = np.column_stack(
                     (self.vectors[0], self.vectors[kAxes+1]))
         else: xy = xyData
-        if isinstance(xy, list) and len(xy) == 2:
-            xy = [[x, y] for x, y in zip(*xy)]
+        if isinstance(xy, list) and len(xy) == len(self.axList)+1:
+            xy2 = []
+            for k in range(len(xy[0])):
+                xy2.append([stuff[k] for stuff in xy])
+            xy = xy2
         try:
             XY = ax.transData.transform(xy)
         except:
-            raise Exception("Couldn't transform xy:\n" + repr(xy))
+            print sub("WARNING: Couldn't transform xy:\n{}\n", repr(xy)[:200])
+            return
         if len(XY.shape) > 1:
             return [XY[:,k] for k in (0,1)]
         return XY
@@ -275,6 +279,7 @@ class Positioner(object):
         
         relpos = []
         xy = self.dataToPixels(ann=ann)
+        if xy is None: return
         width, height = self.sizer(ann)
         x01 = shift(xy[0], dx, width)
         y01 = shift(xy[1], dy, height)
@@ -331,7 +336,10 @@ class Positioner(object):
         
         s = None
         score = 0.0
-        for X, Y in self.datarator():
+        for XY in self.datarator():
+            if XY is None:
+                continue
+            X, Y = XY
             # Get slice of Y spanning same X interval as annotation
             newX = False
             if s is None:
@@ -381,6 +389,7 @@ class Positioner(object):
             if other is self.ann:
                 continue
             tr = self.rectangle(other, *other.xyann)
+            if tr is None: continue
             if self.r.overlap(tr):
                 return 4.0
             # Return somewhat less bad score if there is arrow overlap

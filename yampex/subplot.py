@@ -26,6 +26,11 @@
 Simple subplotting.
 """
 
+import importlib
+
+from yampex.util import sub
+
+
 class Subplotter(object):
     """
     """
@@ -145,3 +150,36 @@ class Subplotter(object):
             k, twinList = self.twins[ax]
             twins.extend(twinList[:k])
         return twins
+
+    def setTicks(self, ticksDict, ax=None):
+        """
+        Call with a dict defining ticks for 'x' and 'y' axes. Each axis
+        has a sub-dict with 'major' and 'minor' entries. Each entry,
+        if present, is an C{int} for a max number of tick intervals,
+        or a C{float} for spacing between intervals, or just C{True}
+        or C{False} to enable or disable ticks. (Major ticks are
+        always enabled.)
+        """
+        def get(axisName, name):
+            return ticksDict.get(axisName, {}).get(name, None)
+        
+        def setSpacing(which):
+            setter = getattr(axis, sub("set_{}_locator", which))
+            if isinstance(spacing, int):
+                setter(self.ticker.MaxNLocator(spacing))
+            else: setter(self.ticker.MultipleLocator(spacing))
+        
+        if ax is None: ax = self.ax
+        if not hasattr(self, 'ticker'):
+            self.ticker = importlib.import_module("matplotlib.ticker")
+        for axisName in 'x', 'y':
+            axis = getattr(ax, sub("{}axis", axisName))
+            for which in 'major', 'minor':
+                spacing = get(axisName, which)
+                if spacing is True:
+                    if which == 'minor': ax.minorticks_on()
+                elif spacing is False:
+                    if which == 'minor': ax.minorticks_off()
+                elif spacing is None:
+                    continue
+                setSpacing('minor')

@@ -33,6 +33,7 @@ import numpy as np
 
 from yampex.annotate import Annotator
 from yampex.subplot import Subplotter
+from yampex.scaling import Scaler
 from yampex.util import sub
 
 
@@ -194,10 +195,12 @@ class OptsBase(object):
         """
         self.opts['yscale'] = x
 
-    def _axisOpt(self, optName, axisName, value):
+    def _axisOpt(self, optName, axisName, value=None):
         axisName = axisName.lower()
         if axisName not in "xy":
             raise ValueError(sub("Invalid axisName '{}'", axisName))
+        if value is None:
+            return self.opts[optName].setdefault(axisName, {})
         self.opts[optName][axisName] = value
         
     def set_axisExact(self, axisName, yes=True):
@@ -210,9 +213,24 @@ class OptsBase(object):
     def set_tickSpacing(self, axisName, major, minor=None):
         """
         Sets the major tick spacing for I{axisName} ("x" or "y"), and
-        minor tick spacing as well if I{minor} is set.
+        minor tick spacing as well. For each setting, an C{int} will
+        set a maximum number of tick intervals, and a C{float} will
+        set a spacing between intervals.
+
+        You can set I{minor} C{True} to have minor ticks set
+        automatically, or C{False} to have them turned off. (Major
+        ticks are set automatically by default, and cannot be turned
+        off.)
         """
-        self._axisOpt('tickSpacings', axisName, [major, minor])
+        ticks = self._axisOpt('ticks', axisName)
+        ticks['major'] = major
+        if minor is not None:
+            ticks['minor'] = minor
+
+    def set_minorTicks(self, axisName, yes=True):
+        """
+        """
+        self._axisOpt('ticks', axisName)['minor'] = yes
         
     def set_axvline(self, k):
         """
@@ -382,7 +400,6 @@ class Plotter(OptsBase):
         'linestyle':            '-',
         'markers':              [],
         'linestyles':           [],
-        'minorTicks':           False,
         'grid':                 False,
         'firstVectorTop':       False,
         'loglog':               False,
@@ -396,7 +413,7 @@ class Plotter(OptsBase):
         'xscale':               None,
         'yscale':               None,
         'axisExact':            {},
-        'tickSpacings':         {},
+        'ticks':                {},
         'useLabels':            False,
         'axvlines':             [],
         'bump':                 False,
@@ -443,8 +460,6 @@ class Plotter(OptsBase):
         self._isFigTitle = False
         self._isSubplot = False
         self._an_xlabel_was_set = False
-        ticker = importlib.import_module("matplotlib.ticker")
-        self.MultipleLocator = ticker.MultipleLocator
 
     def __nonzero__(self):
         return bool(len(self.sp))
@@ -489,8 +504,7 @@ class Plotter(OptsBase):
         """
         ax = self.sp.ax
         if ax is None: return
-        if self.minorTicks: ax.minorticks_on()
-        if self.tickSpacings: self.setTicks(ax)
+        self.sp.setTicks(self.ticks)
         if self.grid:
             ax.grid(True, which='major')
         self.opts = deepcopy(self.global_opts)            
@@ -618,19 +632,6 @@ class Plotter(OptsBase):
         k = max(np.nonzero(m999)[0])
         self.annotations.append((kVector, k, thisLegend))
 
-    def setTicks(self, ax):
-        """
-        """
-        for axisName in self.tickSpacings:
-            spacings = self.tickSpacings.get(axisName, [None, None])
-            for k, spacing in enumerate(spacings):
-                if spacing is None:
-                    continue
-                axis = getattr(ax, sub("{}axis", axisName))
-                setter = getattr(axis, sub(
-                    "set_{}_locator", "major" if k==0 else "minor"))
-                setter(self.MultipleLocator(spacing))
-                
     def __call__(self, *args, **kw):
         """
         Plots the second supplied vector (and any further ones) versus the
@@ -799,6 +800,12 @@ class Plotter(OptsBase):
             yscale = self.yscale
             vectors, names, V = self.parseArgs(args)
             firstVector = self.scaleTime(vectors)
+            if yscale is True:
+                if len(vectors) > 2:
+                    scaler = Scaler(vectors[1])
+                    yscales = [scaler(x) for x in vectors[2:]]
+                    yscale = 1 if 1 in yscales else min(yscales)
+                else: yscale = 1
             N = len(firstVector)
             yMax = None
             for kVector, thisVector in enumerate(vectors[1:]):
