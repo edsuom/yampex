@@ -288,14 +288,27 @@ class OptsBase(object):
         if 'fontsize' in kw:
             self.opts['fontsizes']['legend'] = kw['fontsize']
     
-    def add_annotation(self, k, text, kVector=0):
+    def add_annotation(self, k, proto, *args, **kw):
         """
-        Adds the supplied I{text} as an annotation at index I{k} of the
+        Adds the text supplied after index I{k} at an annotation of the
         plotted vector. If there is more than one vector being plotted
         within the same subplot, you can have the annotation refer to
-        a vector other than the first one by supplying an additional
-        integer argument.
+        a vector other than the first one by setting the keyword
+        I{kVector} to its non-zero index.
+
+        You may include a text prototype with format-substitution args
+        following it, or just supply the final text string with no
+        further arguments.
         """
+        try:
+            text = sub(proto, *args)
+        except:
+            # Probably called with kVector as a third argument, per
+            # API of commit 15c49b and earlier
+            text = proto
+            kVector = args[0]
+        else:
+            kVector = kw.get('kVector', 0)
         self.opts['annotations'].append((k, text, kVector))
 
     def clear_annotations(self):
