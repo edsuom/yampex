@@ -123,7 +123,6 @@ class Rectangle(object):
         
         x, y = self.xy
         if self.relpos[0] == 0.5:
-            #import pdb; pdb.set_trace()
             # Vertical arrow
             if x < other.x0 or x > other.x1:
                 return False
@@ -238,13 +237,15 @@ class Positioner(object):
         else: xy = xyData
         if isinstance(xy, list) and len(xy) == len(self.axList)+1:
             xy2 = []
+            if kAxes is None: kAxes = self.axList.index(ax)
             for k in range(len(xy[0])):
-                xy2.append([stuff[k] for stuff in xy])
+                xy2.append([xy[0][k], xy[kAxes][k]])
             xy = xy2
         try:
             XY = ax.transData.transform(xy)
         except:
-            print sub("WARNING: Couldn't transform xy:\n{}\n", repr(xy)[:200])
+            print sub(
+                "WARNING: Couldn't transform xy:\n{}...\n", repr(xy)[:180])
             return
         if len(XY.shape) > 1:
             return [XY[:,k] for k in (0,1)]
@@ -489,7 +490,7 @@ class Annotator(object):
         fs = self.fontsize
         if fs in self.fontsizeMap:
             fs = self. fontsizeMap[fs]
-        return min([0.20, 0.39 - 0.008*fs])
+        return min([0.25, 0.44 - 0.008*fs])
     
     def offseterator(self, radius):
         for k, offsets in enumerate(self.offsets):
@@ -611,6 +612,35 @@ class Annotator(object):
         return ann
 
 
+class TextBoxMaker(object):
+    _quadrants = {
+        'NE':   0,
+        'SE':   1,
+        'SW':   2,
+        'NW':   3,
+    }
+    m = 0.03
+    _quadrantPositioning = {
+        0: (1-m, 1-m, 'right', 'top'   ),
+        1: (1-m,   m, 'right', 'bottom'),
+        2: (m,     m, 'left',  'bottom'),
+        3: (m,   1-m, 'left',  'top'   ),
+    }
+    alpha = 0.8
 
+    def __init__(self, ax):
+        self.ax = ax
 
+    def conformQuadrant(self, quadrant):
+        if not isinstance(quadrant, int):
+            quadrant = self._quadrants[quadrant.upper()]
+        return quadrant
         
+    def __call__(self, quadrant, text):
+        quadrant = self.conformQuadrant(quadrant)
+        x, y, hAlign, vAlign = self._quadrantPositioning[quadrant]
+        self.ax.text(
+            x, y, text,
+            horizontalalignment=hAlign, verticalalignment=vAlign,
+            transform=self.ax.transAxes,
+            alpha=self.alpha, backgroundcolor='white')

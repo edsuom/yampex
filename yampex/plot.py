@@ -31,7 +31,7 @@ import importlib
 
 import numpy as np
 
-from yampex.annotate import Annotator
+from yampex.annotate import Annotator, TextBoxMaker
 from yampex.subplot import Subplotter
 from yampex.scaling import Scaler
 from yampex.util import sub
@@ -297,6 +297,20 @@ class OptsBase(object):
         Clears the list of annotations.
         """
         self.opts['annotations'] = []
+
+    def add_textBox(self, quadrant, text):
+        """
+        """
+        prevText = self.opts['textBoxes'].get(quadrant, None)
+        if prevText:
+            text = prevText + "\n" + text
+        self.opts['textBoxes'][quadrant] = text
+        
+    def clear_textBoxes(self):
+        """
+        Clears the dict of text boxes.
+        """
+        self.opts['textBoxes'].clear()
         
     def set_title(self, proto, *args):
         """
@@ -410,6 +424,7 @@ class Plotter(OptsBase):
         'error':                False,
         'legend':               [],
         'annotations':          [],
+        'textBoxes':            {},
         'xscale':               None,
         'yscale':               None,
         'axisExact':            {},
@@ -779,7 +794,7 @@ class Plotter(OptsBase):
                     text = sub("{:.2f}", text)
                 annotator(kAxis, x, y, text)
                 annotator.update()
-
+                
         ax = axFirst = self.sp[None]
         # Apply plot keywords set via the set_plotKeyword call and
         # then, with higher priority, those set via the constructor,
@@ -820,6 +835,10 @@ class Plotter(OptsBase):
             axList = self.sp.getTwins()
             if self.annotations:
                 doAnnotations(yscale)
+            if self.textBoxes:
+                tbm = TextBoxMaker(axFirst)
+                for quadrant in self.textBoxes:
+                    tbm(quadrant, self.textBoxes[quadrant])
             axList = [SpecialAx(ax, self.opts, V) for ax in axList]
             self.post_op()
         if len(axList) == 1:
