@@ -243,8 +243,14 @@ class OptsBase(object):
         """
         Sets the x-axis label. (Ignored if time-x mode has been activated
         with a call to L{set_timex}.)
+
+        If called out of context, on the Plotter instance, this
+        x-label is used for all subplots and only appears in the last
+        (bottom) subplot of each column of subplots.
         """
         self.opts['xlabel'] = x
+        if not self._isSubplot:
+            self._universal_xlabel = True
 
     def set_ylabel(self, x):
         """
@@ -282,14 +288,27 @@ class OptsBase(object):
         if 'fontsize' in kw:
             self.opts['fontsizes']['legend'] = kw['fontsize']
     
-    def add_annotation(self, k, text, kVector=0):
+    def add_annotation(self, k, proto, *args, **kw):
         """
-        Adds the supplied I{text} as an annotation at index I{k} of the
+        Adds the text supplied after index I{k} at an annotation of the
         plotted vector. If there is more than one vector being plotted
         within the same subplot, you can have the annotation refer to
-        a vector other than the first one by supplying an additional
-        integer argument.
+        a vector other than the first one by setting the keyword
+        I{kVector} to its non-zero index.
+
+        You may include a text prototype with format-substitution args
+        following it, or just supply the final text string with no
+        further arguments.
         """
+        try:
+            text = sub(proto, *args)
+        except:
+            # Probably called with kVector as a third argument, per
+            # API of commit 15c49b and earlier
+            text = proto
+            kVector = args[0]
+        else:
+            kVector = kw.get('kVector', 0)
         self.opts['annotations'].append((k, text, kVector))
 
     def clear_annotations(self):
@@ -314,9 +333,11 @@ class OptsBase(object):
         
     def set_title(self, proto, *args):
         """
-        Sets a subplot title. You may include a text I{proto}type
-        with format-substitution I{args}, or just supply the final
-        text string with no further arguments.
+        Sets a title for all subplots (if called out of context) or for
+        just the present subplot (if called in context). You may
+        include a text I{proto}type with format-substitution I{args},
+        or just supply the final text string with no further
+        arguments.
         """
         text = sub(proto, *args)
         if self._isSubplot:
@@ -475,6 +496,7 @@ class Plotter(OptsBase):
         self._isFigTitle = False
         self._isSubplot = False
         self._an_xlabel_was_set = False
+        self._universal_xlabel = False
 
     def __nonzero__(self):
         return bool(len(self.sp))
@@ -773,9 +795,11 @@ class Plotter(OptsBase):
         def doSettings():
             for name in self._settings:
                 if self.opts[name]:
-                    self.sp.set_(name, self.opts[name])
                     if name == 'xlabel':
-                        self._an_xlabel_was_set = True
+                        if self._universal_xlabel:
+                            if not self.sp.atBottom(): continue
+                        else: self._an_xlabel_was_set = True
+                    self.sp.set_(name, self.opts[name])
             for name in self.settings:
                 self.sp.set_(name, self.settings[name])
 

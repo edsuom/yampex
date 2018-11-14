@@ -75,7 +75,7 @@ class Subplotter(object):
     def set_(self, what, name, **kw):
         f = getattr(self.ax, "set_{}".format(what))
         f(name, **kw)
-        
+
     def xBounds(self, ax=None, left=None, right=None):
         if ax is None: ax = self.ax
         if left and left < ax.get_xlim()[0]:
@@ -182,4 +182,13 @@ class Subplotter(object):
                     if which == 'minor': ax.minorticks_off()
                 elif spacing is None:
                     continue
-                setSpacing('minor')
+                setSpacing(which)
+
+    def atBottom(self):
+        """
+        Returns C{True] if the current subplot will appear at the bottom
+        of a column of subplots.
+        """
+        k = 0 if self.kLast is None else self.kLast
+        return (k+1) % self.Ny == 0
+    
