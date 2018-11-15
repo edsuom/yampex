@@ -570,7 +570,13 @@ class Plotter(OptsBase):
             kw['top'] = 0.93
         if self._an_xlabel_was_set:
             kw['hspace'] = 0.16
-        self.fig.subplots_adjust(**kw)
+        try:
+            self.fig.subplots_adjust(**kw)
+        except ValueError as e:
+            print sub(
+                "WARNING: ValueError '{}' doing subplots_adjust({})",
+                e.message,
+                ", ".join([sub("{}={}", x, kw[x]) for x in kw]))
         # Calling plt.draw massively slows things down when generating
         # plot images on Rpi. And without it, the (un-annotated) plot
         # still updates!
