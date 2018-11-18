@@ -34,7 +34,7 @@ required = ['numpy', 'matplotlib',]
 
 
 ### Define setup options
-kw = {'version':'0.8.2',
+kw = {'version':'0.8.3',
       'license':'Apache License (2.0)',
       'platforms':'OS Independent',
 
