@@ -402,7 +402,8 @@ class Plotter(OptsBase):
     PNG file for me to create or overwrite with each call to L{show}.
     
     You can set the I{width} and I{height} of the Figure in inches
-    (100 DPI) with constructor keywords.
+    (100 DPI) with constructor keywords, and (read-only) access them
+    via my properties of the same names.
 
     Use the "Agg" backend by supplying the keyword I{useAgg} or
     calling the L{useAgg} class method. This works better for plotting
@@ -498,6 +499,13 @@ class Plotter(OptsBase):
         self._an_xlabel_was_set = False
         self._universal_xlabel = False
 
+    @property
+    def width(self):
+        return self.fig.get_figwidth()
+    @property
+    def height(self):
+        return self.fig.get_figheight()
+        
     def __nonzero__(self):
         return bool(len(self.sp))
         
@@ -564,7 +572,12 @@ class Plotter(OptsBase):
         path of a PNG file for me to create or overwrite. (That
         overrides any I{filePath} you set in the constructor.)
         """
-        self.fig.tight_layout()
+        try:
+            self.fig.tight_layout()
+        except ValueError as e:
+            proto = "WARNING: ValueError '{}' doing tight_layout "+\
+                    "on {:.5g} x {:.5g} figure"
+            print sub(proto, e.message, self.width, self.height)
         kw = {}
         if self._isFigTitle:
             kw['top'] = 0.93
