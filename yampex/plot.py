@@ -421,6 +421,7 @@ class Plotter(OptsBase):
     the C{axes} object, for all subplots. Use the new L{OptsBase.set}
     command instead, before the context call.)
     """
+    fc = None
     figSize = (10.0, 7.0)
     colors = ['b', 'g', 'r', '#40C0C0', '#C0C040', '#C040C0', '#8080FF']
     timeScales = [
@@ -559,9 +560,9 @@ class Plotter(OptsBase):
         Call this to show the figure with suplots after the last call to
         my instance.
         
-        If I have a I{fc} attribute (which must reference an instance of
-        Qt's C{FigureCanvas}, then the FigureCanvas is drawn instead
-        of PyPlot doing a window show.
+        If I have a non-C{None} I{fc} attribute (which must reference
+        an instance of Qt's C{FigureCanvas}, then the FigureCanvas is
+        drawn instead of PyPlot doing a window show.
 
         You can supply an open file-like object for PNG data to be
         written to (instead of a Matplotlib Figure being displayed)
@@ -577,7 +578,7 @@ class Plotter(OptsBase):
         except ValueError as e:
             proto = "WARNING: ValueError '{}' doing tight_layout "+\
                     "on {:.5g} x {:.5g} figure"
-            print sub(proto, e.message, self.width, self.height)
+            print(sub(proto, e.message, self.width, self.height))
         kw = {}
         if self._isFigTitle:
             kw['top'] = 0.93
@@ -586,10 +587,10 @@ class Plotter(OptsBase):
         try:
             self.fig.subplots_adjust(**kw)
         except ValueError as e:
-            print sub(
+            print(sub(
                 "WARNING: ValueError '{}' doing subplots_adjust({})",
                 e.message,
-                ", ".join([sub("{}={}", x, kw[x]) for x in kw]))
+                ", ".join([sub("{}={}", x, kw[x]) for x in kw])))
         # Calling plt.draw massively slows things down when generating
         # plot images on Rpi. And without it, the (un-annotated) plot
         # still updates!
@@ -605,15 +606,17 @@ class Plotter(OptsBase):
             self.plt.draw()
             if windowTitle:
                 self.fig.canvas.set_window_title(windowTitle)
-            if hasattr(self, 'fc'):
+            if self.fc is not None:
                 self.fc.draw()
             else: self.plt.show()
-            return
-        self.fig.savefig(fh, format='png')
-        self.plt.close()
-        if filePath is not None:
-            # Only close a file handle I opened myself
-            fh.close()
+        else:
+            self.fig.savefig(fh, format='png')
+            self.plt.close()
+            if filePath is not None:
+                # Only close a file handle I opened myself
+                fh.close()
+        self.fig.clear()
+        self.annotators.clear()
 
     def getColor(self, k):
         return self.colors[k % len(self.colors)]
@@ -900,7 +903,7 @@ class Plotter(OptsBase):
             if axax and axax in self.annotators:
                 ax = axax
             else:
-                print sub("No annotator for axes object '{}'", repr(ax))
+                print(sub("No annotator for axes object '{}'", repr(ax)))
                 import pdb; pdb.set_trace()
         return self.annotators[ax]
         

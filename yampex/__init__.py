@@ -27,4 +27,4 @@ B{Y}et B{A}nother B{M}atB{p}lotlib B{Ex}tension, with simplified
 subplotting.
 """
 
-from plot import Plotter
+from .plot import Plotter

@@ -160,6 +160,10 @@ class Rectangle(object):
         return False
 
     def draw(self):
+        """
+        For debugging annotation box placement. Call L{clear} at some
+        point to remove box drawings.
+        """
         if self.ann not in self.drawnBoxes:
             self.drawnBoxes.append(self.ann)
         color = self.colors[
@@ -174,6 +178,9 @@ class Rectangle(object):
 
     @classmethod
     def clear(cls, fig):
+        """
+        This only needs to be called if L{draw} was.
+        """
         cls.drawnBoxes = []
         patches = fig.patches
         for r in patches:
@@ -244,8 +251,8 @@ class Positioner(object):
         try:
             XY = ax.transData.transform(xy)
         except:
-            print sub(
-                "WARNING: Couldn't transform xy:\n{}...\n", repr(xy)[:180])
+            print(sub(
+                "WARNING: Couldn't transform xy:\n{}...\n", repr(xy)[:180]))
             return
         if len(XY.shape) > 1:
             return [XY[:,k] for k in (0,1)]
