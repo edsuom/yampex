@@ -120,6 +120,8 @@ class OptsBase(object):
         C{False}.
         """
         self.opts['timex'] = yes
+        if not self._isSubplot:
+            self._universal_xlabel = True
 
     def set_firstVectorTop(self):
         """
@@ -425,9 +427,12 @@ class Plotter(OptsBase):
     figSize = (10.0, 7.0)
     colors = ['b', 'g', 'r', '#40C0C0', '#C0C040', '#C040C0', '#8080FF']
     timeScales = [
-        (1E-9, "nanoseconds"),
-        (1E-6, "microseconds"),
-        (1E-3, "milliseconds"),
+        (1E-9,          "Nanoseconds"),
+        (1E-6,          "Microseconds"),
+        (1E-3,          "Milliseconds"),
+        (1.0,           "Seconds"),
+        (60.0,          "Minutes"),
+        (3600.0,        "Hours"),
     ]
 
     _opts = {
@@ -633,11 +638,11 @@ class Plotter(OptsBase):
             return V0
         T_max = vectors[0].max()
         for mult, name in self.timeScales:
-            if T_max < 1000*mult:
+            if mult < 1:
+                if T_max < 1000*mult:
+                    break
+            elif T_max < 150*mult:
                 break
-        else:
-            self.opts['xlabel'] = "seconds"
-            return V0
         self.opts['xlabel'] = name
         self.opts['xscale'] = 1.0 / mult
         return V0 / mult 
@@ -853,14 +858,15 @@ class Plotter(OptsBase):
         # The 'plotter' keyword is reserved for Yampex, unrecognized
         # by Matplotlib
         kw_plotter = kw.pop('plotter', None)
-        doSettings()
         if not args:
             axList = [ax]
+            doSettings()
         else:
             lineInfo = [[], []]
             yscale = self.yscale
             vectors, names, V = self.parseArgs(args)
             firstVector = self.scaleTime(vectors)
+            doSettings()
             if yscale is True:
                 if len(vectors) > 2:
                     scaler = Scaler(vectors[1])
