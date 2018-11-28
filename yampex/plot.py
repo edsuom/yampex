@@ -38,6 +38,10 @@ from yampex.util import sub
 
 
 class OptsBase(object):
+    """
+    I am an abstract base class with the option setting methods of the
+    L{Plotter}.
+    """
     def set(self, name, value):
         """
         Before this subplot is drawn, do a C{set_name=value} command to the
@@ -149,12 +153,13 @@ class OptsBase(object):
         """
         self.opts['zeroBottom'] = yes
 
-    def set_zeroLine(self, yes=True):
+    def set_zeroLine(self, y=0):
         """
-        Adds a horizontal line at y=0 if the Y-axis range includes zero,
-        unless called with C{False}.
+        Adds a horizontal line at the specified I{y} value (default is
+        y=0) if the Y-axis range includes that value. If y is C{None}
+        or C{False}, clears any previously set line.
         """
-        self.opts['zeroLine'] = yes
+        self.opts['zeroLine'] = y
         
     def add_marker(self, x):
         """
@@ -298,18 +303,25 @@ class OptsBase(object):
         a vector other than the first one by setting the keyword
         I{kVector} to its non-zero index.
 
+        The annotation points to the point at index I{k} of the
+        plotted vector, unless I{k} is a float. In that case, it
+        points to the point where the vector is closest to that float
+        value.
+        
         You may include a text prototype with format-substitution args
         following it, or just supply the final text string with no
         further arguments.
         """
-        try:
-            text = sub(proto, *args)
-        except:
-            # Probably called with kVector as a third argument, per
-            # API of commit 15c49b and earlier
-            text = proto
-            kVector = args[0]
-        else:
+        kVector = None
+        if args:
+            if "{" not in proto:
+                # Called with kVector as a third argument, per API of
+                # commit 15c49b and earlier
+                text = proto
+                kVector = args[0]
+            else: text = sub(proto, *args)
+        else:  text = proto
+        if kVector is None:
             kVector = kw.get('kVector', 0)
         self.opts['annotations'].append((k, text, kVector))
 
@@ -358,7 +370,7 @@ class OptsBase(object):
 
 class SpecialAx(object):
     """
-    I pretend to be an L{matplotlib.Axes} object except that I
+    I pretend to be a C{matplotlib.Axes} object except that I
     intercept plotting calls and rescale the independent vector first.
     """
     _plotterNames = {
@@ -469,6 +481,8 @@ class Plotter(OptsBase):
         'fontsizes':            {},
     }
     _settings = {'title', 'xlabel', 'ylabel'}
+    # Show warnings?
+    verbose = False
 
     @classmethod
     def useAgg(cls):
@@ -504,6 +518,8 @@ class Plotter(OptsBase):
         self._isSubplot = False
         self._an_xlabel_was_set = False
         self._universal_xlabel = False
+        if self.verbose:
+            Annotator.setVerbose(True)
 
     @property
     def width(self):
@@ -581,9 +597,10 @@ class Plotter(OptsBase):
         try:
             self.fig.tight_layout()
         except ValueError as e:
-            proto = "WARNING: ValueError '{}' doing tight_layout "+\
-                    "on {:.5g} x {:.5g} figure"
-            print(sub(proto, e.message, self.width, self.height))
+            if self.verbose:
+                proto = "WARNING: ValueError '{}' doing tight_layout "+\
+                        "on {:.5g} x {:.5g} figure"
+                print(sub(proto, e.message, self.width, self.height))
         kw = {}
         if self._isFigTitle:
             kw['top'] = 0.93
@@ -592,10 +609,11 @@ class Plotter(OptsBase):
         try:
             self.fig.subplots_adjust(**kw)
         except ValueError as e:
-            print(sub(
-                "WARNING: ValueError '{}' doing subplots_adjust({})",
-                e.message,
-                ", ".join([sub("{}={}", x, kw[x]) for x in kw])))
+            if self.verbose:
+                print(sub(
+                    "WARNING: ValueError '{}' doing subplots_adjust({})",
+                    e.message,
+                    ", ".join([sub("{}={}", x, kw[x]) for x in kw])))
         # Calling plt.draw massively slows things down when generating
         # plot images on Rpi. And without it, the (un-annotated) plot
         # still updates!
@@ -715,12 +733,6 @@ class Plotter(OptsBase):
         to each plot line instead of a legend, with text taken from
         the legend list. (Works best in interactive apps.)
 
-        Add other text annotations by the sample index of the point
-        within the independent (first) and dependent vectors, the
-        text, and the vector index. The vector index starts with 0 for
-        the second vector argument and first dependent variable
-        vector.
-
         Rescale all vectors after the first dependent one, relative to
         that first dependent one, by supplying a I{yscale}. This will
         result in two different twinned x-axes (one for the first
@@ -808,11 +820,14 @@ class Plotter(OptsBase):
                 else: x = axvline
                 if x is None: continue
                 axFirst.axvline(x=x, linestyle='--', color="#404040")
-            if self.zeroLine:
+            # Zero line (which may be non-zero)
+            yz = self.zeroLine
+            if yz is True: yz = 0
+            if yz is not None and yz is not False:
                 y0, y1 = axFirst.get_ylim()
-                if y0 < 0 and y1 > 0:
+                if y0 < yz and y1 > yz:
                     axFirst.axhline(
-                        y=0, linestyle='--',
+                        y=yz, linestyle='--',
                         linewidth=1, color="black", zorder=10)
             if self.legend and not self.annotations and not self.useLabels:
                 axFirst.legend(*lineInfo, **{
@@ -836,6 +851,8 @@ class Plotter(OptsBase):
                 axList, [firstVector]+list(vectors[1:]),
                 fontsize=self.fontsizes.get('annotations', 'small'))
             for k, text, kVector in self.annotations:
+                if not isinstance(k, int):
+                    k = np.searchsorted(firstVector, k)
                 x = firstVector[k]
                 y = vectors[kVector+1][k]
                 kAxis = 0 if yscale is None or kVector == 0 else 1

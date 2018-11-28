@@ -205,6 +205,8 @@ class Positioner(object):
     # I hate fudge factors, but rectangle analysis region is shifted
     # too far without this
     ffShift = 5
+    # Show warnings
+    verbose = False
     
     def __init__(self, sizer, axList, vectors):
         self.sizer = sizer
@@ -216,7 +218,7 @@ class Positioner(object):
 
     @property
     def relpos(self):
-        if not hasattr(self, 'r'):
+        if not getattr(self, 'r', None):
             return
         return self.r.relpos
     
@@ -251,8 +253,10 @@ class Positioner(object):
         try:
             XY = ax.transData.transform(xy)
         except:
-            print(sub(
-                "WARNING: Couldn't transform xy:\n{}...\n", repr(xy)[:180]))
+            if self.verbose:
+                print(sub(
+                    "WARNING: Couldn't transform xy:\n{}...\n",
+                    repr(xy)[:300]))
             return
         if len(XY.shape) > 1:
             return [XY[:,k] for k in (0,1)]
@@ -301,8 +305,7 @@ class Positioner(object):
         """
         self.dx = dx
         self.ann = ann
-        r = self.rectangle(ann, dx, dy)
-        if r: self.r = r
+        self.r = self.rectangle(ann, dx, dy)
 
     def liveData(self, kAxes, *xy):
         xyLists = self.xyLists.setdefault(kAxes, [[], []])
@@ -338,6 +341,8 @@ class Positioner(object):
         axes. Increases with number of plot lines overlapped.
         """
         def sliceSpanningRectangle():
+            if self.r is None:
+                return slice(*Xmm)
             k0 = np.searchsorted(X, self.r.x0)
             k1 = np.searchsorted(X, self.r.x1) + 1
             return slice(k0, k1)
@@ -361,8 +366,10 @@ class Positioner(object):
                     # previous one
                     Xmm = thisXmm
                     s = sliceSpanningRectangle()
-            if np.all(np.less(Y[s], self.r.y0)): continue
-            if np.all(np.greater(Y[s], self.r.y1)): continue
+            if self.r and np.all(np.less(Y[s], self.r.y0)):
+                continue
+            if self.r and np.all(np.greater(Y[s], self.r.y1)):
+                continue
             score += 1.5
             if score >= self.mustBeat: break
         return score
@@ -374,6 +381,7 @@ class Positioner(object):
         the figure boundary.
         """
         score = 0.0
+        if self.r is None: return score
         ax = self.ann.axes
         for k, obj in enumerate((ax, ax.figure)):
             points = obj.get_window_extent().get_points()
@@ -398,10 +406,10 @@ class Positioner(object):
                 continue
             tr = self.rectangle(other, *other.xyann)
             if tr is None: continue
-            if self.r.overlap(tr):
+            if self.r and self.r.overlap(tr):
                 return 4.0
             # Return somewhat less bad score if there is arrow overlap
-            if self.r.arrowOverlap(tr):
+            if self.r and self.r.arrowOverlap(tr):
                 score += 2.0
             # TODO: Account for angled arrows, too
             if score >= self.mustBeat:
@@ -482,6 +490,10 @@ class Annotator(object):
     # PROFILE
     #from cProfile import Profile
     #P = Profile()
+
+    @classmethod
+    def setVerbose(cls, yes=True):
+        Positioner.verbose = yes
     
     def __init__(self, axList, vectors, **kw):
         self.axList = axList

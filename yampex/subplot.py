@@ -33,6 +33,8 @@ from yampex.util import sub
 
 class Subplotter(object):
     """
+    I handle your subplots, with axis twinning, boundary setting, and
+    ticks.
     """
     def __init__(self, plotter, Nx, Ny):
         self.p = plotter
@@ -186,7 +188,7 @@ class Subplotter(object):
 
     def atBottom(self):
         """
-        Returns C{True] if the current subplot will appear at the bottom
+        Returns C{True} if the current subplot will appear at the bottom
         of a column of subplots.
         """
         k = 0 if self.kLast is None else self.kLast
