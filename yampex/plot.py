@@ -356,9 +356,7 @@ class OptsBase(object):
         text = sub(proto, *args)
         if self._isSubplot:
             self.opts['title'] = text
-        else:
-            self._isFigTitle = True
-            self.fig.suptitle(text)
+        else: self._figTitle = text
 
     def set_fontsize(self, name, fontsize):
         """
@@ -514,7 +512,7 @@ class Plotter(OptsBase):
         self.sp = Subplotter(self, Nx, Ny)
         self.annotators = {}
         self.kw = kw
-        self._isFigTitle = False
+        self._figTitle = None
         self._isSubplot = False
         self._an_xlabel_was_set = False
         self._universal_xlabel = False
@@ -602,8 +600,9 @@ class Plotter(OptsBase):
                         "on {:.5g} x {:.5g} figure"
                 print(sub(proto, e.message, self.width, self.height))
         kw = {}
-        if self._isFigTitle:
+        if self._figTitle:
             kw['top'] = 0.93
+            self.sp[0].set_title(self._figTitle)
         if self._an_xlabel_was_set:
             kw['hspace'] = 0.16
         try:
@@ -905,7 +904,7 @@ class Plotter(OptsBase):
             if self.annotations:
                 doAnnotations(yscale)
             if self.textBoxes:
-                tbm = TextBoxMaker(axFirst)
+                tbm = TextBoxMaker(axFirst, self.sp.Nx, self.sp.Ny)
                 for quadrant in self.textBoxes:
                     tbm(quadrant, self.textBoxes[quadrant])
             axList = [SpecialAx(ax, self.opts, V) for ax in axList]

@@ -639,16 +639,25 @@ class TextBoxMaker(object):
         'NW':   3,
     }
     m = 0.03
-    _quadrantPositioning = {
-        0: (1-m, 1-m, 'right', 'top'   ),
-        1: (1-m,   m, 'right', 'bottom'),
-        2: (m,     m, 'left',  'bottom'),
-        3: (m,   1-m, 'left',  'top'   ),
+    _textAlignment = {
+        0: ('right', 'top'   ),
+        1: ('right', 'bottom'),
+        2: ('left',  'bottom'),
+        3: ('left',  'top'   ),
     }
     alpha = 0.8
 
-    def __init__(self, ax):
+    def __init__(self, ax, Nx, Ny):
         self.ax = ax
+        self.quadrantPositioning = {}
+        for k in range(4):
+            seq = []
+            m = Nx * self.m
+            seq.append(1-m if k < 2 else m)
+            m = Ny * self.m
+            seq.append(1-m if k in (0, 3) else m)
+            seq.extend(list(self._textAlignment[k]))
+            self.quadrantPositioning[k] = seq
 
     def conformQuadrant(self, quadrant):
         if not isinstance(quadrant, int):
@@ -657,7 +666,7 @@ class TextBoxMaker(object):
         
     def __call__(self, quadrant, text):
         quadrant = self.conformQuadrant(quadrant)
-        x, y, hAlign, vAlign = self._quadrantPositioning[quadrant]
+        x, y, hAlign, vAlign = self.quadrantPositioning[quadrant]
         self.ax.text(
             x, y, text,
             horizontalalignment=hAlign, verticalalignment=vAlign,
