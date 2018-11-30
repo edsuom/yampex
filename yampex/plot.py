@@ -161,7 +161,7 @@ class OptsBase(object):
         """
         self.opts['zeroLine'] = y
         
-    def add_marker(self, x):
+    def add_marker(self, x, size=None):
         """
         Appends the supplied marker style character to the list of markers
         being used. The first and possibly only marker in the list
@@ -172,10 +172,12 @@ class OptsBase(object):
         the list, then the second marker in the list is used for that
         second vector plot line. Otherwise, the first (only) marker in
         the list is used for the second plot line as well.
-        """
-        self.opts['markers'].append(x)
 
-    def add_line(self, x=None):
+        You can specify a I{size} for the marker as well.
+        """
+        self.opts['markers'].append((x, size))
+
+    def add_line(self, x=None, width=None):
         """
         Appends the supplied line style character to the list of line
         styles being used. The first and possibly only line style in
@@ -188,13 +190,15 @@ class OptsBase(object):
         (only) line style in the list is used for the second plot line
         as well.
 
+        You can specify a I{width} for the line as well.
+        
         If no line style character or C{None} is supplied, clears the
         list of line styles.
         """
         if x is None:
             self.opts['linestyles'] = []
             return
-        self.opts['linestyles'].append(x)
+        self.opts['linestyles'].append((x, width))
     
     def set_yscale(self, x):
         """
@@ -448,8 +452,7 @@ class Plotter(OptsBase):
     _opts = {
         'settings':             {},
         'plotKeywords':         {},
-        'marker':               '',
-        'linestyle':            '-',
+        'marker':               ('', None),
         'markers':              [],
         'linestyles':           [],
         'grid':                 False,
@@ -772,12 +775,17 @@ class Plotter(OptsBase):
         def plotVector(k, vector, ax, kw_orig):
             kw = {}
             kw['scaley'] = not self.firstVectorTop
-            kw['marker'] = getLast(self.markers, k) \
+            kw['marker'], size = getLast(self.markers, k) \
                 if self.markers else self.marker
-            kw['linestyle'] = getLast(self.linestyles, k) \
-                if self.linestyles else self.linestyle
-            if kw['marker'] in (',', '.'): kw['linestyle'] = ''
-            if kw['linestyle'] == '-': kw['linewidth'] = 2
+            if size is not None:
+                kw['markersize'] = size
+            width = 2
+            if self.linestyles:
+                kw['linestyle'], width = getLast(self.linestyles, k)
+            elif kw['marker'] in (',', '.'):
+                kw['linestyle'] = ''
+            else: kw['linestyle'] = '-'
+            kw['linewidth'] = width
             color = self.getColor(k)
             kw['color'] = color
             # Original keywords override any already set
