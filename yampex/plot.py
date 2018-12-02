@@ -26,6 +26,7 @@
 Do everything with a Plotter in context.
 """
 
+import weakref
 from copy import deepcopy
 import importlib
 
@@ -35,6 +36,37 @@ from yampex.annotate import Annotator, TextBoxMaker
 from yampex.subplot import Subplotter
 from yampex.scaling import Scaler
 from yampex.util import sub
+
+
+class PlotterHolder(object):
+    def __init__(self):
+        self.pDict = weakref.WeakValueDictionary()
+
+    def add(self, obj):
+        ID = id(obj)
+        self.pDict[ID] = obj
+        return ID
+
+    def remove(self, ID):
+        if ID in self.pDict:
+            del self.pDict[ID]
+
+    def removeAll(self):
+        self.pDict.clear()
+            
+    def doForAll(self, methodName, *args, **kw):
+        """
+        Returns C{True} if there was at least one object that successfully
+        performed I{methodName}.
+        """
+        OK = False
+        for ID in self.pDict.keys():
+            if ID in self.pDict:
+                OK = True
+                try:
+                    getattr(self.pDict[ID], methodName)(*args, **kw)
+                except: OK = False
+        return OK
 
 
 class OptsBase(object):
@@ -444,7 +476,7 @@ class Plotter(OptsBase):
     the C{axes} object, for all subplots. Use the new L{OptsBase.set}
     command instead, before the context call.)
     """
-    pList = []
+    ph = PlotterHolder()
     
     fc = None
     figSize = (10.0, 7.0)
@@ -496,11 +528,13 @@ class Plotter(OptsBase):
     verbose = False
 
     @classmethod
-    def useAgg(cls):
-        if not getattr(cls, '_usingAgg', False):
+    def setup(cls, useAgg=False):
+        if useAgg and not getattr(cls, '_usingAgg', False):
             mpl = importlib.import_module("matplotlib")
             mpl.use('Agg')
             cls._usingAgg = True
+        if not getattr(cls, 'plt', None):
+            cls.plt = importlib.import_module("matplotlib.pyplot")
     
     def __init__(self, N, *args, **kw):
         args = list(args)
@@ -513,9 +547,7 @@ class Plotter(OptsBase):
         self.V = args[0] if args else None
         self.opts = deepcopy(self._opts)
         self.filePath = kw.pop('filePath', None)
-        if self.filePath or kw.pop('useAgg', False):
-            self.useAgg()
-        self.plt = importlib.import_module("matplotlib.pyplot")
+        self.setup(useAgg=bool(self.filePath or kw.pop('useAgg', False)))
         figSize = list(self.figSize)
         if 'width' in kw:
             figSize[0] = kw.pop('width')
@@ -531,17 +563,17 @@ class Plotter(OptsBase):
         self._universal_xlabel = False
         if self.verbose:
             Annotator.setVerbose(True)
-        self.pList.append(self)
+        # This is an integer, not a reference to anything
+        self.ID = self.ph.add(self)
 
     def __del__(self):
         """
-        Python's garbage collector might not call this, but it won't hurt
-        to have it. Regardless, this instance gets removed from the
-        class-wide I{pList} after a call to either L{show} or
-        L{showAll}.
+        Safely ensures that I am removed from the class-wide I{ph}
+        instance of L{PlotterHolder}.
         """
-        if self in self.pList:
-            self.pList.remove(self)
+        # Only an integer is passed to the call
+        self.ph.remove(self.ID)
+        # No new references were created, nothing retained
         
     @property
     def width(self):
@@ -600,12 +632,12 @@ class Plotter(OptsBase):
 
     @classmethod
     def showAll(cls):
-        for p in cls.pList:
-            p.show(noShow=True)
-        p.plt.show()
-        while cls.pList:
-            p = cls.pList.pop()
-            p._clear()
+        OK = cls.ph.doForAll('show', noShow=True)
+        if OK: cls.plt.show()
+        cls.ph.doForAll('clear')
+        # They should all have removed themselves now, but what the
+        # heck, clear it anyways
+        cls.ph.removeAll()
         
     def show(self, windowTitle=None, fh=None, filePath=None, noShow=False):
         """
@@ -684,13 +716,12 @@ class Plotter(OptsBase):
                 # Only close a file handle I opened myself
                 fh.close()
         if not noShow:
-            self._clear()
+            self.clear()
 
-    def _clear(self):
+    def clear(self):
         self.fig.clear()
         self.annotators.clear()
-        if self in self.pList:
-            self.pList.remove(self)
+        self.ph.remove(self.ID)
             
     def getColor(self, k):
         return self.colors[k % len(self.colors)]
