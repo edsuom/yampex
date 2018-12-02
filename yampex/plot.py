@@ -89,7 +89,13 @@ class OptsBase(object):
         Specifies a bar plot, unless called with C{False}.
         """
         self.opts['bar'] = yes
-        
+
+    def set_stem(self, yes=True):
+        """
+        Specifies a stem plot, unless called with C{False}.
+        """
+        self.opts['stem'] = yes
+
     def set_step(self, yes=True):
         """
         Specifies a step plot, unless called with C{False}.
@@ -335,9 +341,10 @@ class OptsBase(object):
         """
         self.opts['annotations'] = []
 
-    def add_textBox(self, quadrant, text):
+    def add_textBox(self, quadrant, proto, *args):
         """
         """
+        text = sub(proto, *args)
         prevText = self.opts['textBoxes'].get(quadrant, None)
         if prevText:
             text = prevText + "\n" + text
@@ -461,6 +468,7 @@ class Plotter(OptsBase):
         'semilogx':             False,
         'semilogy':             False,
         'bar':                  False,
+        'stem':                 False,
         'step':                 False,
         'error':                False,
         'legend':               [],
@@ -517,7 +525,7 @@ class Plotter(OptsBase):
         self.kw = kw
         self._figTitle = None
         self._isSubplot = False
-        self._an_xlabel_was_set = False
+        self._xlabels = {}
         self._universal_xlabel = False
         if self.verbose:
             Annotator.setVerbose(True)
@@ -606,8 +614,20 @@ class Plotter(OptsBase):
         if self._figTitle:
             kw['top'] = 0.93
             self.sp[0].set_title(self._figTitle)
-        if self._an_xlabel_was_set:
+        universal_xlabel = self._universal_xlabel
+        if universal_xlabel:
+            # Thanks to kennytm,
+            # https://stackoverflow.com/questions/3844801/
+            #  check-if-all-elements-in-a-list-are-identical
+            if len(set(self._xlabels.values())) > 1:
+                universal_xlabel = False
+        if universal_xlabel:
             kw['hspace'] = 0.16
+        for k in self._xlabels:
+            if universal_xlabel and (k+1) % self.sp.Ny:
+                continue
+            ax = self.sp.axes[k]
+            ax.set_xlabel(self._xlabels[k])
         try:
             self.fig.subplots_adjust(**kw)
         except ValueError as e:
@@ -672,7 +692,9 @@ class Plotter(OptsBase):
             'bar': ('marker', 'linestyle', 'scaley'),
             'step': ('marker', 'linestyle', 'scaley'),
         }
-        for name in ('loglog', 'semilogx', 'semilogy', 'bar', 'step', 'error'):
+        for name in (
+                'loglog', 'semilogx', 'semilogy',
+                'bar', 'step', 'stem', 'error'):
             if plotter == name or getattr(self, name, False):
                 for bogus in bogusMap.get(name, []):
                     kw.pop(bogus, None)
@@ -736,8 +758,9 @@ class Plotter(OptsBase):
         the legend list. (Works best in interactive apps.)
 
         Rescale all vectors after the first dependent one, relative to
-        that first dependent one, by supplying a I{yscale}. This will
-        result in two different twinned x-axes (one for the first
+        that first dependent one, by setting a y scale with a call to
+        L{OptsBase.set_yscale} before making this plotting call. That
+        will result in two different twinned x-axes (one for the first
         dependent vector and one for everybody else) and a different
         y-axis label on the right.
 
@@ -843,12 +866,12 @@ class Plotter(OptsBase):
 
         def doSettings():
             for name in self._settings:
-                if self.opts[name]:
-                    if name == 'xlabel':
-                        if self._universal_xlabel:
-                            if not self.sp.atBottom(): continue
-                        else: self._an_xlabel_was_set = True
-                    self.sp.set_(name, self.opts[name])
+                value = self.opts[name]
+                if not value: continue
+                if name == 'xlabel':
+                    self._xlabels[self.sp.kLast] = value
+                    continue
+                self.sp.set_(name, value)
             for name in self.settings:
                 self.sp.set_(name, self.settings[name])
 
@@ -870,7 +893,7 @@ class Plotter(OptsBase):
                 annotator(kAxis, x, y, text)
                 annotator.update()
                 
-        ax = axFirst = self.sp[None]
+        ax = axFirst = self.sp[kw.pop('k', None)]
         # Apply plot keywords set via the set_plotKeyword call and
         # then, with higher priority, those set via the constructor,
         # if they don't conflict with explicitly set keywords to this

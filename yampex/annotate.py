@@ -638,7 +638,7 @@ class TextBoxMaker(object):
         'SW':   2,
         'NW':   3,
     }
-    m = 0.03
+    m = 0.02
     _textAlignment = {
         0: ('right', 'top'   ),
         1: ('right', 'bottom'),
