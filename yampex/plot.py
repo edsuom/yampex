@@ -444,6 +444,8 @@ class Plotter(OptsBase):
     the C{axes} object, for all subplots. Use the new L{OptsBase.set}
     command instead, before the context call.)
     """
+    pList = []
+    
     fc = None
     figSize = (10.0, 7.0)
     colors = ['b', 'g', 'r', '#40C0C0', '#C0C040', '#C040C0', '#8080FF']
@@ -529,7 +531,18 @@ class Plotter(OptsBase):
         self._universal_xlabel = False
         if self.verbose:
             Annotator.setVerbose(True)
+        self.pList.append(self)
 
+    def __del__(self):
+        """
+        Python's garbage collector might not call this, but it won't hurt
+        to have it. Regardless, this instance gets removed from the
+        class-wide I{pList} after a call to either L{show} or
+        L{showAll}.
+        """
+        if self in self.pList:
+            self.pList.remove(self)
+        
     @property
     def width(self):
         return self.fig.get_figwidth()
@@ -584,8 +597,17 @@ class Plotter(OptsBase):
         if self.grid:
             ax.grid(True, which='major')
         self.opts = deepcopy(self.global_opts)            
-    
-    def show(self, windowTitle=None, fh=None, filePath=None):
+
+    @classmethod
+    def showAll(cls):
+        for p in cls.pList:
+            p.show(noShow=True)
+        p.plt.show()
+        while cls.pList:
+            p = cls.pList.pop()
+            p._clear()
+        
+    def show(self, windowTitle=None, fh=None, filePath=None, noShow=False):
         """
         Call this to show the figure with suplots after the last call to
         my instance.
@@ -653,16 +675,23 @@ class Plotter(OptsBase):
                 self.fig.canvas.set_window_title(windowTitle)
             if self.fc is not None:
                 self.fc.draw()
-            else: self.plt.show()
+            elif not noShow:
+                self.plt.show()
         else:
             self.fig.savefig(fh, format='png')
             self.plt.close()
             if filePath is not None:
                 # Only close a file handle I opened myself
                 fh.close()
+        if not noShow:
+            self._clear()
+
+    def _clear(self):
         self.fig.clear()
         self.annotators.clear()
-
+        if self in self.pList:
+            self.pList.remove(self)
+            
     def getColor(self, k):
         return self.colors[k % len(self.colors)]
         
