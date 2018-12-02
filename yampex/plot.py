@@ -355,6 +355,9 @@ class OptsBase(object):
         You may include a text prototype with format-substitution args
         following it, or just supply the final text string with no
         further arguments.
+
+        You can set the annotation to the first y-axis value that
+        crosses a float value of I{k} by setting I{y} C{True}.
         """
         kVector = None
         if args:
@@ -367,7 +370,8 @@ class OptsBase(object):
         else:  text = proto
         if kVector is None:
             kVector = kw.get('kVector', 0)
-        self.opts['annotations'].append((k, text, kVector))
+        y = kw.get('y', False)
+        self.opts['annotations'].append((k, text, kVector, y))
 
     def clear_annotations(self):
         """
@@ -557,7 +561,7 @@ class Plotter(OptsBase):
         figSize = self.figSize
         if figSize is None:
             si = screeninfo.screeninfo.get_monitors()[0]
-            figSize = [float(x)/self.DPI for x in (si.width-72, si.height-72)]
+            figSize = [float(x)/self.DPI for x in (si.width-72, si.height-120)]
         if 'width' in kw:
             figSize[0] = kw.pop('width')
         if 'height' in kw:
@@ -805,7 +809,7 @@ class Plotter(OptsBase):
         else:
             m999 = np.less(thisVector, 0.999*min(thisVector))
         k = max(np.nonzero(m999)[0])
-        self.annotations.append((kVector, k, thisLegend))
+        self.annotations.append((kVector, k, thisLegend, False))
 
     def __call__(self, *args, **kw):
         """
@@ -928,7 +932,7 @@ class Plotter(OptsBase):
                     axFirst.axhline(
                         y=yz, linestyle='--',
                         linewidth=1, color="black", zorder=10)
-            if self.legend and not self.annotations and not self.useLabels:
+            if self.legend and (not self.annotations or not self.useLabels):
                 axFirst.legend(*lineInfo, **{
                     'loc': "best",
                     'fontsize': self.fontsizes.get('legend', "small")})
@@ -949,11 +953,14 @@ class Plotter(OptsBase):
             annotator = self.annotators[axFirst] = Annotator(
                 axList, [firstVector]+list(vectors[1:]),
                 fontsize=self.fontsizes.get('annotations', 'small'))
-            for k, text, kVector in self.annotations:
+            for k, text, kVector, is_yValue in self.annotations:
+                Y = vectors[kVector+1]
                 if not isinstance(k, int):
-                    k = np.searchsorted(firstVector, k)
+                    if is_yValue:
+                        k = np.argmin(np.abs(Y-k))
+                    else: k = np.searchsorted(firstVector, k)
                 x = firstVector[k]
-                y = vectors[kVector+1][k]
+                y = Y[k]
                 kAxis = 0 if yscale is None or kVector == 0 else 1
                 if isinstance(text, int):
                     text = sub("{:d}", text)
