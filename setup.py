@@ -30,7 +30,7 @@ NAME = "yampex"
 from setuptools import setup
 
 ### Define requirements
-required = ['numpy', 'matplotlib',]
+required = ['numpy', 'matplotlib', 'screeninfo']
 
 
 ### Define setup options

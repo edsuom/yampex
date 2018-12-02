@@ -30,6 +30,8 @@ import weakref
 from copy import deepcopy
 import importlib
 
+import screeninfo
+
 import numpy as np
 
 from yampex.annotate import Annotator, TextBoxMaker
@@ -458,7 +460,10 @@ class Plotter(OptsBase):
     
     You can set the I{width} and I{height} of the Figure in inches
     (100 DPI) with constructor keywords, and (read-only) access them
-    via my properties of the same names.
+    via my properties of the same names. Or set my I{figSize}
+    attribute to a 2-sequence with figure width and height in
+    inches. The default width and height is just shy of the entire
+    monitor size.
 
     Use the "Agg" backend by supplying the keyword I{useAgg} or
     calling the L{useAgg} class method. This works better for plotting
@@ -479,7 +484,8 @@ class Plotter(OptsBase):
     ph = PlotterHolder()
     
     fc = None
-    figSize = (10.0, 7.0)
+    DPI = 100 # Don't change this, for reference only
+    figSize = None
     colors = ['b', 'g', 'r', '#40C0C0', '#C0C040', '#C040C0', '#8080FF']
     timeScales = [
         (1E-9,          "Nanoseconds"),
@@ -548,7 +554,10 @@ class Plotter(OptsBase):
         self.opts = deepcopy(self._opts)
         self.filePath = kw.pop('filePath', None)
         self.setup(useAgg=bool(self.filePath or kw.pop('useAgg', False)))
-        figSize = list(self.figSize)
+        figSize = self.figSize
+        if figSize is None:
+            si = screeninfo.screeninfo.get_monitors()[0]
+            figSize = [float(x)/self.DPI for x in (si.width-72, si.height-72)]
         if 'width' in kw:
             figSize[0] = kw.pop('width')
         if 'height' in kw:
