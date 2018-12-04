@@ -242,7 +242,19 @@ class OptsBase(object):
     
     def set_yscale(self, x):
         """
-        Manually sets the y-axis scaling.
+        Rescales the plotted height of all vectors after the first
+        dependent one to be plotted, relative to that first dependent
+        one, by setting a y scale for it. The result is two different
+        twinned x-axes (one for the first dependent vector and one for
+        everybody else) and a different y-axis label on the right.
+
+        Use a scale > 1 if the second (and later) vectors are bigger
+        than the first, and you want the right-hand scale to be
+        bigger.
+
+        Use a scale < 1 if the second (and later) vectors are smaller
+        than the first, and you want the right-hand scale to be
+        smaller.
         """
         self.opts['yscale'] = x
 
@@ -835,7 +847,9 @@ class Plotter(OptsBase):
         L{OptsBase.set_yscale} before making this plotting call. That
         will result in two different twinned x-axes (one for the first
         dependent vector and one for everybody else) and a different
-        y-axis label on the right.
+        y-axis label on the right. Use a scale > 1 if the second (and
+        later) vectors are bigger than the first, and you want the
+        right-hand scale to be bigger.
 
         If you don't provide any such yScale, you can set I{bump} to
         C{True} to bump the common y-axis upper limit to 120% of what
