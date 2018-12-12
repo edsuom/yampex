@@ -240,7 +240,7 @@ class OptsBase(object):
             return
         self.opts['linestyles'].append((x, width))
     
-    def set_yscale(self, x):
+    def set_yscale(self, x=True):
         """
         Rescales the plotted height of all vectors after the first
         dependent one to be plotted, relative to that first dependent
@@ -249,12 +249,13 @@ class OptsBase(object):
         everybody else) and a different y-axis label on the right.
 
         Use a scale > 1 if the second (and later) vectors are bigger
-        than the first, and you want the right-hand scale to be
-        bigger.
+        than the first and you want to expand the right-hand scale.
 
         Use a scale < 1 if the second (and later) vectors are smaller
-        than the first, and you want the right-hand scale to be
-        smaller.
+        than the first and you the right-hand scale to be shrunk.
+
+        Use C{True} for the argument to have the scaling done
+        automatically. (This is the default.)
         """
         self.opts['yscale'] = x
 
@@ -861,9 +862,9 @@ class Plotter(OptsBase):
         L{OptsBase.set_yscale} before making this plotting call. That
         will result in two different twinned x-axes (one for the first
         dependent vector and one for everybody else) and a different
-        y-axis label on the right. Use a scale > 1 if the second (and
-        later) vectors are bigger than the first, and you want the
-        right-hand scale to be bigger.
+        y-axis label on the right. Use a scale < 1 if the second (and
+        later) vectors are bigger than the first and you want them to
+        look smaller.
 
         If you don't provide any such yScale, you can set I{bump} to
         C{True} to bump the common y-axis upper limit to 120% of what
@@ -887,6 +888,9 @@ class Plotter(OptsBase):
         object, for this subplot only. Use the new L{OptsBase.set}
         command instead.)
 
+        Returns a list of the axes created for the plot, or an C{Axes}
+        object if just one was created.
+        
         If you want to do everything with the next subplot on your own
         and only want a reference to its C{Axes} object, just call
         this with no args. In this case, however, you will need to
@@ -921,7 +925,7 @@ class Plotter(OptsBase):
                 ax.tick_params('y', colors=color)
                 if k == 0:
                     ax.set_ylim(bottom=0)
-                else: ax.set_ylim(0, axFirst.get_ylim()[1]/yscale)
+                else: ax.set_ylim(0, axFirst.get_ylim()[1]*yscale)
             if isinstance(self.legend, bool):
                 if self.legend and names:
                     legend = names[k+1]

@@ -186,11 +186,13 @@ class Subplotter(object):
                     continue
                 setSpacing(which)
 
-    def atBottom(self):
+    def atBottom(self, k=None):
         """
-        Returns C{True} if the current subplot will appear at the bottom
-        of a column of subplots.
+        Returns C{True} if the current subplot (or one specified with a
+        subplot index I{k}) will appear at the bottom of a column of
+        subplots.
         """
-        k = 0 if self.kLast is None else self.kLast
-        return (k+1) % self.Ny == 0
+        if k is None:
+            k = 0 if self.kLast is None else self.kLast
+        return k >= self.Nx * (self.Ny - 1)
     
