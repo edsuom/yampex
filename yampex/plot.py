@@ -569,11 +569,16 @@ class Plotter(OptsBase):
         self.V = args[0] if args else None
         self.opts = deepcopy(self._opts)
         self.filePath = kw.pop('filePath', None)
-        self.setup(useAgg=bool(self.filePath or kw.pop('useAgg', False)))
+        if 'verbose' in kw: self.verbose = kw.pop('verbose')
+        useAgg = bool(self.filePath) or kw.pop('useAgg', False)
+        self.setup(useAgg=useAgg)
         figSize = self.figSize
         if figSize is None:
-            si = screeninfo.screeninfo.get_monitors()[0]
-            figSize = [float(x)/self.DPI for x in (si.width-72, si.height-120)]
+            if useAgg:
+                figSize = [10.0, 7.0]
+            else:
+                si = screeninfo.screeninfo.get_monitors()[0]
+                figSize = [float(x)/self.DPI for x in (si.width-72, si.height-120)]
         if 'width' in kw:
             figSize[0] = kw.pop('width')
         if 'height' in kw:
@@ -691,8 +696,8 @@ class Plotter(OptsBase):
                 print(sub(proto, e.message, self.width, self.height))
         kw = {}
         if self._figTitle:
-            kw['top'] = 0.93
-            self.sp[0].set_title(self._figTitle)
+            kw['top'] = 0.94
+            self.fig.suptitle(self._figTitle)
         universal_xlabel = self._universal_xlabel
         if universal_xlabel:
             # Thanks to kennytm,
@@ -700,13 +705,22 @@ class Plotter(OptsBase):
             #  check-if-all-elements-in-a-list-are-identical
             if len(set(self._xlabels.values())) > 1:
                 universal_xlabel = False
-        if universal_xlabel:
-            kw['hspace'] = 0.16
+        betweenSmaller = True
+        bottomBigger = False
         for k in self._xlabels:
-            if universal_xlabel and (k+1) % self.sp.Ny:
-                continue
+            if (k+1) % self.sp.Ny:
+                # Not a bottom subplot
+                if universal_xlabel:
+                    continue
+                betweenSmaller = False
+            else:
+                # Bottom subplot
+                bottomBigger = True
             ax = self.sp.axes[k]
             ax.set_xlabel(self._xlabels[k])
+        if betweenSmaller: kw['hspace'] = 0.16
+        if bottomBigger: kw['bottom'] = 0.07
+        # TODO: Adjust these portions based on font and image size.
         try:
             self.fig.subplots_adjust(**kw)
         except ValueError as e:
