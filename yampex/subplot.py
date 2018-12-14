@@ -35,10 +35,13 @@ class Subplotter(object):
     """
     I handle your subplots, with axis twinning, boundary setting, and
     ticks.
+
+    @ivar Nc: Number of columns.
+    @ivar Nr: Number of rows.
     """
-    def __init__(self, plotter, Nx, Ny):
+    def __init__(self, plotter, Nc, Nr):
         self.p = plotter
-        self.Nx, self.Ny = Nx, Ny
+        self.Nc, self.Nr = Nc, Nr
         self.axes = []
 
     def setup(self):
@@ -49,8 +52,8 @@ class Subplotter(object):
         self.twins = {}
         self.kLast = None
         self.p.fig.clear()
-        for k in range(self.Nx * self.Ny):
-            ax = self.p.fig.add_subplot(self.Ny, self.Nx, k+1)
+        for k in range(self.Nc * self.Nr):
+            ax = self.p.fig.add_subplot(self.Nr, self.Nc, k+1)
             self.axes.append(ax)
         for ax in self.axes:
             ax.clear()
@@ -194,5 +197,5 @@ class Subplotter(object):
         """
         if k is None:
             k = 0 if self.kLast is None else self.kLast
-        return k >= self.Nx * (self.Ny - 1)
+        return k >= self.Nc * (self.Nr - 1)
     

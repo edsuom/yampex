@@ -647,14 +647,14 @@ class TextBoxMaker(object):
     }
     alpha = 0.8
 
-    def __init__(self, ax, Nx, Ny):
+    def __init__(self, ax, Nc, Nr):
         self.ax = ax
         self.quadrantPositioning = {}
         for k in range(4):
             seq = []
-            m = Nx * self.m
+            m = Nc * self.m
             seq.append(1-m if k < 2 else m)
-            m = Ny * self.m
+            m = Nr * self.m
             seq.append(1-m if k in (0, 3) else m)
             seq.extend(list(self._textAlignment[k]))
             self.quadrantPositioning[k] = seq

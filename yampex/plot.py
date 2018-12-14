@@ -562,11 +562,11 @@ class Plotter(OptsBase):
     def __init__(self, N, *args, **kw):
         args = list(args)
         if args:
-            Nx = N
-            Ny = args.pop(0)
+            Nc = N
+            Nr = args.pop(0)
         else:
-            Nx = self.N_cols(N)
-            Ny = int(np.ceil(float(N)/Nx))
+            Nc = self.N_cols(N)
+            Nr = int(np.ceil(float(N)/Nc))
         self.V = args[0] if args else None
         self.opts = deepcopy(self._opts)
         self.filePath = kw.pop('filePath', None)
@@ -579,13 +579,14 @@ class Plotter(OptsBase):
                 figSize = [10.0, 7.0]
             else:
                 si = screeninfo.screeninfo.get_monitors()[0]
-                figSize = [float(x)/self.DPI for x in (si.width-72, si.height-120)]
+                figSize = [float(x)/self.DPI for x in (si.width-72, si.height-72)]
         if 'width' in kw:
             figSize[0] = kw.pop('width')
         if 'height' in kw:
             figSize[1] = kw.pop('height')
+        self.figSize = figSize
         self.fig = self.plt.figure(figsize=figSize)
-        self.sp = Subplotter(self, Nx, Ny)
+        self.sp = Subplotter(self, Nc, Nr)
         self.annotators = {}
         self.kw = kw
         self._figTitle = None
@@ -688,6 +689,11 @@ class Plotter(OptsBase):
         path of a PNG file for me to create or overwrite. (That
         overrides any I{filePath} you set in the constructor.)
         """
+        def letterHeight(x):
+            h = x.get_size() / 72
+            h *= 2.0 / self.fig.get_figheight() + 0.1
+            return h
+        
         try:
             self.fig.tight_layout()
         except ValueError as e:
@@ -697,8 +703,7 @@ class Plotter(OptsBase):
                 print(sub(proto, e.message, self.width, self.height))
         kw = {}
         if self._figTitle:
-            kw['top'] = 0.94
-            self.fig.suptitle(self._figTitle)
+            kw['top'] = 1.0 - letterHeight(self.fig.suptitle(self._figTitle))
         universal_xlabel = self._universal_xlabel
         if universal_xlabel:
             # Thanks to kennytm,
@@ -709,19 +714,17 @@ class Plotter(OptsBase):
         betweenSmaller = True
         bottomBigger = False
         for k in self._xlabels:
-            if (k+1) % self.sp.Ny:
-                # Not a bottom subplot
-                if universal_xlabel:
-                    continue
-                betweenSmaller = False
-            else:
+            if self.sp.atBottom(k):
                 # Bottom subplot
                 bottomBigger = True
+            else:
+                if universal_xlabel: continue
+                betweenSmaller = False
             ax = self.sp.axes[k]
-            ax.set_xlabel(self._xlabels[k])
-        if betweenSmaller: kw['hspace'] = 0.16
-        if bottomBigger: kw['bottom'] = 0.07
-        # TODO: Adjust these portions based on font and image size.
+            textObj = ax.set_xlabel(self._xlabels[k])
+        h = letterHeight(textObj)
+        if betweenSmaller: kw['hspace'] = 1.5*self.sp.Nr * h
+        if bottomBigger: kw['bottom'] = h
         try:
             self.fig.subplots_adjust(**kw)
         except ValueError as e:
@@ -1043,7 +1046,7 @@ class Plotter(OptsBase):
             if self.annotations:
                 doAnnotations(yscale)
             if self.textBoxes:
-                tbm = TextBoxMaker(axFirst, self.sp.Nx, self.sp.Ny)
+                tbm = TextBoxMaker(axFirst, self.sp.Nc, self.sp.Nr)
                 for quadrant in self.textBoxes:
                     tbm(quadrant, self.textBoxes[quadrant])
             axList = [SpecialAx(ax, self.opts, V) for ax in axList]
