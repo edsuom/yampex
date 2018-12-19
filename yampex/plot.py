@@ -713,6 +713,7 @@ class Plotter(OptsBase):
                 universal_xlabel = False
         betweenSmaller = True
         bottomBigger = False
+        textObj = None
         for k in self._xlabels:
             if self.sp.atBottom(k):
                 # Bottom subplot
@@ -722,9 +723,10 @@ class Plotter(OptsBase):
                 betweenSmaller = False
             ax = self.sp.axes[k]
             textObj = ax.set_xlabel(self._xlabels[k])
-        h = letterHeight(textObj)
-        if betweenSmaller: kw['hspace'] = 1.5*self.sp.Nr * h
-        if bottomBigger: kw['bottom'] = h
+        if textObj:
+            h = letterHeight(textObj)
+            if betweenSmaller: kw['hspace'] = 1.5*self.sp.Nr * h
+            if bottomBigger: kw['bottom'] = h
         try:
             self.fig.subplots_adjust(**kw)
         except ValueError as e:
