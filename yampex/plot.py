@@ -1025,6 +1025,10 @@ class Plotter(OptsBase):
             lineInfo = [[], []]
             yscale = self.yscale
             vectors, names, V = self.parseArgs(args)
+            if len(vectors) == 1:
+                # Just one vector supplied, create x-axis range vector
+                # for it
+                vectors.insert(0, np.arange(len(vectors[0])))
             firstVector = self.scaleTime(vectors)
             doSettings()
             if yscale is True:
