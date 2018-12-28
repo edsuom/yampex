@@ -725,8 +725,10 @@ class Plotter(OptsBase):
             textObj = ax.set_xlabel(self._xlabels[k])
         if textObj:
             h = letterHeight(textObj)
-            if betweenSmaller: kw['hspace'] = 1.1*self.sp.Nr * h
-            if bottomBigger: kw['bottom'] = 10.0/(4+self.sp.Nr) * h
+            height = self.sp.Nr * h
+            height *= 1.1 if betweenSmaller else 2.0
+            kw['hspace'] = height
+            if bottomBigger: kw['bottom'] = 12.0/(4+self.sp.Nr) * h
         try:
             self.fig.subplots_adjust(**kw)
         except ValueError as e:
