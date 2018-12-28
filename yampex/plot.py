@@ -726,9 +726,9 @@ class Plotter(OptsBase):
         if textObj:
             h = letterHeight(textObj)
             height = self.sp.Nr * h
-            height *= 1.1 if betweenSmaller else 2.0
+            height *= 1.1 if betweenSmaller else 1.8
             kw['hspace'] = height
-            if bottomBigger: kw['bottom'] = 12.0/(4+self.sp.Nr) * h
+            if bottomBigger: kw['bottom'] = 11.0/(4+self.sp.Nr) * h
         try:
             self.fig.subplots_adjust(**kw)
         except ValueError as e:
