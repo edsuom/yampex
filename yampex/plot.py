@@ -728,7 +728,7 @@ class Plotter(OptsBase):
             height = self.sp.Nr * h
             height *= 1.1 if betweenSmaller else 1.8
             kw['hspace'] = height
-            if bottomBigger: kw['bottom'] = 11.0/(4+self.sp.Nr) * h
+            if bottomBigger: kw['bottom'] = 11.0/(5+self.sp.Nr) * h
         try:
             self.fig.subplots_adjust(**kw)
         except ValueError as e:
