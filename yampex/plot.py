@@ -478,9 +478,9 @@ class Plotter(OptsBase):
     You can set the I{width} and I{height} of the Figure in inches
     (100 DPI) with constructor keywords, and (read-only) access them
     via my properties of the same names. Or set my I{figSize}
-    attribute to a 2-sequence with figure width and height in
-    inches. The default width and height is just shy of the entire
-    monitor size.
+    attribute (in a subclass or with that constructor keyword) to a
+    2-sequence with figure width and height in inches. The default
+    width and height is just shy of the entire monitor size.
 
     Use the "Agg" backend by supplying the keyword I{useAgg} or
     calling the L{useAgg} class method. This works better for plotting
@@ -573,13 +573,13 @@ class Plotter(OptsBase):
         if 'verbose' in kw: self.verbose = kw.pop('verbose')
         useAgg = bool(self.filePath) or kw.pop('useAgg', False)
         self.setup(useAgg=useAgg)
-        figSize = self.figSize
+        figSize = kw.pop('figSize', self.figSize)
         if figSize is None:
             if useAgg:
                 figSize = [10.0, 7.0]
             else:
                 si = screeninfo.screeninfo.get_monitors()[0]
-                figSize = [float(x)/self.DPI for x in (si.width-72, si.height-72)]
+                figSize = [float(x)/self.DPI for x in (si.width-80, si.height-80)]
         if 'width' in kw:
             figSize[0] = kw.pop('width')
         if 'height' in kw:
@@ -670,7 +670,27 @@ class Plotter(OptsBase):
         # They should all have removed themselves now, but what the
         # heck, clear it anyways
         cls.ph.removeAll()
+
+    def subplots_adjust(self, **kw):
+        """
+        Calls C{subplots_adjust} on my figure, doing a bit of tweaking
+        first.
+        """
+        def wSpacing(pts):
+            return 0.18*pts / (self.fig.get_figwidth() + 5)
         
+        w = wSpacing(12)
+        kw.setdefault('wspace', w)
+        kw.setdefault('left', 0.5*w)
+        try:
+            self.fig.subplots_adjust(**kw)
+        except ValueError as e:
+            if self.verbose:
+                print(sub(
+                    "WARNING: ValueError '{}' doing subplots_adjust({})",
+                    e.message,
+                    ", ".join([sub("{}={}", x, kw[x]) for x in kw])))
+    
     def show(self, windowTitle=None, fh=None, filePath=None, noShow=False):
         """
         Call this to show the figure with suplots after the last call to
@@ -691,7 +711,7 @@ class Plotter(OptsBase):
         """
         def letterHeight(x):
             h = x.get_size() / 72
-            h *= 2.0 / self.fig.get_figheight() + 0.1
+            h *= 3.0 / self.fig.get_figheight() + 0.05
             return h
         
         try:
@@ -729,14 +749,7 @@ class Plotter(OptsBase):
             height *= 1.1 if betweenSmaller else 1.8
             kw['hspace'] = height
             if bottomBigger: kw['bottom'] = 11.0/(5+self.sp.Nr) * h
-        try:
-            self.fig.subplots_adjust(**kw)
-        except ValueError as e:
-            if self.verbose:
-                print(sub(
-                    "WARNING: ValueError '{}' doing subplots_adjust({})",
-                    e.message,
-                    ", ".join([sub("{}={}", x, kw[x]) for x in kw])))
+        if kw: self.subplots_adjust(**kw)
         # Calling plt.draw massively slows things down when generating
         # plot images on Rpi. And without it, the (un-annotated) plot
         # still updates!
