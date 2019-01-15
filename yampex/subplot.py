@@ -64,13 +64,23 @@ class Subplotter(object):
 
     @property
     def ax(self):
+        """
+        The C{Axes} object for the current subplot.
+        """
         if self.kLast is not None and self.kLast < len(self.axes):
             return self.axes[self.kLast]
         
     def __len__(self):
+        """
+        My length is the number of subplots I've generated so far.
+        """
         return len(self.axes)
 
     def __getitem__(self, k):
+        """
+        Returns the C{Axes} object for my subplot with index I{k}, or the
+        current one if I{k} is C{None}.
+        """
         if k is None:
             k = 0 if self.kLast is None else self.kLast + 1
         self.kLast = k

@@ -139,16 +139,15 @@ class OptsBase(object):
     def set_error(self, yes=True):
         """
         Specifies an error bar plot, unless called with C{False}.
-
-        B{TODO:} Not yet supported.
         """
         self.opts['error'] = yes
         
     def set_useLabels(self, yes=True):
         """
         Has annotation labels point to each plot line instead of a legend,
-        with text taken from the legend list. Call with C{False} to
-        revert to default legend-box behavior.
+        with text taken from the legend list.
+
+        Call with C{False} to revert to default legend-box behavior.
         """
         self.opts['useLabels'] = yes
 
@@ -177,41 +176,47 @@ class OptsBase(object):
         
     def set_bump(self, yes=True):
         """
-        If you don't manually set a yscale with a call to L{set_yscale},
-        you can call this method to bump the common y-axis upper limit
-        to 120% of what Matplotlib decides. Call with C{False} to
-        disable the bump.
+        Bumps up the common y-axis upper limit.
+        
+        If you don't manually set a yscale with a call to
+        L{set_yscale}, you can call this method to increase the common
+        y-axis upper limit to 120% of what Matplotlib decides. Call
+        with C{False} to disable the bump.
         """
         self.opts['bump'] = yes
 
     def set_zeroBottom(self, yes=True):
         """
         Sets the bottom (minimum) of the Y-axis range to zero, unless
-        called with C{False}. This is useful for plotting values that
-        are never negative and where zero is a meaningful absolute
-        minimum.
+        called with C{False}.
+
+        This is useful for plotting values that are never negative and
+        where zero is a meaningful absolute minimum.
         """
         self.opts['zeroBottom'] = yes
 
     def set_zeroLine(self, y=0):
         """
         Adds a horizontal line at the specified I{y} value (default is
-        y=0) if the Y-axis range includes that value. If y is C{None}
-        or C{False}, clears any previously set line.
+        y=0) if the Y-axis range includes that value.
+
+        If y is C{None} or C{False}, clears any previously set line.
         """
         self.opts['zeroLine'] = y
         
     def add_marker(self, x, size=None):
         """
         Appends the supplied marker style character to the list of markers
-        being used. The first and possibly only marker in the list
-        applies to the first vector plotted within a given subplot. If
-        there is an additional vector being plotted within a given
-        subplot (three or more arguments supplied when calling the
-        L{Plotter} object, and more than one marker has been added to
-        the list, then the second marker in the list is used for that
-        second vector plot line. Otherwise, the first (only) marker in
-        the list is used for the second plot line as well.
+        being used.
+
+        The first and possibly only marker in the list applies to the
+        first vector plotted within a given subplot. If there is an
+        additional vector being plotted within a given subplot (three
+        or more arguments supplied when calling the L{Plotter} object,
+        and more than one marker has been added to the list, then the
+        second marker in the list is used for that second vector plot
+        line. Otherwise, the first (only) marker in the list is used
+        for the second plot line as well.
 
         You can specify a I{size} for the marker as well.
         """
@@ -220,15 +225,16 @@ class OptsBase(object):
     def add_line(self, x=None, width=None):
         """
         Appends the supplied line style character to the list of line
-        styles being used. The first and possibly only line style in
-        the list applies to the first vector plotted within a given
-        subplot. If there is an additional vector being plotted within
-        a given subplot (three or more arguments supplied when calling
-        the L{Plotter} object, and more than one line style has been
-        added to the list, then the second line style in the list is
-        used for that second vector plot line. Otherwise, the first
-        (only) line style in the list is used for the second plot line
-        as well.
+        styles being used.
+
+        The first and possibly only line style in the list applies to
+        the first vector plotted within a given subplot. If there is
+        an additional vector being plotted within a given subplot
+        (three or more arguments supplied when calling the L{Plotter}
+        object, and more than one line style has been added to the
+        list, then the second line style in the list is used for that
+        second vector plot line. Otherwise, the first (only) line
+        style in the list is used for the second plot line as well.
 
         You can specify a I{width} for the line as well.
         
@@ -244,9 +250,11 @@ class OptsBase(object):
         """
         Rescales the plotted height of all vectors after the first
         dependent one to be plotted, relative to that first dependent
-        one, by setting a y scale for it. The result is two different
-        twinned x-axes (one for the first dependent vector and one for
-        everybody else) and a different y-axis label on the right.
+        one, by setting a y scale for it.
+
+        The result is two different twinned x-axes (one for the first
+        dependent vector and one for everybody else) and a different
+        y-axis label on the right.
 
         Use a scale > 1 if the second (and later) vectors are bigger
         than the first and you want to expand the right-hand scale.
@@ -277,9 +285,11 @@ class OptsBase(object):
     def set_tickSpacing(self, axisName, major, minor=None):
         """
         Sets the major tick spacing for I{axisName} ("x" or "y"), and
-        minor tick spacing as well. For each setting, an C{int} will
-        set a maximum number of tick intervals, and a C{float} will
-        set a spacing between intervals.
+        minor tick spacing as well.
+
+        For each setting, an C{int} will set a maximum number of tick
+        intervals, and a C{float} will set a spacing between
+        intervals.
 
         You can set I{minor} C{True} to have minor ticks set
         automatically, or C{False} to have them turned off. (Major
@@ -293,24 +303,28 @@ class OptsBase(object):
 
     def set_minorTicks(self, axisName, yes=True):
         """
+        Enables minor ticks for I{axisName} ("x" or "y").
         """
         self._axisOpt('ticks', axisName)['minor'] = yes
         
     def set_axvline(self, k):
         """
         Adds a vertical dashed line at the data point with integer index
-        I{k}. To set it to an x value, use a float.
+        I{k}.
+
+        To set it to an x value, use a float for I{k}.
         """
         self.opts['axvlines'].append(k)
         
     def set_xlabel(self, x):
         """
-        Sets the x-axis label. (Ignored if time-x mode has been activated
-        with a call to L{set_timex}.)
+        Sets the x-axis label.
 
-        If called out of context, on the Plotter instance, this
-        x-label is used for all subplots and only appears in the last
-        (bottom) subplot of each column of subplots.
+        Ignored if time-x mode has been activated with a call to
+        L{set_timex}. If called out of context, on the L{Plotter}
+        instance, this x-label is used for all subplots and only
+        appears in the last (bottom) subplot of each column of
+        subplots.
         """
         self.opts['xlabel'] = x
         if not self._isSubplot:
@@ -325,9 +339,11 @@ class OptsBase(object):
     def add_legend(self, proto, *args):
         """
         Adds the supplied format-substituted text to the list of legend
-        entries. You may include a text I{proto}type with
-        format-substitution I{args}, or just supply the final text
-        string with no further arguments.
+        entries.
+
+        You may include a text I{proto}type with format-substitution
+        I{args}, or just supply the final text string with no further
+        arguments.
         """
         text = sub(proto, *args)
         self.opts['legend'].append(text)
@@ -340,11 +356,12 @@ class OptsBase(object):
 
     def set_legend(self, *args, **kw):
         """
-        Sets the list of legend entries. Supply a list of legend entries,
-        either as a single argument or with one entry per argument.
+        Sets the list of legend entries.
 
-        You can set the I{fontsize} keyword to the desired fontsize of
-        the legend. The default is 'small'.
+        Supply a list of legend entries, either as a single argument
+        or with one entry per argument. You can set the I{fontsize}
+        keyword to the desired fontsize of the legend; the default is
+        'small'.
         """
         if len(args) == 1 and hasattr(args[0], '__iter__'):
             args = args[0]
@@ -355,10 +372,12 @@ class OptsBase(object):
     def add_annotation(self, k, proto, *args, **kw):
         """
         Adds the text supplied after index I{k} at an annotation of the
-        plotted vector. If there is more than one vector being plotted
-        within the same subplot, you can have the annotation refer to
-        a vector other than the first one by setting the keyword
-        I{kVector} to its non-zero index.
+        plotted vector.
+
+        If there is more than one vector being plotted within the same
+        subplot, you can have the annotation refer to a vector other
+        than the first one by setting the keyword I{kVector} to its
+        non-zero index.
 
         The annotation points to the point at index I{k} of the
         plotted vector, unless I{k} is a float. In that case, it
@@ -394,6 +413,14 @@ class OptsBase(object):
 
     def add_textBox(self, quadrant, proto, *args):
         """
+        Adds a text box to the specified I{quadrant} of the subplot.
+
+        Quadrants are "NW", "NE", "SE", and "SW". If there's already a
+        text box there, a line will be added to it.
+
+        You may include a text I{proto}type with format-substitution
+        I{args}, or just supply the final text string with no further
+        arguments.
         """
         text = sub(proto, *args)
         prevText = self.opts['textBoxes'].get(quadrant, None)
@@ -410,9 +437,10 @@ class OptsBase(object):
     def set_title(self, proto, *args):
         """
         Sets a title for all subplots (if called out of context) or for
-        just the present subplot (if called in context). You may
-        include a text I{proto}type with format-substitution I{args},
-        or just supply the final text string with no further
+        just the present subplot (if called in context).
+
+        You may include a text I{proto}type with format-substitution
+        I{args}, or just supply the final text string with no further
         arguments.
         """
         text = sub(proto, *args)
@@ -422,8 +450,9 @@ class OptsBase(object):
 
     def set_fontsize(self, name, fontsize):
         """
-        Sets the I{fontsize} of the specified artist I{name}. Recognized
-        names are 'legend' and 'annotations'.
+        Sets the I{fontsize} of the specified artist I{name}.
+
+        Recognized names are 'legend' and 'annotations'.
         """
         self.opts['fontsizes'][name] = fontsize
 
@@ -558,7 +587,19 @@ class Plotter(OptsBase):
             cls._usingAgg = True
         if not getattr(cls, 'plt', None):
             cls.plt = importlib.import_module("matplotlib.pyplot")
-    
+
+    @classmethod
+    def showAll(cls):
+        """
+        Calls L{show} for the figures generated by all instances of me.
+        """
+        OK = cls.ph.doForAll('show', noShow=True)
+        if OK: cls.plt.show()
+        cls.ph.doForAll('clear')
+        # They should all have removed themselves now, but what the
+        # heck, clear it anyways
+        cls.ph.removeAll()
+            
     def __init__(self, N, *args, **kw):
         args = list(args)
         if args:
@@ -609,9 +650,15 @@ class Plotter(OptsBase):
         
     @property
     def width(self):
+        """
+        Figure width (inches).
+        """
         return self.fig.get_figwidth()
     @property
     def height(self):
+        """
+        Figure height (inches).
+        """
         return self.fig.get_figheight()
         
     def __nonzero__(self):
@@ -661,15 +708,6 @@ class Plotter(OptsBase):
         if self.grid:
             ax.grid(True, which='major')
         self.opts = deepcopy(self.global_opts)            
-
-    @classmethod
-    def showAll(cls):
-        OK = cls.ph.doForAll('show', noShow=True)
-        if OK: cls.plt.show()
-        cls.ph.doForAll('clear')
-        # They should all have removed themselves now, but what the
-        # heck, clear it anyways
-        cls.ph.removeAll()
 
     def subplots_adjust(self, **kw):
         """
