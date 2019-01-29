@@ -36,6 +36,9 @@ class Subplotter(object):
     I handle your subplots, with axis twinning, boundary setting, and
     ticks.
 
+    A L{Plotter} instance constructs with a reference to itself and an
+    integer number of columns and rows.
+
     @ivar Nc: Number of columns.
     @ivar Nr: Number of rows.
     """
@@ -88,10 +91,20 @@ class Subplotter(object):
             return self.axes[k]
     
     def set_(self, what, name, **kw):
+        """
+        Performs a C{set_} call on my last-generated subplot, where the
+        first argument I{what} is the suffix to the underlying "set_"
+        method and I{name} is what is being set.
+
+        Any keywords to the setter method can be supplied.
+        """
         f = getattr(self.ax, "set_{}".format(what))
         f(name, **kw)
 
     def xBounds(self, ax=None, left=None, right=None):
+        """
+         
+        """
         if ax is None: ax = self.ax
         if left and left < ax.get_xlim()[0]:
             ax.set_xlim(left=left)

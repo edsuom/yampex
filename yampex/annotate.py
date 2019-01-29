@@ -189,7 +189,9 @@ class Rectangle(object):
 
 class Positioner(object):
     """
-    All data is saved and computations done in pixel units.
+    I take care of positioning an annotation. 
+    
+    All data is saved and computations done in pixel units. 
     """
     relpos = [
         (0.0, 0.0),     # NE

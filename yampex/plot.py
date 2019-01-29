@@ -23,7 +23,11 @@
 # governing permissions and limitations under the License.
 
 """
-Do everything with a Plotter in context.
+You'll do everything with a L{Plotter} in context.
+
+Keep the API for L{OptsBase} handy, and maybe a copy of the
+U{source<http://edsuom.com/yampex/yampex.plot.py>}, to see all the
+plotting options you can set.
 """
 
 import weakref
@@ -41,23 +45,50 @@ from yampex.util import sub
 
 
 class PlotterHolder(object):
+    """
+    L{Plotter} uses a class-wide instance of me to hold weak
+    references to its instances.
+
+    @see: L{Plotter.showAll}, which uses my weak references to show
+        the Matplotlib figures for all instances of L{Plotter} and
+        then remove them.
+    """
     def __init__(self):
+        """C{PlotterHolder}()"""
         self.pDict = weakref.WeakValueDictionary()
 
     def add(self, obj):
+        """
+        Adds the L{Plotter} instance (or anything, really, but plotters
+        are what I was intended for) to my weak-reference registry.
+
+        Returns an integer ID that you can use with a call to
+        L{remove} and thus avoid having to keep a reference to the
+        object yourself.
+        """
         ID = id(obj)
         self.pDict[ID] = obj
         return ID
 
     def remove(self, ID):
+        """
+        Removes the L{Plotter} instance identified by the supplied I{ID}
+        from my weak-reference registry.
+        """
         if ID in self.pDict:
             del self.pDict[ID]
 
     def removeAll(self):
+        """
+        Removes all L{Plotter} instances from my weak-reference registry.
+        """
         self.pDict.clear()
             
     def doForAll(self, methodName, *args, **kw):
         """
+        Does the method named I{methodName}, with any args and kw, for
+        each L{Plotter} instance I'm keeping track of.
+        
         Returns C{True} if there was at least one object that successfully
         performed I{methodName}.
         """
@@ -75,6 +106,10 @@ class OptsBase(object):
     """
     I am an abstract base class with the option setting methods of the
     L{Plotter}.
+
+    Keep a copy of the
+    U{source<http://edsuom.com/yampex/yampex.plot.py>} handy to see
+    all the plotting options you can set.
     """
     def set(self, name, value):
         """
@@ -461,17 +496,45 @@ class SpecialAx(object):
     """
     I pretend to be a C{matplotlib.Axes} object except that I
     intercept plotting calls and rescale the independent vector first.
+
+    Construct me with a subplot axes object I{ax}, a dict of options
+    I{opts} for the subplot, and a vector container object I{V}.
+
+    If your call to a L{Plotter} instance (most likely in a subplot
+    context) has a container object as its first argument, I will
+    replace the arguments with actual Numpy vectors element-wise
+    accessed from that cotnainer object. The underlying Matplotlib
+    call will only see the Numpy vectors. For example,::
+
+        import numpy as np
+        V = {'x': np.linspace(0, 1, 100)}
+        V['y'] = V['x']**2
+        with Plotter(1) as sp:
+            sp(V, 'x', 'y')
+
+    will plot the square of I{x} vs I{x}. This comes in handy when you
+    have containers full of vectors and you want to plot selected ones
+    of them in different subplots.
+    
+    The container object I{V} will be C{None} if vector objects rather
+    than names were supplied to my plotting call.
     """
     _plotterNames = {
         'plot', 'loglog',
         'semilogx', 'semilogy', 'scatter', 'step', 'bar', 'stem'}
     
     def __init__(self, ax, opts, V):
+        """C{SpecialAx}(ax, opts, V)"""
         self.ax = ax
         self.opts = opts
         self.V = V
 
     def __getattr__(self, name):
+        """
+        Returns a plotting method wrapped in a wrapper function that first
+        looks up vector names from my vector container I{V} (if it's
+        not a C{None} object) and does x-axis scaling.
+        """
         def wrapper(*args, **kw):
             args = list(args)
             if self.V is not None:
@@ -493,8 +556,8 @@ class SpecialAx(object):
     
 class Plotter(OptsBase):
     """
-    I provide a Figure with one or more time-vector and XY subplots of
-    Numpy vectors using Matplotlib.
+    I provide a Matplotlib C{Figure} with one or more time-vector and
+    XY subplots of Numpy vectors.
 
     Construct an instance of me with the total number of subplots (to
     be intelligently apportioned into one or more rows and columns)
@@ -526,6 +589,10 @@ class Plotter(OptsBase):
     e.g., C{ylabel="foo"} results in a C{set_ylabel("foo")} command to
     the C{axes} object, for all subplots. Use the new L{OptsBase.set}
     command instead, before the context call.)
+
+    Keep the API for L{OptsBase} handy, and maybe a copy of the
+    U{source<http://edsuom.com/yampex/yampex.plot.py>}, to see all the
+    plotting options you can set.
     """
     ph = PlotterHolder()
     
@@ -581,6 +648,11 @@ class Plotter(OptsBase):
 
     @classmethod
     def setup(cls, useAgg=False):
+        """
+        Called by each instance of me during instantiation. Sets a
+        class-wide Matplotlib pyplot import the first time it's
+        called.
+        """
         if useAgg and not getattr(cls, '_usingAgg', False):
             mpl = importlib.import_module("matplotlib")
             mpl.use('Agg')
@@ -601,6 +673,7 @@ class Plotter(OptsBase):
         cls.ph.removeAll()
             
     def __init__(self, N, *args, **kw):
+        """C{Plotter}(N, *args, **kw)"""
         args = list(args)
         if args:
             Nc = N
@@ -662,9 +735,15 @@ class Plotter(OptsBase):
         return self.fig.get_figheight()
         
     def __nonzero__(self):
+        """
+        I evaluate as C{True} if I have any subplots defined yet.
+        """
         return bool(len(self.sp))
         
     def __getattr__(self, name):
+        """
+        You can access a given subplot's plotting options as an attribute.
+        """
         return self.opts[name]
         
     def __enter__(self):
@@ -690,6 +769,10 @@ class Plotter(OptsBase):
         del self.global_opts
 
     def N_cols(self, N):
+        """
+        Returns the number of columns, given the total number of
+        subplots. There will be either one, two, or three columns.
+        """
         if N > 6:
             return 3
         if N > 3:
@@ -822,6 +905,10 @@ class Plotter(OptsBase):
         self.ph.remove(self.ID)
             
     def getColor(self, k):
+        """
+        Supply an integer index starting from zero and this returns a
+        color from a clean and simple default palette.
+        """
         return self.colors[k % len(self.colors)]
         
     def xBounds(self, *args, **kw):
@@ -898,12 +985,15 @@ class Plotter(OptsBase):
 
     def __call__(self, *args, **kw):
         """
-        Plots the second supplied vector (and any further ones) versus the
-        first in the next subplot. If you supply an object that houses
-        vectors and provides access to them as items, e.g.,
-        C{analysis.sim.Vectors} of the I{pingspice} package, as the
-        first argument, you can supply vector names instead of the
-        vectors themselves.
+        In the next subplot, plots the second supplied vector (and any
+        further ones) versus the first.
+
+        If you supply a container object that houses vectors and
+        provides access to them as items as the first argument, you
+        can supply vector names instead of the vectors themselves. The
+        container object must evaluate C{NAME in OBJ} as C{True} if it
+        contains a vector with NAME, and must return the vector with
+        C{OBJ[NAME]}.
         
         Options are set via the methods in L{OptsBase}, including a
         I{title}, a list of plot I{markers} and I{linestyles}, and a

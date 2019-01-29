@@ -25,6 +25,8 @@
 """
 B{Y}et B{A}nother B{M}atB{p}lotlib B{Ex}tension, with simplified
 subplotting.
+
+Everything you'll need is in the L{Plotter}.
 """
 
 from .plot import Plotter
