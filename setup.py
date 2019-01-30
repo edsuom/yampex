@@ -70,15 +70,18 @@ kw['classifiers'] = [
     'License :: OSI Approved :: Apache Software License',
     'Operating System :: OS Independent',
     'Programming Language :: Python',
-    'Framework :: Twisted',
 
     'Topic :: Software Development :: Libraries :: Python Modules',
     'Topic :: Scientific/Engineering :: Visualization',
 ]
 
 
+# You get 77 characters. Use them wisely.
+#----------------------------------------------------------------------------
+#        10        20        30        40        50        60        70
+#2345678901234567890123456789012345678901234567890123456789012345678901234567
 kw['description'] = " ".join("""
-Yet Another Matplotlib Extension, with simplified subplotting.
+Yet Another Matplotlib Extension, with simplified subplotting & annotations.
 """.split("\n"))
 
 kw['long_description'] = """
