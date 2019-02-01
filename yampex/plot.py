@@ -54,7 +54,7 @@ class PlotterHolder(object):
         then remove them.
     """
     def __init__(self):
-        """C{PlotterHolder}()"""
+        """C{PlotterHolder()}"""
         self.pDict = weakref.WeakValueDictionary()
 
     def add(self, obj):
@@ -524,7 +524,7 @@ class SpecialAx(object):
         'semilogx', 'semilogy', 'scatter', 'step', 'bar', 'stem'}
     
     def __init__(self, ax, opts, V):
-        """C{SpecialAx}(ax, opts, V)"""
+        """C{SpecialAx(ax, opts, V)}"""
         self.ax = ax
         self.opts = opts
         self.V = V
@@ -568,11 +568,12 @@ class Plotter(OptsBase):
     PNG file for me to create or overwrite with each call to L{show}.
     
     You can set the I{width} and I{height} of the Figure in inches
-    (100 DPI) with constructor keywords, and (read-only) access them
-    via my properties of the same names. Or set my I{figSize}
-    attribute (in a subclass or with that constructor keyword) to a
-    2-sequence with figure width and height in inches. The default
-    width and height is just shy of the entire monitor size.
+    (calculated with 100 DPI) with constructor keywords, and
+    (read-only) access them via my properties of the same names. Or
+    set my I{figSize} attribute (in a subclass or with that
+    constructor keyword) to a 2-sequence with figure width and height
+    in inches. The default width and height is just shy of the entire
+    monitor size.
 
     Use the "Agg" backend by supplying the keyword I{useAgg} or
     calling the L{useAgg} class method. This works better for plotting
@@ -584,11 +585,7 @@ class Plotter(OptsBase):
     
     Any other keywords you supply to the constructor are supplied to
     the underlying Matplotlib plotting call for all
-    subplots. (B{NOTE:} This is a change from previous versions of
-    Yampex where constructor keywords were used to C{set_X} the axes,
-    e.g., C{ylabel="foo"} results in a C{set_ylabel("foo")} command to
-    the C{axes} object, for all subplots. Use the new L{OptsBase.set}
-    command instead, before the context call.)
+    subplots.
 
     Keep the API for L{OptsBase} handy, and maybe a copy of the
     U{source<http://edsuom.com/yampex/yampex.plot.py>}, to see all the
@@ -673,7 +670,7 @@ class Plotter(OptsBase):
         cls.ph.removeAll()
             
     def __init__(self, N, *args, **kw):
-        """C{Plotter}(N, *args, **kw)"""
+        """C{Plotter(N, *args, **kw)}"""
         args = list(args)
         if args:
             Nc = N
@@ -744,7 +741,10 @@ class Plotter(OptsBase):
         """
         You can access a given subplot's plotting options as an attribute.
         """
-        return self.opts[name]
+        if name in self.opts:
+            return self.opts[name]
+        raise AttributeError(sub(
+            "No plotting option or attribute '{}'", name))
         
     def __enter__(self):
         """
