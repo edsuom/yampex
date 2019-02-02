@@ -25,9 +25,9 @@
 """
 You'll do everything with a L{Plotter} in context.
 
-Keep the API for L{OptsBase} handy, and maybe a copy of the
-U{source<http://edsuom.com/yampex/yampex.plot.py>}, to see all the
-plotting options you can set.
+Keep the API for its L{OptsBase} base class handy, and maybe a copy of
+its U{source<http://edsuom.com/yampex/yampex.options.py>}, to see all
+the plotting options you can set.
 """
 
 import weakref
@@ -38,6 +38,7 @@ import screeninfo
 
 import numpy as np
 
+from yampex.options import OptsBase
 from yampex.annotate import Annotator, TextBoxMaker
 from yampex.subplot import Subplotter
 from yampex.scaling import Scaler
@@ -100,396 +101,6 @@ class PlotterHolder(object):
                     getattr(self.pDict[ID], methodName)(*args, **kw)
                 except: OK = False
         return OK
-
-
-class OptsBase(object):
-    """
-    I am an abstract base class with the option setting methods of the
-    L{Plotter}.
-
-    Keep a copy of the
-    U{source<http://edsuom.com/yampex/yampex.plot.py>} handy to see
-    all the plotting options you can set.
-    """
-    def set(self, name, value):
-        """
-        Before this subplot is drawn, do a C{set_name=value} command to the
-        axes. You can call this method as many times as you like with
-        a different attribute I{name} and I{value}.
-
-        Use this method in place of calling the Plotter instance with
-        keywords. Now, such keywords are sent directly to the
-        underlying Matplotlib plotting call.
-        """
-        self.opts['settings'][name] = value
-
-    def add_plotKeyword(self, name, value):
-        """
-        Add a keyword to the underlying Matplotlib plotting call.
-        """
-        self.opts['plotKeywords'][name] = value
-
-    def clear_plotKeywords(self):
-        """
-        Clears all keywords for this subplot.
-        """
-        self.opts['plotKeywords'].clear()
-        
-    def set_loglog(self, yes=True):
-        """
-        Makes both axes logarithmic, unless called with C{False}.
-        """
-        self.opts['loglog'] = yes
-
-    def set_semilogx(self, yes=True):
-        """
-        Makes x-axis logarithmic, unless called with C{False}.
-        """
-        self.opts['semilogx'] = yes
-
-    def set_semilogy(self, yes=True):
-        """
-        Makes y-axis logarithmic, unless called with C{False}.
-        """
-        self.opts['semilogy'] = yes
-        
-    def set_bar(self, yes=True):
-        """
-        Specifies a bar plot, unless called with C{False}.
-        """
-        self.opts['bar'] = yes
-
-    def set_stem(self, yes=True):
-        """
-        Specifies a stem plot, unless called with C{False}.
-        """
-        self.opts['stem'] = yes
-
-    def set_step(self, yes=True):
-        """
-        Specifies a step plot, unless called with C{False}.
-        """
-        self.opts['step'] = yes
-        
-    def set_error(self, yes=True):
-        """
-        Specifies an error bar plot, unless called with C{False}.
-        """
-        self.opts['error'] = yes
-        
-    def set_useLabels(self, yes=True):
-        """
-        Has annotation labels point to each plot line instead of a legend,
-        with text taken from the legend list.
-
-        Call with C{False} to revert to default legend-box behavior.
-        """
-        self.opts['useLabels'] = yes
-
-    def set_grid(self, yes=True):
-        """
-        Adds a grid, unless called with C{False}.
-        """
-        self.opts['grid'] = yes
-
-    def set_timex(self, yes=True):
-        """
-        Uses intelligent time scaling for the x-axis, unless called with
-        C{False}.
-        """
-        self.opts['timex'] = yes
-        if not self._isSubplot:
-            self._universal_xlabel = True
-
-    def set_firstVectorTop(self):
-        """
-        Has the first dependent vector (the second argument to the
-        L{Plotter} object call) determine the top (maximum) of the
-        displayed plot boundary.
-        """
-        self.opts['firstVectorTop'] = True
-        
-    def set_bump(self, yes=True):
-        """
-        Bumps up the common y-axis upper limit.
-        
-        If you don't manually set a yscale with a call to
-        L{set_yscale}, you can call this method to increase the common
-        y-axis upper limit to 120% of what Matplotlib decides. Call
-        with C{False} to disable the bump.
-        """
-        self.opts['bump'] = yes
-
-    def set_zeroBottom(self, yes=True):
-        """
-        Sets the bottom (minimum) of the Y-axis range to zero, unless
-        called with C{False}.
-
-        This is useful for plotting values that are never negative and
-        where zero is a meaningful absolute minimum.
-        """
-        self.opts['zeroBottom'] = yes
-
-    def set_zeroLine(self, y=0):
-        """
-        Adds a horizontal line at the specified I{y} value (default is
-        y=0) if the Y-axis range includes that value.
-
-        If y is C{None} or C{False}, clears any previously set line.
-        """
-        self.opts['zeroLine'] = y
-        
-    def add_marker(self, x, size=None):
-        """
-        Appends the supplied marker style character to the list of markers
-        being used.
-
-        The first and possibly only marker in the list applies to the
-        first vector plotted within a given subplot. If there is an
-        additional vector being plotted within a given subplot (three
-        or more arguments supplied when calling the L{Plotter} object,
-        and more than one marker has been added to the list, then the
-        second marker in the list is used for that second vector plot
-        line. Otherwise, the first (only) marker in the list is used
-        for the second plot line as well.
-
-        You can specify a I{size} for the marker as well.
-        """
-        self.opts['markers'].append((x, size))
-
-    def add_line(self, x=None, width=None):
-        """
-        Appends the supplied line style character to the list of line
-        styles being used.
-
-        The first and possibly only line style in the list applies to
-        the first vector plotted within a given subplot. If there is
-        an additional vector being plotted within a given subplot
-        (three or more arguments supplied when calling the L{Plotter}
-        object, and more than one line style has been added to the
-        list, then the second line style in the list is used for that
-        second vector plot line. Otherwise, the first (only) line
-        style in the list is used for the second plot line as well.
-
-        You can specify a I{width} for the line as well.
-        
-        If no line style character or C{None} is supplied, clears the
-        list of line styles.
-        """
-        if x is None:
-            self.opts['linestyles'] = []
-            return
-        self.opts['linestyles'].append((x, width))
-    
-    def set_yscale(self, x=True):
-        """
-        Rescales the plotted height of all vectors after the first
-        dependent one to be plotted, relative to that first dependent
-        one, by setting a y scale for it.
-
-        The result is two different twinned x-axes (one for the first
-        dependent vector and one for everybody else) and a different
-        y-axis label on the right.
-
-        Use a scale > 1 if the second (and later) vectors are bigger
-        than the first and you want to expand the right-hand scale.
-
-        Use a scale < 1 if the second (and later) vectors are smaller
-        than the first and you the right-hand scale to be shrunk.
-
-        Use C{True} for the argument to have the scaling done
-        automatically. (This is the default.)
-        """
-        self.opts['yscale'] = x
-
-    def _axisOpt(self, optName, axisName, value=None):
-        axisName = axisName.lower()
-        if axisName not in "xy":
-            raise ValueError(sub("Invalid axisName '{}'", axisName))
-        if value is None:
-            return self.opts[optName].setdefault(axisName, {})
-        self.opts[optName][axisName] = value
-        
-    def set_axisExact(self, axisName, yes=True):
-        """
-        Forces the limits of the named axis ("x" or "y") to exactly the
-        data range, unless called with C{False}.
-        """
-        self._axisOpt('axisExact', axisName, yes)
-        
-    def set_tickSpacing(self, axisName, major, minor=None):
-        """
-        Sets the major tick spacing for I{axisName} ("x" or "y"), and
-        minor tick spacing as well.
-
-        For each setting, an C{int} will set a maximum number of tick
-        intervals, and a C{float} will set a spacing between
-        intervals.
-
-        You can set I{minor} C{True} to have minor ticks set
-        automatically, or C{False} to have them turned off. (Major
-        ticks are set automatically by default, and cannot be turned
-        off.)
-        """
-        ticks = self._axisOpt('ticks', axisName)
-        ticks['major'] = major
-        if minor is not None:
-            ticks['minor'] = minor
-
-    def set_minorTicks(self, axisName, yes=True):
-        """
-        Enables minor ticks for I{axisName} ("x" or "y").
-        """
-        self._axisOpt('ticks', axisName)['minor'] = yes
-        
-    def set_axvline(self, k):
-        """
-        Adds a vertical dashed line at the data point with integer index
-        I{k}.
-
-        To set it to an x value, use a float for I{k}.
-        """
-        self.opts['axvlines'].append(k)
-        
-    def set_xlabel(self, x):
-        """
-        Sets the x-axis label.
-
-        Ignored if time-x mode has been activated with a call to
-        L{set_timex}. If called out of context, on the L{Plotter}
-        instance, this x-label is used for all subplots and only
-        appears in the last (bottom) subplot of each column of
-        subplots.
-        """
-        self.opts['xlabel'] = x
-        if not self._isSubplot:
-            self._universal_xlabel = True
-
-    def set_ylabel(self, x):
-        """
-        Sets the y-axis label.
-        """
-        self.opts['ylabel'] = x
-
-    def add_legend(self, proto, *args):
-        """
-        Adds the supplied format-substituted text to the list of legend
-        entries.
-
-        You may include a text I{proto}type with format-substitution
-        I{args}, or just supply the final text string with no further
-        arguments.
-        """
-        text = sub(proto, *args)
-        self.opts['legend'].append(text)
-
-    def clear_legend(self):
-        """
-        Clears the list of legend entries.
-        """
-        self.opts['legend'] = []
-
-    def set_legend(self, *args, **kw):
-        """
-        Sets the list of legend entries.
-
-        Supply a list of legend entries, either as a single argument
-        or with one entry per argument. You can set the I{fontsize}
-        keyword to the desired fontsize of the legend; the default is
-        'small'.
-        """
-        if len(args) == 1 and hasattr(args[0], '__iter__'):
-            args = args[0]
-        self.opts['legend'] = list(args)
-        if 'fontsize' in kw:
-            self.opts['fontsizes']['legend'] = kw['fontsize']
-    
-    def add_annotation(self, k, proto, *args, **kw):
-        """
-        Adds the text supplied after index I{k} at an annotation of the
-        plotted vector.
-
-        If there is more than one vector being plotted within the same
-        subplot, you can have the annotation refer to a vector other
-        than the first one by setting the keyword I{kVector} to its
-        non-zero index.
-
-        The annotation points to the point at index I{k} of the
-        plotted vector, unless I{k} is a float. In that case, it
-        points to the point where the vector is closest to that float
-        value.
-        
-        You may include a text prototype with format-substitution args
-        following it, or just supply the final text string with no
-        further arguments.
-
-        You can set the annotation to the first y-axis value that
-        crosses a float value of I{k} by setting I{y} C{True}.
-        """
-        kVector = None
-        if args:
-            if "{" not in proto:
-                # Called with kVector as a third argument, per API of
-                # commit 15c49b and earlier
-                text = proto
-                kVector = args[0]
-            else: text = sub(proto, *args)
-        else:  text = proto
-        if kVector is None:
-            kVector = kw.get('kVector', 0)
-        y = kw.get('y', False)
-        self.opts['annotations'].append((k, text, kVector, y))
-
-    def clear_annotations(self):
-        """
-        Clears the list of annotations.
-        """
-        self.opts['annotations'] = []
-
-    def add_textBox(self, quadrant, proto, *args):
-        """
-        Adds a text box to the specified I{quadrant} of the subplot.
-
-        Quadrants are "NW", "NE", "SE", and "SW". If there's already a
-        text box there, a line will be added to it.
-
-        You may include a text I{proto}type with format-substitution
-        I{args}, or just supply the final text string with no further
-        arguments.
-        """
-        text = sub(proto, *args)
-        prevText = self.opts['textBoxes'].get(quadrant, None)
-        if prevText:
-            text = prevText + "\n" + text
-        self.opts['textBoxes'][quadrant] = text
-        
-    def clear_textBoxes(self):
-        """
-        Clears the dict of text boxes.
-        """
-        self.opts['textBoxes'].clear()
-        
-    def set_title(self, proto, *args):
-        """
-        Sets a title for all subplots (if called out of context) or for
-        just the present subplot (if called in context).
-
-        You may include a text I{proto}type with format-substitution
-        I{args}, or just supply the final text string with no further
-        arguments.
-        """
-        text = sub(proto, *args)
-        if self._isSubplot:
-            self.opts['title'] = text
-        else: self._figTitle = text
-
-    def set_fontsize(self, name, fontsize):
-        """
-        Sets the I{fontsize} of the specified artist I{name}.
-
-        Recognized names are 'legend' and 'annotations'.
-        """
-        self.opts['fontsizes'][name] = fontsize
 
 
 class SpecialAx(object):
@@ -590,6 +201,9 @@ class Plotter(OptsBase):
     Keep the API for L{OptsBase} handy, and maybe a copy of the
     U{source<http://edsuom.com/yampex/yampex.plot.py>}, to see all the
     plotting options you can set.
+
+    @ivar dims: A dict of sub-dicts of the dimensions of various text
+        objects, keyed first by subplot index then the object name.
     """
     ph = PlotterHolder()
     
@@ -698,6 +312,7 @@ class Plotter(OptsBase):
         self.figSize = figSize
         self.fig = self.plt.figure(figsize=figSize)
         self.sp = Subplotter(self, Nc, Nr)
+        self.dims = {}
         self.annotators = {}
         self.kw = kw
         self._figTitle = None
@@ -779,6 +394,21 @@ class Plotter(OptsBase):
             return 2
         return 1
 
+    def textDims(self, textObj):
+        """
+        Returns the dimensions of the supplied text object in pixels.
+
+        If there's no renderer yet, estimates the dimensions based on
+        font size and DPI.
+        """
+        try:
+            bb = textObj.get_window_extent()
+            dims = bb.width, bb.height
+        except:
+            size = self.DPI * textObj.get_size() / 72
+            dims = [0.4*size*len(textObj.get_text()), size]
+        return dims
+    
     def post_op(self):
         """
         Call this once after each subplot: Adds minor ticks and a grid,
@@ -792,17 +422,112 @@ class Plotter(OptsBase):
             ax.grid(True, which='major')
         self.opts = deepcopy(self.global_opts)            
 
-    def subplots_adjust(self, **kw):
+    def subplots_adjust(self):
         """
         Calls C{subplots_adjust} on my figure, doing a bit of tweaking
         first.
         """
-        def wSpacing(pts):
-            return 0.18*pts / (self.fig.get_figwidth() + 5)
+        def width(x=None):
+            if x is None:
+                return self.fig.get_window_extent().width
+            return self.textDims(x)[0]
+
+        def height(x=None):
+            if x is None:
+                return self.fig.get_window_extent().height
+            return self.textDims(x)[1] * 1.5
+
+        def tickWidth(k):
+            maxTickWidth = 0
+            for ytl in self.sp[k].get_yticklabels():
+                thisWidth = width(ytl)
+                if thisWidth > maxTickWidth:
+                    maxTickWidth = thisWidth
+            return maxTickWidth
         
-        w = wSpacing(12)
-        kw.setdefault('wspace', w)
-        kw.setdefault('left', 0.5*w)
+        def tickHeight(k):
+            maxTickHeight = 0
+            for ytl in self.sp[k].get_yticklabels():
+                thisHeight = height(ytl)
+                if thisHeight > maxTickHeight:
+                    maxTickHeight = thisHeight
+            return maxTickHeight
+        
+        def wSpace(left=False):
+            maxWidth = 0
+            for k in range(len(self.sp)):
+                if left and not self.sp.onLeft(k):
+                    continue
+                thisWidth = tickWidth(k)
+                dims = self.dims[k].get('ylabel', None)
+                if dims:
+                    # Add twice the ylabel's font height (not width,
+                    # because rotated 90)
+                    thisWidth += 2*dims[1]
+                if thisWidth > maxWidth:
+                    maxWidth = thisWidth
+            return maxWidth
+
+        def hSpace(top=False, bottom=False):
+            maxHeight = 0
+            for k in range(len(self.sp)):
+                if top and not self.sp.onTop(k):
+                    continue
+                if bottom and not self.sp.atBottom(k):
+                    continue
+                thisHeight = 0
+                if not top:
+                    # Ticks
+                    thisHeight += tickHeight(k)
+                    # Subplot xlabel, if shown for this row
+                    if not universal_xlabel or self.sp.atBottom():
+                        dims = self.dims[k].get('xlabel', None)
+                        if dims:
+                            # Add twice the xlabel's font height
+                            thisHeight += 2*dims[1]
+                # Subplot title
+                if not bottom:
+                    dims = self.dims[k].get('title', None)
+                    if dims:
+                        # Add twice the title's font height
+                        thisHeight += 2*dims[1]
+                if thisHeight > maxHeight:
+                    maxHeight = thisHeight
+            return maxHeight
+
+        def scaledWidth(x, per_sp=False, scale=1.0, margin=30):
+            pw = width()
+            if per_sp: pw /= self.sp.Nc
+            return scale*(x+margin) / pw
+
+        def scaledHeight(x, per_sp=False, scale=1.0, margin=30):
+            ph = height()
+            if per_sp: ph /= self.sp.Nr
+            return scale*(x+margin) / ph
+        
+        kw = {}
+        fWidth = width(); fHeight = height()
+        if self._figTitle:
+            titleHeight = height(self.fig.suptitle(self._figTitle))
+        else: titleHeight = 0
+        universal_xlabel = self._universal_xlabel
+        if universal_xlabel:
+            # Thanks to kennytm,
+            # https://stackoverflow.com/questions/3844801/
+            #  check-if-all-elements-in-a-list-are-identical
+            if len(set(self._xlabels.values())) > 1:
+                universal_xlabel = False
+        textObj = None
+        for k in self._xlabels:
+            if universal_xlabel and not self.sp.atBottom(k):
+                continue
+            ax = self.sp.axes[k]
+            ax.set_xlabel(self._xlabels[k])
+        kw['top'] = 1.0 - scaledHeight(hSpace(top=True)+titleHeight)
+        kw['hspace'] = scaledHeight(hSpace(), per_sp=True)
+        kw['bottom'] = scaledHeight(hSpace(bottom=True), margin=15)
+        kw['wspace'] = scaledWidth(wSpace(), per_sp=True)
+        kw['left'] = scaledWidth(wSpace(left=True))
         try:
             self.fig.subplots_adjust(**kw)
         except ValueError as e:
@@ -830,11 +555,6 @@ class Plotter(OptsBase):
         path of a PNG file for me to create or overwrite. (That
         overrides any I{filePath} you set in the constructor.)
         """
-        def letterHeight(x):
-            h = x.get_size() / 72
-            h *= 3.0 / self.fig.get_figheight() + 0.05
-            return h
-        
         try:
             self.fig.tight_layout()
         except ValueError as e:
@@ -842,35 +562,7 @@ class Plotter(OptsBase):
                 proto = "WARNING: ValueError '{}' doing tight_layout "+\
                         "on {:.5g} x {:.5g} figure"
                 print(sub(proto, e.message, self.width, self.height))
-        kw = {}
-        if self._figTitle:
-            kw['top'] = 1.0 - letterHeight(self.fig.suptitle(self._figTitle))
-        universal_xlabel = self._universal_xlabel
-        if universal_xlabel:
-            # Thanks to kennytm,
-            # https://stackoverflow.com/questions/3844801/
-            #  check-if-all-elements-in-a-list-are-identical
-            if len(set(self._xlabels.values())) > 1:
-                universal_xlabel = False
-        betweenSmaller = True
-        bottomBigger = False
-        textObj = None
-        for k in self._xlabels:
-            if self.sp.atBottom(k):
-                # Bottom subplot
-                bottomBigger = True
-            else:
-                if universal_xlabel: continue
-                betweenSmaller = False
-            ax = self.sp.axes[k]
-            textObj = ax.set_xlabel(self._xlabels[k])
-        if textObj:
-            h = letterHeight(textObj)
-            height = self.sp.Nr * h
-            height *= 1.1 if betweenSmaller else 1.8
-            kw['hspace'] = height
-            if bottomBigger: kw['bottom'] = 11.0/(5+self.sp.Nr) * h
-        if kw: self.subplots_adjust(**kw)
+        self.subplots_adjust()
         # Calling plt.draw massively slows things down when generating
         # plot images on Rpi. And without it, the (un-annotated) plot
         # still updates!
@@ -902,6 +594,7 @@ class Plotter(OptsBase):
     def clear(self):
         self.fig.clear()
         self.annotators.clear()
+        self.dims.clear()
         self.ph.remove(self.ID)
             
     def getColor(self, k):
@@ -1118,16 +811,21 @@ class Plotter(OptsBase):
                     'fontsize': self.fontsizes.get('legend', "small")})
 
         def doSettings():
+            def bbAdd(textObj):
+                dims = self.textDims(textObj)
+                self.dims.setdefault(k, {})[name] = dims
+
+            k = self.sp.kLast
             for name in self._settings:
                 value = self.opts[name]
                 if not value: continue
+                bbAdd(self.sp.set_(name, value))
                 if name == 'xlabel':
-                    self._xlabels[self.sp.kLast] = value
+                    self._xlabels[k] = value
                     continue
-                self.sp.set_(name, value)
             for name in self.settings:
-                self.sp.set_(name, self.settings[name])
-
+                bbAdd(self.sp.set_(name, self.settings[name]))
+        
         def doAnnotations(yscale):
             self.plt.draw()
             annotator = self.annotators[axFirst] = Annotator(

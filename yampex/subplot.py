@@ -72,6 +72,14 @@ class Subplotter(object):
         """
         if self.kLast is not None and self.kLast < len(self.axes):
             return self.axes[self.kLast]
+
+    def __iter__(self):
+        """
+        I can iterate over the C{Axes} objects of subplots I've generated
+        so far.
+        """
+        for ax in self.axes:
+            yield ax
         
     def __len__(self):
         """
@@ -97,9 +105,11 @@ class Subplotter(object):
         method and I{name} is what is being set.
 
         Any keywords to the setter method can be supplied.
+
+        Returns the result of the setter method call.
         """
         f = getattr(self.ax, "set_{}".format(what))
-        f(name, **kw)
+        return f(name, **kw)
 
     def xBounds(self, ax=None, left=None, right=None):
         """
@@ -212,6 +222,16 @@ class Subplotter(object):
                     continue
                 setSpacing(which)
 
+    def onTop(self, k=None):
+        """
+        Returns C{True} if the current subplot (or one specified with a
+        subplot index I{k}) will appear at the top of a column of
+        subplots.
+        """
+        if k is None:
+            k = 0 if self.kLast is None else self.kLast
+        return k < self.Nc
+                
     def atBottom(self, k=None):
         """
         Returns C{True} if the current subplot (or one specified with a
@@ -222,3 +242,12 @@ class Subplotter(object):
             k = 0 if self.kLast is None else self.kLast
         return k >= self.Nc * (self.Nr - 1)
     
+    def onLeft(self, k=None):
+        """
+        Returns C{True} if the current subplot (or one specified with a
+        subplot index I{k}) will appear in the leftmost column of
+        subplots.
+        """
+        if k is None:
+            k = 0 if self.kLast is None else self.kLast
+        return k % self.Nr == 0
