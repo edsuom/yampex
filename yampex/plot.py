@@ -186,13 +186,15 @@ class Plotter(OptsBase):
     in inches. The default width and height is just shy of the entire
     monitor size.
 
-    Use the "Agg" backend by supplying the keyword I{useAgg} or
-    calling the L{useAgg} class method. This works better for plotting
-    to an image file, and is selected automatically if you supply a
-    I{filePath} to the constructor. Be aware that, once selected, that
-    backend will be used for all instances of me. If you're using the
-    "Agg" backend, you should specify it the first time an instance is
-    constructed, or beforehand with the L{useAgg} class method.
+    Use the "Agg" backend by supplying the constructor keyword
+    I{useAgg}. This works better for plotting to an image file, and is
+    selected automatically if you supply a I{filePath} to the
+    constructor. Be aware that, once selected, that backend will be
+    used for all instances of me. If you're using the "Agg" backend,
+    you should specify it the first time an instance is constructed.
+
+    Setting the I{verbose} keyword C{True} puts out a bit of info
+    about annotator positioning. Not for regular use.
     
     Any other keywords you supply to the constructor are supplied to
     the underlying Matplotlib plotting call for all
@@ -311,6 +313,9 @@ class Plotter(OptsBase):
             figSize[1] = kw.pop('height')
         self.figSize = figSize
         self.fig = self.plt.figure(figsize=figSize)
+        if not useAgg:
+            self.fig.canvas.mpl_connect(
+                'resize_event', self.subplots_adjust)
         self.sp = Subplotter(self, Nc, Nr)
         self.dims = {}
         self.annotators = {}
@@ -406,7 +411,11 @@ class Plotter(OptsBase):
             dims = bb.width, bb.height
         except:
             size = self.DPI * textObj.get_size() / 72
-            dims = [0.4*size*len(textObj.get_text()), size]
+            text = textObj.get_text()
+            # Width
+            dims = [0.4*size*len(text)]
+            # Height
+            dims.append(size*(1+text.count("\n")))
         return dims
     
     def post_op(self):
@@ -422,11 +431,13 @@ class Plotter(OptsBase):
             ax.grid(True, which='major')
         self.opts = deepcopy(self.global_opts)            
 
-    def subplots_adjust(self):
+    def subplots_adjust(self, *args):
         """
         Calls C{subplots_adjust} on my figure, doing a bit of tweaking
         first.
         """
+        # TODO: This method is huge and needs to be refactored into
+        # its own helper class.
         def width(x=None):
             if x is None:
                 return self.fig.get_window_extent().width
@@ -436,7 +447,7 @@ class Plotter(OptsBase):
             if x is None:
                 return self.fig.get_window_extent().height
             return self.textDims(x)[1] * 1.5
-
+        
         def tickWidth(k):
             maxTickWidth = 0
             for ytl in self.sp[k].get_yticklabels():
@@ -467,7 +478,7 @@ class Plotter(OptsBase):
                 if thisWidth > maxWidth:
                     maxWidth = thisWidth
             return maxWidth
-
+        
         def hSpace(top=False, bottom=False):
             maxHeight = 0
             for k in range(len(self.sp)):
@@ -506,9 +517,14 @@ class Plotter(OptsBase):
             return scale*(x+margin) / ph
         
         kw = {}
-        fWidth = width(); fHeight = height()
+        if args:
+            fWidth, fHeight = [
+                getattr(args[0], x) for x in ('width', 'height')]
+        else:
+            fWidth = width()
+            fHeight = height()
         if self._figTitle:
-            titleHeight = height(self.fig.suptitle(self._figTitle))
+            titleHeight = 0.8*height(self.fig.suptitle(self._figTitle))
         else: titleHeight = 0
         universal_xlabel = self._universal_xlabel
         if universal_xlabel:
@@ -523,7 +539,8 @@ class Plotter(OptsBase):
                 continue
             ax = self.sp.axes[k]
             ax.set_xlabel(self._xlabels[k])
-        kw['top'] = 1.0 - scaledHeight(hSpace(top=True)+titleHeight)
+        kw['top'] = 1.0 - scaledHeight(
+            hSpace(top=True)+titleHeight, margin=30)
         kw['hspace'] = scaledHeight(hSpace(), per_sp=True)
         kw['bottom'] = scaledHeight(hSpace(bottom=True), margin=15)
         kw['wspace'] = scaledWidth(wSpace(), per_sp=True)
