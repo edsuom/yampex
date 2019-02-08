@@ -90,6 +90,10 @@ class Adjuster(object):
             if thisHeight > maxTickHeight:
                 maxTickHeight = thisHeight
         return maxTickHeight
+
+    def getDims(self, k, key):
+        if k not in self.dims: return
+        return self.dims[k].get(key, None)
     
     def wSpace(self, left=False):
         maxWidth = 0
@@ -97,7 +101,7 @@ class Adjuster(object):
             if left and not self.sp.onLeft(k):
                 continue
             thisWidth = self.tickWidth(k)
-            dims = self.dims[k].get('ylabel', None)
+            dims = self.getDims(k, 'ylabel')
             if dims:
                 # Add twice the ylabel's font height (not width,
                 # because rotated 90)
@@ -119,13 +123,13 @@ class Adjuster(object):
                 thisHeight += self.tickHeight(k)
                 # Subplot xlabel, if shown for this row
                 if bottom or not universal_xlabel or self.sp.atBottom():
-                    dims = self.dims[k].get('xlabel', None)
+                    dims = self.getDims(k, 'xlabel')
                     if dims:
                         # Add twice the xlabel's font height
                         thisHeight += 2*dims[1]
             # Subplot title
             if not bottom:
-                dims = self.dims[k].get('title', None)
+                dims = self.getDims(k, 'title')
                 if dims:
                     # Add twice the title's font height
                     thisHeight += 2*dims[1]
