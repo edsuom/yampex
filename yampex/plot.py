@@ -342,10 +342,19 @@ class Plotter(OptsBase):
 
     def subplots_adjust(self, *args):
         dimThing = args[0] if args else self.fig.get_window_extent()
-        self.adj.updateFigSize(
-            *[getattr(dimThing, x) for x in ('width', 'height')])
-        titleObj = self.fig.suptitle(self._figTitle)
-        kw = self.adj(self._xlabels, self._universal_xlabel, titleObj)
+        fWidth, fHeight = [getattr(dimThing, x) for x in ('width', 'height')]
+        self.adj.updateFigSize(fWidth, fHeight)
+        # This causes trouble because Matplotlib increases spacing
+        # above the title as the figure gets bigger, and it's
+        # difficult to figure out how much extra space to add.
+        if self._figTitle:
+            titleObj = self.fig.suptitle(self._figTitle)
+            titleHeight = self.adj.height(titleObj)
+            # Scale the title height a bit with figure size to make up for
+            # the extra space above
+            titleHeight *= 1 + max([0, (fHeight-400)/500])
+        else: titleHeight = 0
+        kw = self.adj(self._xlabels, self._universal_xlabel, titleHeight)
         try:
             self.fig.subplots_adjust(**kw)
         except ValueError as e:

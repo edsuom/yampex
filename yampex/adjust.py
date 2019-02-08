@@ -37,7 +37,12 @@ from yampex.util import sub
 
 class Adjuster(object):
     """
-    
+    I do the hard work of trying to intelligently adjust white space
+    around and in between subplots.
+
+    There is definitely some empiricism involved with this, as
+    Matplotlib's C{subplots_adjust} command doesn't account for text
+    and ticks.
     """
     def __init__(self, p):
         self.p = p
@@ -144,9 +149,8 @@ class Adjuster(object):
         self.fWidth = fWidth
         self.fHeight = fHeight
     
-    def __call__(self, xlabels, universal_xlabel=False, titleObj=None):
+    def __call__(self, xlabels, universal_xlabel=False, titleHeight=0):
         kw = {}
-        titleHeight = self.height(titleObj) if titleObj else 0
         if universal_xlabel:
             # Thanks to kennytm,
             # https://stackoverflow.com/questions/3844801/
@@ -159,8 +163,10 @@ class Adjuster(object):
                 continue
             ax = self.sp.axes[k]
             ax.set_xlabel(xlabels[k])
-        kw['top'] = 1.0 - self.scaledHeight(
-            self.hSpace(top=True)+titleHeight, margin=15, limit=0.12)
+        top_pixels = self.hSpace(top=True)
+        if top_pixels: titleHeight *= 0.65
+        top_pixels += titleHeight
+        kw['top'] = 1.0 - self.scaledHeight(top_pixels, margin=15, limit=0.12)
         kw['hspace'] = self.scaledHeight(
             self.hSpace(universal_xlabel=universal_xlabel), per_sp=True)
         kw['bottom'] = self.scaledHeight(self.hSpace(bottom=True), margin=15)
