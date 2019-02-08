@@ -42,6 +42,7 @@ from yampex.options import OptsBase
 from yampex.annotate import Annotator, TextBoxMaker
 from yampex.subplot import Subplotter
 from yampex.scaling import Scaler
+from yampex.adjust import Adjuster
 from yampex.util import sub
 
 
@@ -316,8 +317,9 @@ class Plotter(OptsBase):
         if not useAgg:
             self.fig.canvas.mpl_connect(
                 'resize_event', self.subplots_adjust)
-        self.sp = Subplotter(self, Nc, Nr)
         self.dims = {}
+        self.sp = Subplotter(self, Nc, Nr)
+        self.adj = Adjuster(self)
         self.annotators = {}
         self.kw = kw
         self._figTitle = None
@@ -337,6 +339,21 @@ class Plotter(OptsBase):
         # Only an integer is passed to the call
         self.ph.remove(self.ID)
         # No new references were created, nothing retained
+
+    def subplots_adjust(self, *args):
+        dimThing = args[0] if args else self.fig.get_window_extent()
+        self.adj.updateFigSize(
+            *[getattr(dimThing, x) for x in ('width', 'height')])
+        titleObj = self.fig.suptitle(self._figTitle)
+        kw = self.adj(self._xlabels, self._universal_xlabel, titleObj)
+        try:
+            self.fig.subplots_adjust(**kw)
+        except ValueError as e:
+            if self.verbose:
+                print(sub(
+                    "WARNING: ValueError '{}' doing subplots_adjust({})",
+                    e.message,
+                    ", ".join([sub("{}={}", x, kw[x]) for x in kw])))
         
     @property
     def width(self):
@@ -398,25 +415,6 @@ class Plotter(OptsBase):
         if N > 3:
             return 2
         return 1
-
-    def textDims(self, textObj):
-        """
-        Returns the dimensions of the supplied text object in pixels.
-
-        If there's no renderer yet, estimates the dimensions based on
-        font size and DPI.
-        """
-        try:
-            bb = textObj.get_window_extent()
-            dims = bb.width, bb.height
-        except:
-            size = self.DPI * textObj.get_size() / 72
-            text = textObj.get_text()
-            # Width
-            dims = [0.4*size*len(text)]
-            # Height
-            dims.append(size*(1+text.count("\n")))
-        return dims
     
     def post_op(self):
         """
@@ -430,129 +428,6 @@ class Plotter(OptsBase):
         if self.grid:
             ax.grid(True, which='major')
         self.opts = deepcopy(self.global_opts)            
-
-    def subplots_adjust(self, *args):
-        """
-        Calls C{subplots_adjust} on my figure, doing a bit of tweaking
-        first.
-        """
-        # TODO: This method is huge and needs to be refactored into
-        # its own helper class.
-        def width(x=None):
-            if x is None:
-                return self.fig.get_window_extent().width
-            return self.textDims(x)[0]
-
-        def height(x=None):
-            if x is None:
-                return self.fig.get_window_extent().height
-            return self.textDims(x)[1] * 1.5
-        
-        def tickWidth(k):
-            maxTickWidth = 0
-            for ytl in self.sp[k].get_yticklabels():
-                thisWidth = width(ytl)
-                if thisWidth > maxTickWidth:
-                    maxTickWidth = thisWidth
-            return maxTickWidth
-        
-        def tickHeight(k):
-            maxTickHeight = 0
-            for ytl in self.sp[k].get_yticklabels():
-                thisHeight = height(ytl)
-                if thisHeight > maxTickHeight:
-                    maxTickHeight = thisHeight
-            return maxTickHeight
-        
-        def wSpace(left=False):
-            maxWidth = 0
-            for k in range(len(self.sp)):
-                if left and not self.sp.onLeft(k):
-                    continue
-                thisWidth = tickWidth(k)
-                dims = self.dims[k].get('ylabel', None)
-                if dims:
-                    # Add twice the ylabel's font height (not width,
-                    # because rotated 90)
-                    thisWidth += 2*dims[1]
-                if thisWidth > maxWidth:
-                    maxWidth = thisWidth
-            return maxWidth
-        
-        def hSpace(top=False, bottom=False):
-            maxHeight = 0
-            for k in range(len(self.sp)):
-                if top and not self.sp.onTop(k):
-                    continue
-                if bottom and not self.sp.atBottom(k):
-                    continue
-                thisHeight = 0
-                if not top:
-                    # Ticks
-                    thisHeight += tickHeight(k)
-                    # Subplot xlabel, if shown for this row
-                    if not universal_xlabel or self.sp.atBottom():
-                        dims = self.dims[k].get('xlabel', None)
-                        if dims:
-                            # Add twice the xlabel's font height
-                            thisHeight += 2*dims[1]
-                # Subplot title
-                if not bottom:
-                    dims = self.dims[k].get('title', None)
-                    if dims:
-                        # Add twice the title's font height
-                        thisHeight += 2*dims[1]
-                if thisHeight > maxHeight:
-                    maxHeight = thisHeight
-            return maxHeight
-
-        def scaledWidth(x, per_sp=False, scale=1.0, margin=30):
-            pw = width()
-            if per_sp: pw /= self.sp.Nc
-            return scale*(x+margin) / pw
-
-        def scaledHeight(x, per_sp=False, scale=1.0, margin=30):
-            ph = height()
-            if per_sp: ph /= self.sp.Nr
-            return scale*(x+margin) / ph
-        
-        kw = {}
-        if args:
-            fWidth, fHeight = [
-                getattr(args[0], x) for x in ('width', 'height')]
-        else:
-            fWidth = width()
-            fHeight = height()
-        if self._figTitle:
-            titleHeight = 0.8*height(self.fig.suptitle(self._figTitle))
-        else: titleHeight = 0
-        universal_xlabel = self._universal_xlabel
-        if universal_xlabel:
-            # Thanks to kennytm,
-            # https://stackoverflow.com/questions/3844801/
-            #  check-if-all-elements-in-a-list-are-identical
-            if len(set(self._xlabels.values())) > 1:
-                universal_xlabel = False
-        textObj = None
-        for k in self._xlabels:
-            if universal_xlabel and not self.sp.atBottom(k):
-                continue
-            ax = self.sp.axes[k]
-            ax.set_xlabel(self._xlabels[k])
-        kw['top'] = 1.0 - scaledHeight(
-            hSpace(top=True)+titleHeight, margin=30)
-        kw['hspace'] = scaledHeight(hSpace(), per_sp=True)
-        kw['bottom'] = scaledHeight(hSpace(bottom=True), margin=15)
-        kw['wspace'] = scaledWidth(wSpace(), per_sp=True)
-        kw['left'] = scaledWidth(wSpace(left=True))
-        try:
-            self.fig.subplots_adjust(**kw)
-        except ValueError as e:
-            if self.verbose:
-                print(sub(
-                    "WARNING: ValueError '{}' doing subplots_adjust({})",
-                    e.message,
-                    ", ".join([sub("{}={}", x, kw[x]) for x in kw])))
     
     def show(self, windowTitle=None, fh=None, filePath=None, noShow=False):
         """
@@ -829,7 +704,7 @@ class Plotter(OptsBase):
 
         def doSettings():
             def bbAdd(textObj):
-                dims = self.textDims(textObj)
+                dims = self.adj.textDims(textObj)
                 self.dims.setdefault(k, {})[name] = dims
 
             k = self.sp.kLast
