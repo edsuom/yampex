@@ -31,14 +31,13 @@ the plotting options you can set.
 """
 
 import weakref
-from copy import deepcopy
 import importlib
 
 import screeninfo
 
 import numpy as np
 
-from yampex.options import OptsBase
+from yampex.options import Opts, OptsBase
 from yampex.annotate import Annotator, TextBoxMaker
 from yampex.subplot import Subplotter
 from yampex.scaling import Scaler
@@ -107,10 +106,19 @@ class PlotterHolder(object):
 class SpecialAx(object):
     """
     I pretend to be a C{matplotlib.Axes} object except that I
-    intercept plotting calls and rescale the independent vector first.
+    intercept plotting calls to do some cool stuff first:
+
+        - Rescale the independent vector.
+
+        - Replace C{container, *names} args with vectors in that
+          container.
+
+        - Plot with the next line style, marker style, and color if
+          not specified in the call.
 
     Construct me with a subplot axes object I{ax}, a dict of options
-    I{opts} for the subplot, and a vector container object I{V}.
+    I{opts} for the subplot, and a vector container object I{V}. (If
+    not using a container, then I{V} may be C{None}.)
 
     If your call to a L{Plotter} instance (most likely in a subplot
     context) has a container object as its first argument, I will
@@ -135,12 +143,25 @@ class SpecialAx(object):
         'plot', 'loglog',
         'semilogx', 'semilogy', 'scatter', 'step', 'bar', 'stem'}
     
-    def __init__(self, ax, opts, V):
+    def __init__(self, ax, opts, V, kNext):
         """C{SpecialAx(ax, opts, V)}"""
         self.ax = ax
         self.opts = opts
         self.V = V
+        self.kNext = kNext
 
+    def parseArgs(self, args, kw):
+        """
+        TODO: Take care of Matplotlib's stupid option to specify lines,
+        markers, and colors with a string argument.
+
+        Returns args as a list. TODO: with any such string argument
+        removed.
+        """
+        args = list(args)
+        # Magic goes here
+        return args
+        
     def __getattr__(self, name):
         """
         Returns a plotting method wrapped in a wrapper function that first
@@ -148,22 +169,19 @@ class SpecialAx(object):
         not a C{None} object) and does x-axis scaling.
         """
         def wrapper(*args, **kw):
-            args = list(args)
+            args = self.parseArgs(args, kw)
             if self.V is not None:
                 for k, arg in enumerate(args[:2]):
                     if isinstance(arg, str) and arg in self.V:
                         args[k] = self.V[arg]
-            if xscale:
-                args[0] = args[0] * xscale
-            return x(*args, **kw)
+            if xscale: args[0] = args[0] * xscale
+            return x(*args, **self.opts.kwModified(self.kNext, kw))
 
         x = getattr(self.ax, name)
         if name not in self._plotterNames:
             return x
         xscale = self.opts.get('xscale', None)
-        if xscale or self.V is not None:
-            return wrapper
-        return x
+        return wrapper
 
     
 class Plotter(OptsBase):
@@ -213,7 +231,6 @@ class Plotter(OptsBase):
     fc = None
     DPI = 100 # Don't change this, for reference only
     figSize = None
-    colors = ['b', 'g', 'r', '#40C0C0', '#C0C040', '#C040C0', '#8080FF']
     timeScales = [
         (1E-9,          "Nanoseconds"),
         (1E-6,          "Microseconds"),
@@ -223,7 +240,9 @@ class Plotter(OptsBase):
         (3600.0,        "Hours"),
     ]
 
+    _colors = ['b', 'g', 'r', '#40C0C0', '#C0C040', '#C040C0', '#8080FF']
     _opts = {
+        'colors':               [],
         'settings':             {},
         'plotKeywords':         {},
         'marker':               ('', None),
@@ -296,7 +315,7 @@ class Plotter(OptsBase):
             Nc = self.N_cols(N)
             Nr = int(np.ceil(float(N)/Nc))
         self.V = args[0] if args else None
-        self.opts = deepcopy(self._opts)
+        self.opts = Opts()
         self.filePath = kw.pop('filePath', None)
         if 'verbose' in kw: self.verbose = kw.pop('verbose')
         useAgg = bool(self.filePath) or kw.pop('useAgg', False)
@@ -401,7 +420,7 @@ class Plotter(OptsBase):
         self.sp.setup()
         self._isSubplot = True
         self.global_opts = self.opts
-        self.opts = deepcopy(self.global_opts)            
+        self.opts = self.global_opts.deepcopy()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -436,7 +455,7 @@ class Plotter(OptsBase):
         self.sp.setTicks(self.ticks)
         if self.grid:
             ax.grid(True, which='major')
-        self.opts = deepcopy(self.global_opts)            
+        self.opts = self.global_opts.deepcopy()
     
     def show(self, windowTitle=None, fh=None, filePath=None, noShow=False):
         """
@@ -498,13 +517,6 @@ class Plotter(OptsBase):
         self.dims.clear()
         self.ph.remove(self.ID)
             
-    def getColor(self, k):
-        """
-        Supply an integer index starting from zero and this returns a
-        color from a clean and simple default palette.
-        """
-        return self.colors[k % len(self.colors)]
-        
     def xBounds(self, *args, **kw):
         self.sp.xBounds(*args, **kw)
     
@@ -639,28 +651,9 @@ class Plotter(OptsBase):
         call L{post_op} yourself after you're done doing what this
         call would ordinarily do.
         """
-        def getLast(obj, k):
-            return obj[k] if k < len(obj) else obj[-1]
-
-        def plotVector(k, vector, ax, kw_orig):
-            kw = {}
-            kw['scaley'] = not self.firstVectorTop
-            kw['marker'], size = getLast(self.markers, k) \
-                if self.markers else self.marker
-            if size is not None:
-                kw['markersize'] = size
-            width = 2
-            if self.linestyles:
-                kw['linestyle'], width = getLast(self.linestyles, k)
-            elif kw['marker'] in (',', '.'):
-                kw['linestyle'] = ''
-            else: kw['linestyle'] = '-'
-            kw['linewidth'] = width
-            color = self.getColor(k)
-            kw['color'] = color
-            # Original keywords override any already set
-            kw.update(kw_orig)
+        def plotVector(k, vector, ax, kw):
             # Here is where the plotting actually happens
+            kw = self.opts.kwModified(k, kw)
             plotter = self.pickPlotter(ax, kw_plotter, kw)
             lineInfo[0].extend(plotter(firstVector, vector, **kw))
             if yscale:
@@ -760,6 +753,8 @@ class Plotter(OptsBase):
         # The 'plotter' keyword is reserved for Yampex, unrecognized
         # by Matplotlib
         kw_plotter = kw.pop('plotter', None)
+        if 'scaley' not in kw:
+            kw['scaley'] = not self.firstVectorTop
         if not args:
             axList = [ax]
             doSettings()
@@ -797,7 +792,9 @@ class Plotter(OptsBase):
                 tbm = TextBoxMaker(axFirst, self.sp.Nc, self.sp.Nr)
                 for quadrant in self.textBoxes:
                     tbm(quadrant, self.textBoxes[quadrant])
-            axList = [SpecialAx(ax, self.opts, V) for ax in axList]
+            axList = [
+                SpecialAx(ax, self.opts, V, len(axList)+k)
+                for k, ax in enumerate(axList)]
             self.post_op()
         if len(axList) == 1:
             return axList[0]

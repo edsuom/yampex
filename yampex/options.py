@@ -35,7 +35,123 @@ U{source<http://edsuom.com/yampex/yampex.options.py>} open in your
 editor, as a handy reference for all the plotting options you can set.
 """
 
+from copy import copy
+
 from yampex.util import sub
+
+
+class Opts(dict):
+    """
+    I am a dict-like object of options, making a deep copy of the dict
+    you supply to my constructor and providing a few other useful
+    methods.
+    """
+    _colors = ['b', 'g', 'r', '#40C0C0', '#C0C040', '#C040C0', '#8080FF']
+    _opts = {
+        'colors':               [],
+        'settings':             {},
+        'plotKeywords':         {},
+        'marker':               ('', None),
+        'markers':              [],
+        'linestyles':           [],
+        'grid':                 False,
+        'firstVectorTop':       False,
+        'loglog':               False,
+        'semilogx':             False,
+        'semilogy':             False,
+        'bar':                  False,
+        'stem':                 False,
+        'step':                 False,
+        'error':                False,
+        'legend':               [],
+        'annotations':          [],
+        'textBoxes':            {},
+        'xscale':               None,
+        'yscale':               None,
+        'axisExact':            {},
+        'ticks':                {},
+        'useLabels':            False,
+        'axvlines':             [],
+        'bump':                 False,
+        'timex':                False,
+        'xlabel':               "",
+        'ylabel':               "",
+        'title':                "",
+        'zeroBottom':           False,
+        'zeroLine':             False,
+        'fontsizes':            {},
+    }
+
+    def __init__(self, other={}):
+        dict.__init__(self)
+        for key in self._opts:
+            value = other[key] if key in other else self._opts[key]
+            dict.__setitem__(self, key, copy(value))
+
+    def deepcopy(self):
+        """
+        Returns a deep copy of me, with copies of all my items as they
+        exist right now.
+        """
+        return Opts(self)
+
+    def getColor(self, k):
+        """
+        Supply an integer index starting from zero and this returns a
+        color from a clean and simple default palette.
+        """
+        colors = self['colors']
+        if not colors: colors = self._colors
+        return colors[k % len(colors)]
+
+    def getLast(self, key, k):
+        """
+        Assuming that I{key} refers to one of my options with a sequence
+        value, returns its item at index I{k}, or its last item if the
+        index is beyond its end.
+        """
+        obj = self[key]
+        return obj[k] if k < len(obj) else obj[-1]
+
+    def kwModified(self, k, kw_orig, **moreOpts):
+        """
+        Adds 'linestyle', 'linewidth', 'marker', and 'color' entries for
+        the next plot to I{kw} if not already defined.
+
+        Returns a new kw dict, leaving the original one alone.
+        """
+        def nd(*keys):
+            """
+            Returns C{True} if none of the I{keys} are defined in I{kw}.
+            """
+            for key in keys:
+                if key in kw:
+                    return False
+            return True
+
+        kw = kw_orig.copy()
+        for key in moreOpts:
+            if nd(key):
+                kw[key] = moreOpts[key]
+        if self['markers']:
+            marker, size = self.getLast('markers', k)
+        else: marker, size = self['marker']
+        if nd('marker'): kw['marker'] = marker
+        if nd('markersize', 'ms') and size is not None:
+            kw['markersize'] = size
+        width = 2
+        if nd('linestyle', 'ls'):
+            if self['linestyles']:
+                kw['linestyle'], width = self.getLast('linestyles', k)
+            elif kw['marker'] in (',', '.'):
+                kw['linestyle'] = ''
+            else: kw['linestyle'] = '-'
+        if nd('linewidth', 'lw'):
+            kw['linewidth'] = width
+        if nd('color', 'c'):
+            color = self.getColor(k)
+            kw['color'] = color
+        return kw
 
 
 class OptsBase(object):
@@ -217,7 +333,43 @@ class OptsBase(object):
             self.opts['linestyles'] = []
             return
         self.opts['linestyles'].append((x, width))
-    
+
+    def add_color(self, x=None):
+        """
+        Appends the supplied line style character to the list of colors
+        being used.
+
+        The first and possibly only color in the list applies to the
+        first vector plotted within a given subplot. If there are
+        additional vectors being plotted within a given subplot (three
+        or more arguments supplied when calling the L{Plotter} object,
+        more than the number of colors that have been added to the
+        list, then the colors rotate back to the first one in the
+        list.
+
+        If you never call this and don't set your own list with a call
+        to L{set_colors}, a default color list is used.
+
+        If no color code or C{None} is supplied, reverts to the
+        default color scheme.
+        """
+        if x is None:
+            self.opts['colors'] = []
+            return
+        self.opts['colors'].append(x)
+        
+    def set_colors(self, *args):
+        """
+        Sets the list of colors. Call with no args to clear the list and
+        revert to default color scheme.
+
+        Supply a list of color codes, either as a single argument or
+        with one entry per argument.
+        """
+        if len(args) == 1 and hasattr(args[0], '__iter__'):
+            args = args[0]
+        self.opts['colors'] = list(args)
+        
     def set_yscale(self, x=True):
         """
         Rescales the plotted height of all vectors after the first
