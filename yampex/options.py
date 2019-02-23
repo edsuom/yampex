@@ -152,7 +152,7 @@ class Opts(dict):
             color = self.getColor(k)
             kw['color'] = color
         return kw
-
+    
 
 class OptsBase(object):
     """
@@ -576,6 +576,7 @@ class OptsBase(object):
         """
         Sets the I{fontsize} of the specified artist I{name}.
 
-        Recognized names are 'legend' and 'annotations'.
+        Recognized names are 'title', 'xlabel', 'ylabel', 'legend',
+        and 'annotations'.
         """
         self.opts['fontsizes'][name] = fontsize

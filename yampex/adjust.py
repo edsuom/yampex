@@ -66,7 +66,7 @@ class Adjuster(object):
             # Width
             dims = [0.4*size*len(text)]
             # Height
-            dims.append(size*(1+text.count("\n")))
+            dims.append(size*(1+1.4*text.count("\n")))
         return dims
         
     def width(self, x):
@@ -170,7 +170,7 @@ class Adjuster(object):
         top_pixels = self.hSpace(top=True)
         if top_pixels: titleHeight *= 0.65
         top_pixels += titleHeight
-        kw['top'] = 1.0 - self.scaledHeight(top_pixels, margin=15, limit=0.12)
+        kw['top'] = 1.0 - self.scaledHeight(top_pixels, margin=15, limit=0.15)
         kw['hspace'] = self.scaledHeight(
             self.hSpace(universal_xlabel=universal_xlabel), per_sp=True)
         kw['bottom'] = self.scaledHeight(self.hSpace(bottom=True), margin=15)

@@ -42,9 +42,9 @@ class Subplotter(object):
     @ivar Nc: Number of columns.
     @ivar Nr: Number of rows.
     """
-    def __init__(self, plotter, Nc, Nr):
+    def __init__(self, plotter, N, Nc, Nr):
         self.p = plotter
-        self.Nc, self.Nr = Nc, Nr
+        self.N, self.Nc, self.Nr = N, Nc, Nr
         self.axes = []
 
     def setup(self):
@@ -55,9 +55,10 @@ class Subplotter(object):
         self.twins = {}
         self.kLast = None
         self.p.fig.clear()
-        for k in range(self.Nc * self.Nr):
-            ax = self.p.fig.add_subplot(self.Nr, self.Nc, k+1)
+        for k in range(1, self.Nc*self.Nr+1):
+            ax = self.p.fig.add_subplot(self.Nr, self.Nc, k)
             self.axes.append(ax)
+            if k == self.N: break
         for ax in self.axes:
             ax.clear()
             for axTwin in self.getTwins(ax, mplRoster=True):

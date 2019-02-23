@@ -155,7 +155,7 @@ class SpecialAx(object):
         TODO: Take care of Matplotlib's stupid option to specify lines,
         markers, and colors with a string argument.
 
-        Returns args as a list. TODO: with any such string argument
+        Returns args as a list. TODO: with any such string argument(s)
         removed.
         """
         args = list(args)
@@ -175,7 +175,17 @@ class SpecialAx(object):
                     if isinstance(arg, str) and arg in self.V:
                         args[k] = self.V[arg]
             if xscale: args[0] = args[0] * xscale
-            return x(*args, **self.opts.kwModified(self.kNext, kw))
+            # TODO: Get parseArgs working and always do self.opts.kwModified
+            doMods = True
+            if self.V is None:
+                for arg in args:
+                    if isinstance(arg, str):
+                        doMods = False
+                        break
+            if doMods:
+                kwModified = self.opts.kwModified(self.kNext, kw)
+            else: kwModified = kw
+            return x(*args, **kwModified)
 
         x = getattr(self.ax, name)
         if name not in self._plotterNames:
@@ -309,9 +319,12 @@ class Plotter(OptsBase):
         """C{Plotter(N, *args, **kw)}"""
         args = list(args)
         if args:
+            # Nc, Nr specified
             Nc = N
             Nr = args.pop(0)
+            N = Nc*Nr
         else:
+            # N specified
             Nc = self.N_cols(N)
             Nr = int(np.ceil(float(N)/Nc))
         self.V = args[0] if args else None
@@ -337,7 +350,7 @@ class Plotter(OptsBase):
             self.fig.canvas.mpl_connect(
                 'resize_event', self.subplots_adjust)
         self.dims = {}
-        self.sp = Subplotter(self, Nc, Nr)
+        self.sp = Subplotter(self, N, Nc, Nr)
         self.adj = Adjuster(self)
         self.annotators = {}
         self.kw = kw
@@ -367,7 +380,9 @@ class Plotter(OptsBase):
         # above the title as the figure gets bigger, and it's
         # difficult to figure out how much extra space to add.
         if self._figTitle:
-            titleObj = self.fig.suptitle(self._figTitle)
+            fontsize = self.opts['fontsizes'].get('title', None)
+            kw = {'fontsize':fontsize} if fontsize else {}
+            titleObj = self.fig.suptitle(self._figTitle, **kw)
             titleHeight = self.adj.height(titleObj)
             # Scale the title height a bit with figure size to make up for
             # the extra space above
@@ -389,6 +404,7 @@ class Plotter(OptsBase):
         Figure width (inches).
         """
         return self.fig.get_figwidth()
+
     @property
     def height(self):
         """
@@ -713,7 +729,9 @@ class Plotter(OptsBase):
             for name in self._settings:
                 value = self.opts[name]
                 if not value: continue
-                bbAdd(self.sp.set_(name, value))
+                fontsize = self.opts['fontsizes'].get(name, None)
+                kw = {'size':fontsize} if fontsize else {}
+                bbAdd(self.sp.set_(name, value, **kw))
                 if name == 'xlabel':
                     self._xlabels[k] = value
                     continue
