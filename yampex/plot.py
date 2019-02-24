@@ -411,11 +411,10 @@ class Plotter(OptsBase):
     def yBounds(self, *args, **kw):
         self.sp.yBounds(*args, **kw)
 
-    def scaleTime(self, vectors):
-        V0 = vectors[0]
+    def scaleTime(self, X):
         if not self.timex:
-            return V0
-        T_max = vectors[0].max()
+            return
+        T_max = X.max()
         for mult, name in self.timeScales:
             if mult < 1:
                 if T_max < 1000*mult:
@@ -424,13 +423,13 @@ class Plotter(OptsBase):
                 break
         self.opts['xlabel'] = name
         self.opts['xscale'] = 1.0 / mult
-        return V0 / mult 
 
     def pickPlotter(self, ax, plotter, kw):
         bogusMap = {
             'bar': ('marker', 'linestyle', 'scaley'),
             'step': ('marker', 'linestyle', 'scaley'),
         }
+        kw['_no_parse'] = True
         for name in (
                 'loglog', 'semilogx', 'semilogy',
                 'bar', 'step', 'stem', 'error'):
@@ -516,7 +515,7 @@ class Plotter(OptsBase):
             # Here is where the plotting actually happens
             kw = self.opts.kwModified(k, kw)
             plotter = self.pickPlotter(ax, kw_plotter, kw)
-            lineInfo[0].extend(plotter(firstVector, vector, **kw))
+            lineInfo[0].extend(plotter(X, vector, **kw))
             if yscale:
                 ax.tick_params('y', colors=color)
                 if k == 0:
@@ -535,7 +534,7 @@ class Plotter(OptsBase):
         
         def adjustPlots(yscale, axvlines):
             if self.axisExact.get('x', False):
-                ax.set_xlim(firstVector.min(), firstVector.max())
+                ax.set_xlim(X.min(), X.max())
             if self.axisExact.get('y', False):
                 V = np.array(vectors[1:])
                 ax.set_ylim(V.min(), V.max())
@@ -546,8 +545,8 @@ class Plotter(OptsBase):
             for axvline in axvlines:
                 x = None
                 if isinstance(axvline, int):
-                    if abs(axvline) < len(firstVector):
-                        x = firstVector[axvline]
+                    if abs(axvline) < len(X):
+                        x = X[axvline]
                 else: x = axvline
                 if x is None: continue
                 axFirst.axvline(x=x, linestyle='--', color="#404040")
@@ -565,18 +564,18 @@ class Plotter(OptsBase):
                     'loc': "best",
                     'fontsize': self.fontsizes.get('legend', "small")})
 
-        def doAnnotations(yscale):
+        def doAnnotations(axList, yscale):
             self.plt.draw()
-            annotator = self.annotators[axFirst] = Annotator(
-                axList, [firstVector]+list(vectors[1:]),
+            annotator = self.annotators[axList[0]] = Annotator(
+                axList, [X]+list(vectors[1:]),
                 fontsize=self.fontsizes.get('annotations', 'small'))
             for k, text, kVector, is_yValue in self.annotations:
                 Y = vectors[kVector+1]
                 if not isinstance(k, int):
                     if is_yValue:
                         k = np.argmin(np.abs(Y-k))
-                    else: k = np.searchsorted(firstVector, k)
-                x = firstVector[k]
+                    else: k = np.searchsorted(X, k)
+                x = X[k]
                 y = Y[k]
                 kAxis = 0 if yscale is None or kVector == 0 else 1
                 if isinstance(text, int):
@@ -606,12 +605,11 @@ class Plotter(OptsBase):
         else:
             lineInfo = [[], []]
             yscale = self.yscale
-            vectors, names = ax.helper.parseArgs(args)
-            if len(vectors) == 1:
-                # Just one vector supplied, create x-axis range vector
-                # for it
-                vectors.insert(0, np.arange(len(vectors[0])))
-            firstVector = self.scaleTime(vectors)
+            ax.helper.parseArgs(args)
+            # TODO: Be smarter than this
+            vectors, names = ax.helper.vectors, ax.helper.names
+            X = vectors[0]
+            self.scaleTime(X)
             ax.helper.doSettings()
             if yscale is True:
                 if len(vectors) > 2:
@@ -619,7 +617,7 @@ class Plotter(OptsBase):
                     yscales = [scaler(x) for x in vectors[2:]]
                     yscale = 1 if 1 in yscales else min(yscales)
                 else: yscale = 1
-            N = len(firstVector)
+            N = len(X)
             yMax = None
             for kVector, thisVector in enumerate(vectors[1:]):
                 if len(thisVector):
@@ -632,7 +630,7 @@ class Plotter(OptsBase):
             adjustPlots(yscale, self.axvlines)
             axList = self.sp.getTwins()
             if self.annotations:
-                doAnnotations(yscale)
+                doAnnotations(axList, yscale)
             if self.textBoxes:
                 tbm = TextBoxMaker(axFirst, self.sp.Nc, self.sp.Nr)
                 for quadrant in self.textBoxes:

@@ -89,19 +89,15 @@ class SpecialAx(object):
         specified in the call, and does x-axis scaling.
         """
         def wrapper(*args, **kw):
-            V = self.helper.V
-            args, null = self.helper.parseArgs(args)
-            doMods = True
-            if V is None:
-                for arg in args:
-                    if isinstance(arg, str):
-                        doMods = False
-                        break
-            if False and doMods:
-                kwModified = self.helper.opts.kwModified(self.kNext, kw)
+            if kw.pop('_no_parse', False):
+                k = 0
+            else:
+                k = len(self.helper)
+                self.helper.parseArgs(args)
+            if not self.helper.stringArg:
+                kw = self.helper.opts.kwModified(self.kNext, kw)
                 self.kNext += 1
-            else: kwModified = kw
-            return x(*args, **kwModified)
+            return x(*self.helper.vectors[k:], **kw)
 
         x = getattr(self.helper.ax, name)
         return wrapper if name in self._plotterNames else x
