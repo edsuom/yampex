@@ -28,7 +28,83 @@ Simple subplotting.
 
 import importlib
 
+from yampex.helper import PlotHelper
 from yampex.util import sub
+
+
+class SpecialAx(object):
+    """
+    I pretend to be the C{matplotlib.Axes} that I'm constructed with
+    except that I have some extra methods and intercept plotting calls
+    to do some cool stuff first.
+
+        - Rescale the independent vector.
+
+        - Replace C{container, *names} args with vectors in that
+          container.
+
+        - Plot with the next line style, marker style, and color if
+          not specified in the call.
+
+    Construct me with a subplot axes object I{ax}, and a dict of
+    options I{opts} for the subplot.
+
+    If your call to a L{Plotter} instance (most likely in a subplot
+    context) has a container object as its first argument, I will
+    replace the arguments with actual Numpy vectors element-wise
+    accessed from that container object. The underlying Matplotlib
+    call will only see the Numpy vectors. For example,::
+
+        import numpy as np
+        V = {'x': np.linspace(0, 1, 100)}
+        V['y'] = V['x']**2
+        with Plotter(1) as sp:
+            sp(V, 'x', 'y')
+
+    will plot the square of I{x} vs I{x}. This comes in handy when you
+    have containers full of vectors and you want to plot selected ones
+    of them in different subplots.
+
+    @keyword kStart: Set to a non-zero integer to start indexing plot
+        line/marker/color lookup after the first plot.
+    """
+    _plotterNames = {
+        'plot', 'loglog',
+        'semilogx', 'semilogy', 'scatter', 'step', 'bar', 'stem'}
+    
+    def __init__(self, ax, p, kStart=0):
+        """C{SpecialAx(ax, p, kFirst=0)}"""
+        self.helper = PlotHelper(ax, p)
+        self.kNext = kStart
+    
+    def __getattr__(self, name):
+        """
+        Returns a plotting method of my I{_ax} object, wrapped in a
+        wrapper function, or the attribute of I{_ax} directly for
+        anything else.
+
+        The wrapper looks up vector names from my vector container
+        I{V} (if it's not a C{None} object), or from the first arg if
+        that is a vector container, applies per-plot keywords if not
+        specified in the call, and does x-axis scaling.
+        """
+        def wrapper(*args, **kw):
+            V = self.helper.V
+            args, null = self.helper.parseArgs(args)
+            doMods = True
+            if V is None:
+                for arg in args:
+                    if isinstance(arg, str):
+                        doMods = False
+                        break
+            if False and doMods:
+                kwModified = self.helper.opts.kwModified(self.kNext, kw)
+                self.kNext += 1
+            else: kwModified = kw
+            return x(*args, **kwModified)
+
+        x = getattr(self.helper.ax, name)
+        return wrapper if name in self._plotterNames else x
 
 
 class Subplotter(object):
@@ -57,6 +133,7 @@ class Subplotter(object):
         self.p.fig.clear()
         for k in range(1, self.Nc*self.Nr+1):
             ax = self.p.fig.add_subplot(self.Nr, self.Nc, k)
+            ax = SpecialAx(ax, self.p)
             self.axes.append(ax)
             if k == self.N: break
         for ax in self.axes:
@@ -153,8 +230,9 @@ class Subplotter(object):
 
     def twinx(self, ax=None):
         """
-        Creates and returns a twin of the last (or supplied) axes object,
-        maintaining a list of the twinned axes in the order they were
+        Creates and returns a twin of the last (or supplied) axes object.
+        
+        Maintains a list of the twinned axes in the order they were
         created along with an index of the latest-created twin (for
         axes re-use).
         """
@@ -168,7 +246,8 @@ class Subplotter(object):
             twinList = []
             self.twins[ax] = [k, twinList]
         if k >= len(twinList):
-            twinList.append(ax.twinx())
+            axTwin = SpecialAx(ax.twinx(), self.p, k+1)
+            twinList.append(axTwin)
         twin = twinList[k]
         self.twins[ax][0] = k+1
         return twin

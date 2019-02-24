@@ -66,7 +66,7 @@ class Adjuster(object):
             # Width
             dims = [0.4*size*len(text)]
             # Height
-            dims.append(size*(1+1.4*text.count("\n")))
+            dims.append(size*(1+text.count("\n")))
         return dims
         
     def width(self, x):

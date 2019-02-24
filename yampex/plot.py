@@ -102,97 +102,6 @@ class PlotterHolder(object):
                 except: OK = False
         return OK
 
-
-class SpecialAx(object):
-    """
-    I pretend to be a C{matplotlib.Axes} object except that I
-    intercept plotting calls to do some cool stuff first:
-
-        - Rescale the independent vector.
-
-        - Replace C{container, *names} args with vectors in that
-          container.
-
-        - Plot with the next line style, marker style, and color if
-          not specified in the call.
-
-    Construct me with a subplot axes object I{ax}, a dict of options
-    I{opts} for the subplot, and a vector container object I{V}. (If
-    not using a container, then I{V} may be C{None}.)
-
-    If your call to a L{Plotter} instance (most likely in a subplot
-    context) has a container object as its first argument, I will
-    replace the arguments with actual Numpy vectors element-wise
-    accessed from that cotnainer object. The underlying Matplotlib
-    call will only see the Numpy vectors. For example,::
-
-        import numpy as np
-        V = {'x': np.linspace(0, 1, 100)}
-        V['y'] = V['x']**2
-        with Plotter(1) as sp:
-            sp(V, 'x', 'y')
-
-    will plot the square of I{x} vs I{x}. This comes in handy when you
-    have containers full of vectors and you want to plot selected ones
-    of them in different subplots.
-    
-    The container object I{V} will be C{None} if vector objects rather
-    than names were supplied to my plotting call.
-    """
-    _plotterNames = {
-        'plot', 'loglog',
-        'semilogx', 'semilogy', 'scatter', 'step', 'bar', 'stem'}
-    
-    def __init__(self, ax, opts, V, kNext):
-        """C{SpecialAx(ax, opts, V)}"""
-        self.ax = ax
-        self.opts = opts
-        self.V = V
-        self.kNext = kNext
-
-    def parseArgs(self, args, kw):
-        """
-        TODO: Take care of Matplotlib's stupid option to specify lines,
-        markers, and colors with a string argument.
-
-        Returns args as a list. TODO: with any such string argument(s)
-        removed.
-        """
-        args = list(args)
-        # Magic goes here
-        return args
-        
-    def __getattr__(self, name):
-        """
-        Returns a plotting method wrapped in a wrapper function that first
-        looks up vector names from my vector container I{V} (if it's
-        not a C{None} object) and does x-axis scaling.
-        """
-        def wrapper(*args, **kw):
-            args = self.parseArgs(args, kw)
-            if self.V is not None:
-                for k, arg in enumerate(args[:2]):
-                    if isinstance(arg, str) and arg in self.V:
-                        args[k] = self.V[arg]
-            if xscale: args[0] = args[0] * xscale
-            # TODO: Get parseArgs working and always do self.opts.kwModified
-            doMods = True
-            if self.V is None:
-                for arg in args:
-                    if isinstance(arg, str):
-                        doMods = False
-                        break
-            if doMods:
-                kwModified = self.opts.kwModified(self.kNext, kw)
-            else: kwModified = kw
-            return x(*args, **kwModified)
-
-        x = getattr(self.ax, name)
-        if name not in self._plotterNames:
-            return x
-        xscale = self.opts.get('xscale', None)
-        return wrapper
-
     
 class Plotter(OptsBase):
     """
@@ -249,43 +158,6 @@ class Plotter(OptsBase):
         (60.0,          "Minutes"),
         (3600.0,        "Hours"),
     ]
-
-    _colors = ['b', 'g', 'r', '#40C0C0', '#C0C040', '#C040C0', '#8080FF']
-    _opts = {
-        'colors':               [],
-        'settings':             {},
-        'plotKeywords':         {},
-        'marker':               ('', None),
-        'markers':              [],
-        'linestyles':           [],
-        'grid':                 False,
-        'firstVectorTop':       False,
-        'loglog':               False,
-        'semilogx':             False,
-        'semilogy':             False,
-        'bar':                  False,
-        'stem':                 False,
-        'step':                 False,
-        'error':                False,
-        'legend':               [],
-        'annotations':          [],
-        'textBoxes':            {},
-        'xscale':               None,
-        'yscale':               None,
-        'axisExact':            {},
-        'ticks':                {},
-        'useLabels':            False,
-        'axvlines':             [],
-        'bump':                 False,
-        'timex':                False,
-        'xlabel':               "",
-        'ylabel':               "",
-        'title':                "",
-        'zeroBottom':           False,
-        'zeroLine':             False,
-        'fontsizes':            {},
-    }
-    _settings = {'title', 'xlabel', 'ylabel'}
     # Show warnings?
     verbose = False
 
@@ -356,7 +228,7 @@ class Plotter(OptsBase):
         self.kw = kw
         self._figTitle = None
         self._isSubplot = False
-        self._xlabels = {}
+        self.xlabels = {}
         self._universal_xlabel = False
         if self.verbose:
             Annotator.setVerbose(True)
@@ -388,7 +260,7 @@ class Plotter(OptsBase):
             # the extra space above
             titleHeight *= 1 + max([0, (fHeight-400)/500])
         else: titleHeight = 0
-        kw = self.adj(self._xlabels, self._universal_xlabel, titleHeight)
+        kw = self.adj(self.xlabels, self._universal_xlabel, titleHeight)
         try:
             self.fig.subplots_adjust(**kw)
         except ValueError as e:
@@ -429,7 +301,7 @@ class Plotter(OptsBase):
         
     def __enter__(self):
         """
-        Upon context entry, sets up the next (first) subplot with cleared
+        Upon an outer context entry, sets up the first subplot with cleared
         axes, preserves a copy of my global (all subplots) options,
         and returns a reference to myself.
         """
@@ -567,33 +439,6 @@ class Plotter(OptsBase):
                     kw.pop(bogus, None)
                 return getattr(ax, name)
         return ax.plot 
-    
-    def parseArgs(self, args):
-        def arrayify(x):
-            if isinstance(x, np.ndarray):
-                return x
-            return np.array(x)
-        
-        vectors = []
-        if not isinstance(args[0], (list, tuple, np.ndarray)):
-            V = args[0]
-            names = args[1:]
-            for name in names:
-                vectors.append(arrayify(V[name]))
-            return vectors, names, V
-        if self.V is not None:
-            names = []
-            for arg in args:
-                if isinstance(arg, str) and arg in self.V:
-                    names.append(arg)
-                    vectors.append(arrayify(self.V[arg]))
-                else:
-                    names.append(None)
-                    vectors.append(arrayify(arg))
-            if None in names:
-                names = None
-            return vectors, names, self.V
-        return [arrayify(x) for x in args], None, None
 
     def addLegend(self, thisVector, thisLegend):
         # Put an annotation at the right-most point where the
@@ -720,24 +565,6 @@ class Plotter(OptsBase):
                     'loc': "best",
                     'fontsize': self.fontsizes.get('legend', "small")})
 
-        def doSettings():
-            def bbAdd(textObj):
-                dims = self.adj.textDims(textObj)
-                self.dims.setdefault(k, {})[name] = dims
-
-            k = self.sp.kLast
-            for name in self._settings:
-                value = self.opts[name]
-                if not value: continue
-                fontsize = self.opts['fontsizes'].get(name, None)
-                kw = {'size':fontsize} if fontsize else {}
-                bbAdd(self.sp.set_(name, value, **kw))
-                if name == 'xlabel':
-                    self._xlabels[k] = value
-                    continue
-            for name in self.settings:
-                bbAdd(self.sp.set_(name, self.settings[name]))
-        
         def doAnnotations(yscale):
             self.plt.draw()
             annotator = self.annotators[axFirst] = Annotator(
@@ -758,7 +585,7 @@ class Plotter(OptsBase):
                     text = sub("{:.2f}", text)
                 annotator(kAxis, x, y, text)
                 annotator.update()
-                
+
         ax = axFirst = self.sp[kw.pop('k', None)]
         # Apply plot keywords set via the set_plotKeyword call and
         # then, with higher priority, those set via the constructor,
@@ -775,17 +602,17 @@ class Plotter(OptsBase):
             kw['scaley'] = not self.firstVectorTop
         if not args:
             axList = [ax]
-            doSettings()
+            ax.helper.doSettings()
         else:
             lineInfo = [[], []]
             yscale = self.yscale
-            vectors, names, V = self.parseArgs(args)
+            vectors, names = ax.helper.parseArgs(args)
             if len(vectors) == 1:
                 # Just one vector supplied, create x-axis range vector
                 # for it
                 vectors.insert(0, np.arange(len(vectors[0])))
             firstVector = self.scaleTime(vectors)
-            doSettings()
+            ax.helper.doSettings()
             if yscale is True:
                 if len(vectors) > 2:
                     scaler = Scaler(vectors[1])
@@ -810,9 +637,6 @@ class Plotter(OptsBase):
                 tbm = TextBoxMaker(axFirst, self.sp.Nc, self.sp.Nr)
                 for quadrant in self.textBoxes:
                     tbm(quadrant, self.textBoxes[quadrant])
-            axList = [
-                SpecialAx(ax, self.opts, V, len(axList)+k)
-                for k, ax in enumerate(axList)]
             self.post_op()
         if len(axList) == 1:
             return axList[0]

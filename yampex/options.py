@@ -310,9 +310,9 @@ class OptsBase(object):
         """
         self.opts['markers'].append((x, size))
 
-    def add_line(self, x=None, width=None):
+    def add_line(self, *args, **kw):
         """
-        Appends the supplied line style character to the list of line
+        Appends the supplied line style string(s) to my list of line
         styles being used.
 
         The first and possibly only line style in the list applies to
@@ -324,16 +324,32 @@ class OptsBase(object):
         second vector plot line. Otherwise, the first (only) line
         style in the list is used for the second plot line as well.
 
-        You can specify a I{width} for the line as well.
-        
         If no line style character or C{None} is supplied, clears the
         list of line styles.
+        
+        @keyword width: A I{width} for the line(s). If you want
+            separate line widths for different lines, call this
+            repeatedly with each seperate line style and width. (You
+            can make the width a second argument of a 2-arg call,
+            after a single line style string.)
+        
         """
-        if x is None:
+        if not args or args[0] is None:
             self.opts['linestyles'] = []
             return
-        self.opts['linestyles'].append((x, width))
+        if len(args) == 2 and not isinstance(args[1], str):
+            width = args[1]
+            args = [args[0]]
+        else: width = kw.get('width', None)
+        for x in args:
+            self.opts['linestyles'].append((x, width))
 
+    def add_lines(self, *args, **kw):
+        """
+        Alias for L{add_line}.
+        """
+        return self.add_line(*args, **kw)
+            
     def add_color(self, x=None):
         """
         Appends the supplied line style character to the list of colors
@@ -528,7 +544,7 @@ class OptsBase(object):
             kVector = kw.get('kVector', 0)
         y = kw.get('y', False)
         self.opts['annotations'].append((k, text, kVector, y))
-
+    
     def clear_annotations(self):
         """
         Clears the list of annotations.
