@@ -297,7 +297,6 @@ class Plotter(OptsBase):
         axes, preserves a copy of my global (all subplots) options,
         and returns a reference to myself.
         """
-        print "\nENTER"
         self.sp.setup()
         self._isSubplot = True
         self.opts.newLocal()
@@ -313,7 +312,6 @@ class Plotter(OptsBase):
         self.doPlots()
         self._isSubplot = False
         self.opts.goGlobal()
-        print "\nEXIT"
 
     def doPlots(self):
         """
@@ -324,7 +322,6 @@ class Plotter(OptsBase):
         I{opts} dict to a copy of the global (all subplots) options.
         """
         ax = self.sp.ax
-        print "\nDP", ax
         if ax:
             # Lots of stuff happens in this next call
             ax.helper.doPlots()

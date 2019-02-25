@@ -325,10 +325,10 @@ class PlotHelper(object):
             if isinstance(legend, bool):
                 if legend and pair.name:
                     legend = pair.name
-                else: return
+                else: continue
             elif k < len(legend):
                 legend = legend[k]
-            else: return
+            else: continue
             self.lineInfo[1].append(legend)
             if self.p.opts.useLabels: self.addLegend(k, legend)
     

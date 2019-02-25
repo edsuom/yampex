@@ -101,6 +101,7 @@ class SpecialAx(object):
         specified in the call, and does x-axis scaling.
         """
         def wrapper(*args, **kw):
+            kw['plotter'] = name
             self.helper.addCall(args, kw)
             return self
         x = getattr(self.helper.ax, name)

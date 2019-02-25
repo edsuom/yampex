@@ -36,6 +36,7 @@ editor, as a handy reference for all the plotting options you can set.
 """
 
 from copy import copy
+from contextlib import contextmanager
 
 from yampex.util import sub
 
@@ -101,13 +102,11 @@ class Opts(object):
         return key in self.lo
     
     def __setitem__(self, key, value):
-        print "SET", id(self.lo), key, value
         if self.lo is None:
             self.go[key] = value
         else: self.lo[key] = value
 
     def __getitem__(self, key):
-        print "GET", id(self.lo), key
         if self.lo and key in self.lo:
             return self.lo[key]
         value = self.go[key]
@@ -137,6 +136,12 @@ class Opts(object):
             self.loList.append(self.lo)
         self.lo = self.loList[kSubplot]
 
+    def usePrevLocal(self):
+        if self.lo not in self.loList:
+            self.loList.append(self.lo)
+        k = -2 if len(self.loList) > 1 else -1
+        self.lo = self.loList[k]
+        
     def useLastLocal(self):
         if not self.loList:
             raise ValueError("No local options saved")
@@ -239,6 +244,16 @@ class OptsBase(object):
         """
         self.opts['settings'][name] = value
 
+    @contextmanager
+    def prevOpts(self):
+        """
+        Lets you use my previous local options (or the current ones, if
+        there are no previous ones) inside a context call.
+        """
+        self.opts.usePrevLocal()
+        yield
+        self.opts.useLastLocal()
+        
     def add_annotation(self, k, proto, *args, **kw):
         """
         Adds the text supplied after index I{k} at an annotation of the
