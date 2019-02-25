@@ -168,12 +168,14 @@ class Adjuster(object):
             ax = self.sp.axes[k]
             ax.set_xlabel(xlabels[k])
         top_pixels = self.hSpace(top=True)
-        if top_pixels: titleHeight *= 0.65
+        if top_pixels: titleHeight *= 0.6
         top_pixels += titleHeight
         kw['top'] = 1.0 - self.scaledHeight(top_pixels, margin=15, limit=0.15)
         kw['hspace'] = self.scaledHeight(
             self.hSpace(universal_xlabel=universal_xlabel), per_sp=True)
         kw['bottom'] = self.scaledHeight(self.hSpace(bottom=True), margin=15)
-        kw['wspace'] = self.scaledWidth(self.wSpace(), per_sp=True)
-        kw['left'] = self.scaledWidth(self.wSpace(left=True))
+        kw['wspace'] = self.scaledWidth(
+            self.wSpace(), per_sp=True, scale=1.3, margin=15)
+        kw['left'] = self.scaledWidth(
+            self.wSpace(left=True), scale=1.3, margin=15)
         return kw

@@ -199,23 +199,28 @@ class PlotHelper(object):
             except: isArray = False
         return X, orig, isArray
 
-    def timeScaling(self, X):
+    def _timeScaling(self, X):
         """
         If the 'timex' option is set C{True}, sets my subplot's x-axis
         scaling to use the most appropriate time multiplier unit and
         sets that unit name as the 'xlabel'.
+
+        Called by L{addCall}, with the next subplot's local options,
+        so need to temporarily switch back to options for the current
+        subplot.
         """
-        if not self.p.opts['timex']:
-            return
-        T_max = X.max()
-        for mult, name in self.timeScales:
-            if mult < 1:
-                if T_max < 1000*mult:
+        self.p.opts.usePrevLocal()
+        if self.p.opts['timex']:
+            T_max = X.max()
+            for mult, name in self.timeScales:
+                if mult < 1:
+                    if T_max < 1000*mult:
+                        break
+                elif T_max < 150*mult:
                     break
-            elif T_max < 150*mult:
-                break
-        self.p.opts['xlabel'] = name
-        self.p.opts['xscale'] = 1.0 / mult
+            self.p.opts['xlabel'] = name
+            self.p.opts['xscale'] = 1.0 / mult
+        self.p.opts.useLastLocal()
     
     def addCall(self, args, kw):
         """
@@ -265,7 +270,7 @@ class PlotHelper(object):
             X = Xs.pop(0)
             # Set time scaling based on this x-axis vector if it's the
             # first one
-            if X0 is None: self.timeScaling(X)
+            if X0 is None: self._timeScaling(X)
             X0 = X; X0_name = names.pop(0)
         # Make pairs with the x-axis vector and the remaining vector(s)
         for k, Y in enumerate(Xs):
@@ -320,7 +325,11 @@ class PlotHelper(object):
             kw = {} if pair.fmt else self.p.doKeywords(k, pair.kw)
             plotter = self.pickPlotter(pair.call, kw)
             # Finally, the actual plotting call
-            self.lineInfo[0].extend(plotter(pair.X, pair.Y, **kw))
+            X = pair.X
+            scale = self.p.opts['xscale']
+            if scale: X *= scale
+            self.lineInfo[0].extend(plotter(X, pair.Y, **kw))
+            # Add legend, if selected
             legend = self.p.opts['legend']
             if isinstance(legend, bool):
                 if legend and pair.name:

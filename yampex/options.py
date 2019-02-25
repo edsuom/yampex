@@ -119,34 +119,36 @@ class Opts(object):
 
     def newLocal(self):
         """
-        Sets a new local options context, appending my previous one (if
-        any) to my I{loList}.
+        Sets a new local options context, appending it to my I{loList}.
 
         All option-setting calls to your L{OptsBase} subclass will now
         go to a new set of local options, and all option inquiries
         will start with the local options and then go to globals,
         ignoring all previously set local options.
         """
-        if self.lo is not None:
-            self.loList.append(self.lo)
         self.lo = {}
+        self.loList.append(self.lo)
 
     def useLocal(self, kSubplot):
-        if self.lo not in self.loList:
-            self.loList.append(self.lo)
         self.lo = self.loList[kSubplot]
 
     def usePrevLocal(self):
-        if self.lo not in self.loList:
-            self.loList.append(self.lo)
         k = -2 if len(self.loList) > 1 else -1
         self.lo = self.loList[k]
         
     def useLastLocal(self):
-        if not self.loList:
-            raise ValueError("No local options saved")
         self.lo = self.loList[-1]
-    
+
+    @contextmanager
+    def prevLocal(self):
+        """
+        Lets you use my previous local options (or the current ones, if
+        there are no previous ones) inside a context call.
+        """
+        self.usePrevLocal()
+        yield
+        self.useLastLocal()
+        
     def goGlobal(self):
         """
         Sets my options context to global, where it began before the first
