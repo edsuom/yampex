@@ -320,7 +320,7 @@ class PlotHelper(object):
             kw = {} if pair.fmt else self.p.doKeywords(k, pair.kw)
             plotter = self.pickPlotter(pair.call, kw)
             # Finally, the actual plotting call
-            self.lineInfo[0].append(plotter(pair.X, pair.Y, **kw))
+            self.lineInfo[0].extend(plotter(pair.X, pair.Y, **kw))
             legend = self.p.opts['legend']
             if isinstance(legend, bool):
                 if legend and pair.name:
@@ -330,7 +330,7 @@ class PlotHelper(object):
                 legend = legend[k]
             else: continue
             self.lineInfo[1].append(legend)
-            if self.p.opts.useLabels: self.addLegend(k, legend)
+            if self.p.opts['useLabels']: self.addLegend(k, legend)
     
     def doAnnotations(self):
         """
