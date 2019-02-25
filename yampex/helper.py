@@ -325,10 +325,9 @@ class PlotHelper(object):
             kw = {} if pair.fmt else self.p.doKeywords(k, pair.kw)
             plotter = self.pickPlotter(pair.call, kw)
             # Finally, the actual plotting call
-            X = pair.X
             scale = self.p.opts['xscale']
-            if scale: X *= scale
-            self.lineInfo[0].extend(plotter(X, pair.Y, **kw))
+            if not scale: scale = 1
+            self.lineInfo[0].extend(plotter(scale*pair.X, pair.Y, **kw))
             # Add legend, if selected
             legend = self.p.opts['legend']
             if isinstance(legend, bool):

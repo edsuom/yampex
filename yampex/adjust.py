@@ -44,12 +44,41 @@ class Adjuster(object):
     Matplotlib's C{subplots_adjust} command doesn't account for text
     and ticks.
     """
+    charWidths = (
+        (37,  u"lij|' "),
+        (50,  u"![]fI.,:;/\\t"),
+        (60,  u"`-(){}r\""),
+        (85,  u"*^zcsJkvxy"),
+        (95,  u"aebdhnopqug#$L+<>=?_~FZT0123456789"),
+        (112, u"BSPEAKVXY&UwNRCHD"),
+        (135, u"QGOMm%W@\u22121"))
+    
     def __init__(self, p):
+        """
+        C{Adjuster(p)}
+        """
         self.p = p
         self.sp = p.sp
         self.DPI = p.DPI
         self.dims = p.dims
 
+    def textWidth(self, text):
+        """
+        Returns an estimated width of the supplied I{text} proportional to
+        full height. For Arial font.
+        
+        Adapted from U{https://stackoverflow.com/a/16008023}.
+        """
+        width = 0 # in millinches
+        for s in text:
+            for w, chars in self.charWidths:
+                if s in chars:
+                    width += w
+                    break
+            else: width += 50
+        # Convert to full-height proportion
+        return 0.0065 * width
+        
     def textDims(self, textObj):
         """
         Returns the dimensions of the supplied text object in pixels.
@@ -64,9 +93,9 @@ class Adjuster(object):
             size = self.DPI * textObj.get_size() / 72
             text = textObj.get_text()
             # Width
-            dims = [0.4*size*len(text)]
+            dims = [size*self.textWidth(text)]
             # Height
-            dims.append(size*(1+text.count("\n")))
+            dims.append(size*(0.8+text.count("\n")))
         return dims
         
     def width(self, x):
@@ -137,16 +166,17 @@ class Adjuster(object):
                 maxHeight = thisHeight
         return maxHeight
 
-    def scaledWidth(self, x, per_sp=False, scale=1.0, margin=30):
+    def scaledWidth(self, x, per_sp=False, scale=1.0, margin=0, pixmin=0):
         pw = self.fWidth
         if per_sp: pw /= self.sp.Nc
-        return scale*(x+margin) / pw
+        pixels = max([pixmin, x+margin])
+        return scale*pixels / pw
 
-    def scaledHeight(self, x, per_sp=False, scale=1.0, margin=30, limit=0.3):
+    def scaledHeight(self, x, per_sp=False, scale=1.0, margin=0, pmax=0.4):
         ph = self.fHeight
         if per_sp: ph /= self.sp.Nr
         h = scale*(x+margin) / ph
-        if limit and h > limit: h = limit
+        if pmax and h > pmax: h = pmax
         return h
 
     def updateFigSize(self, fWidth, fHeight):
@@ -168,14 +198,21 @@ class Adjuster(object):
             ax = self.sp.axes[k]
             ax.set_xlabel(xlabels[k])
         top_pixels = self.hSpace(top=True)
-        if top_pixels: titleHeight *= 0.6
+        if top_pixels: titleHeight *= 0.55
         top_pixels += titleHeight
-        kw['top'] = 1.0 - self.scaledHeight(top_pixels, margin=15, limit=0.15)
+        kw['top'] = 1.0 - self.scaledHeight(
+            top_pixels,
+            margin=20, pmax=0.14)
         kw['hspace'] = self.scaledHeight(
-            self.hSpace(universal_xlabel=universal_xlabel), per_sp=True)
-        kw['bottom'] = self.scaledHeight(self.hSpace(bottom=True), margin=15)
+            self.hSpace(universal_xlabel=universal_xlabel), per_sp=True,
+            margin=30, pmax=0.3)
+        kw['bottom'] = self.scaledHeight(
+            self.hSpace(bottom=True),
+            margin=15, pmax=0.3)
         kw['wspace'] = self.scaledWidth(
-            self.wSpace(), per_sp=True, scale=1.3, margin=15)
+            self.wSpace(), per_sp=True,
+            scale=1.3, margin=15, pixmin=55)
         kw['left'] = self.scaledWidth(
-            self.wSpace(left=True), scale=1.3, margin=15)
+            self.wSpace(left=True),
+            scale=1.3, margin=15, pixmin=45)
         return kw

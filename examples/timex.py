@@ -25,26 +25,21 @@
 import numpy as np
 from yampex import Plotter
 
+EQs = ("sin(10*t)*cos(10000*t)", "cos(10*t)*cos(10000*t)")
 
-funcNames = ('sin', 'cos')
-X = np.linspace(0, 4*np.pi, 200)
-pt = Plotter(1, width=10, height=7)
-pt.set_title("Sin and Cosine")
-pt.set_xlabel("X"); pt.set_grid()
-pt.add_annotation(199, "Last")
-pt.add_line('-', ':')
-
-with pt as p:
-    ax = None
-    for kVector, funcName in enumerate(funcNames):
-        Y = getattr(np, funcName)(X)
-        k = 0 if funcName == 'sin' else 75
-        with p.prevOpts():
-            for text in ("Pos ZC", "Max", "Neg ZC", "Min"):
-                text = funcName + ":" + text
-                p.add_annotation(k, text, kVector=kVector)
-                k += 25
-        if ax is None:
-            ax = p(X, Y)
-        else: ax.plot(X, Y)
+N = 6
+t = np.linspace(0, 2E-6, 1000)
+pt = Plotter(N, width=6, height=5)
+pt.set_title("With {:d} time scales: {}, {}", N, *EQs)
+pt.set_timex()
+pt.set_grid()
+for eq in EQs:
+    pt.add_legend(eq)
+with pt as sp:
+    for mult in range(N):
+        X = t*10**mult
+        Y1 = np.sin(10*X)*np.sin(10000*X)
+        Y2 = np.cos(10*X)*np.cos(10000*X)
+        sp.set_title("0 - {:.5g} seconds", X[-1])
+        sp(X, Y1, Y2)
 pt.show()

@@ -159,6 +159,7 @@ class Opts(object):
         options.
         """
         self.lo = None
+        del self.loList[:]
         
     def getColor(self, k):
         """

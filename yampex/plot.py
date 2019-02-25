@@ -237,6 +237,9 @@ class Plotter(OptsBase):
         # No new references were created, nothing retained
 
     def subplots_adjust(self, *args):
+        """
+        Adjusts spacings.
+        """
         dimThing = args[0] if args else self.fig.get_window_extent()
         fWidth, fHeight = [getattr(dimThing, x) for x in ('width', 'height')]
         self.adj.updateFigSize(fWidth, fHeight)
