@@ -35,10 +35,15 @@ from yampex.util import sub
 class SpecialAx(object):
     """
     I pretend to be the C{matplotlib.Axes} that I'm constructed with
-    except that I have some extra methods and intercept plotting calls
-    to do some cool stuff first.
+    except that I intercept plotting calls and have a few extra
+    methods.
+    
+    The plotting calls are intercepted with a wrapper function and
+    stored up in my L{PlotHelper} where they can be processed all at
+    once. The processing does the following:
 
-        - Rescale the independent vector.
+        - Rescales the independent vector(s) if they are for time and
+          there's a time unit (e.g., nanoseconds) scaling them.
 
         - Replace C{container, *names} args with vectors in that
           container.
@@ -46,8 +51,11 @@ class SpecialAx(object):
         - Plot with the next line style, marker style, and color if
           not specified in the call.
 
-    Construct me with a subplot axes object I{ax}, and a dict of
-    options I{opts} for the subplot.
+        - Applies legends and annotations.
+
+    Construct me with a subplot axes object I{ax}, an instance of
+    L{Plotter} I{p}, and my integer subplot number (starts with
+    1). Or, construct me with an instance of L{PlotHelper}.
 
     If your call to a L{Plotter} instance (most likely in a subplot
     context) has a container object as its first argument, I will
@@ -65,17 +73,21 @@ class SpecialAx(object):
     have containers full of vectors and you want to plot selected ones
     of them in different subplots.
 
-    @keyword kStart: Set to a non-zero integer to start indexing plot
-        line/marker/color lookup after the first plot.
+    @ivar helper: An instance of L{PlotHelper} dedicated to helping
+        with my subplot. I either create a new instance or re-use one
+        supplied to my constructor.
     """
     _plotterNames = {
         'plot', 'loglog',
         'semilogx', 'semilogy', 'scatter', 'step', 'bar', 'stem'}
+
+    __slots__ = ['helper']
     
-    def __init__(self, ax, p, kStart=0):
-        """C{SpecialAx(ax, p, kFirst=0)}"""
-        self.helper = PlotHelper(ax, p)
-        self.kNext = kStart
+    def __init__(self, *args):
+        """C{SpecialAx(ax, p, kSubplot)} or C{SpecialAx(helper)}"""
+        if len(args) == 1:
+            self.helper = args[0]
+        else: self.helper = PlotHelper(*args)
     
     def __getattr__(self, name):
         """
@@ -89,15 +101,8 @@ class SpecialAx(object):
         specified in the call, and does x-axis scaling.
         """
         def wrapper(*args, **kw):
-            if kw.pop('_no_parse', False):
-                k = 0
-            else:
-                k = len(self.helper)
-                self.helper.parseArgs(args)
-            if not self.helper.stringArg:
-                kw = self.helper.opts.kwModified(self.kNext, kw)
-                self.kNext += 1
-            return x(*self.helper.vectors[k:], **kw)
+            self.helper.addCall(args, kw)
+            return self
 
         x = getattr(self.helper.ax, name)
         return wrapper if name in self._plotterNames else x
@@ -129,7 +134,7 @@ class Subplotter(object):
         self.p.fig.clear()
         for k in range(1, self.Nc*self.Nr+1):
             ax = self.p.fig.add_subplot(self.Nr, self.Nc, k)
-            ax = SpecialAx(ax, self.p)
+            ax = SpecialAx(ax, self.p, k)
             self.axes.append(ax)
             if k == self.N: break
         for ax in self.axes:
@@ -242,7 +247,7 @@ class Subplotter(object):
             twinList = []
             self.twins[ax] = [k, twinList]
         if k >= len(twinList):
-            axTwin = SpecialAx(ax.twinx(), self.p, k+1)
+            axTwin = SpecialAx(ax.helper)
             twinList.append(axTwin)
         twin = twinList[k]
         self.twins[ax][0] = k+1

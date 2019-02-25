@@ -149,15 +149,8 @@ class Plotter(OptsBase):
     
     fc = None
     DPI = 100 # Don't change this, for reference only
+    _settings = {'title', 'xlabel', 'ylabel'}
     figSize = None
-    timeScales = [
-        (1E-9,          "Nanoseconds"),
-        (1E-6,          "Microseconds"),
-        (1E-3,          "Milliseconds"),
-        (1.0,           "Seconds"),
-        (60.0,          "Minutes"),
-        (3600.0,        "Hours"),
-    ]
     # Show warnings?
     verbose = False
 
@@ -192,13 +185,13 @@ class Plotter(OptsBase):
         args = list(args)
         if args:
             # Nc, Nr specified
-            Nc = N
-            Nr = args.pop(0)
-            N = Nc*Nr
+            self.Nc = N
+            self.Nr = args.pop(0)
+            N = self.Nc*self.Nr
         else:
             # N specified
-            Nc = self.N_cols(N)
-            Nr = int(np.ceil(float(N)/Nc))
+            self.Nc = 3 if N > 6 else 2 if N > 3 else 1
+            self.Nr = int(np.ceil(float(N)/self.Nc))
         self.V = args[0] if args else None
         self.opts = Opts()
         self.filePath = kw.pop('filePath', None)
@@ -222,7 +215,7 @@ class Plotter(OptsBase):
             self.fig.canvas.mpl_connect(
                 'resize_event', self.subplots_adjust)
         self.dims = {}
-        self.sp = Subplotter(self, N, Nc, Nr)
+        self.sp = Subplotter(self, N, self.Nc, self.Nr)
         self.adj = Adjuster(self)
         self.annotators = {}
         self.kw = kw
@@ -283,7 +276,7 @@ class Plotter(OptsBase):
         Figure height (inches).
         """
         return self.fig.get_figheight()
-        
+    
     def __nonzero__(self):
         """
         I evaluate as C{True} if I have any subplots defined yet.
@@ -317,32 +310,26 @@ class Plotter(OptsBase):
         enabled for this subplot's axis, and restores global (all
         subplots) options.
         """
+        # Do the last (and perhaps only) call's plotting
+        self.doPlots()
         self._isSubplot = False
         self.opts = self.global_opts
         del self.global_opts
 
-    def N_cols(self, N):
+    def doPlots(self):
         """
-        Returns the number of columns, given the total number of
-        subplots. There will be either one, two, or three columns.
-        """
-        if N > 6:
-            return 3
-        if N > 3:
-            return 2
-        return 1
-    
-    def post_op(self):
-        """
-        Call this once after each subplot: Adds minor ticks and a grid,
+        Call this once after defining everything for each subplot.
+
+        Does all the plotting. Then adds minor ticks and a grid,
         depending on the subplot-specific options. Then sets my
         I{opts} dict to a copy of the global (all subplots) options.
         """
         ax = self.sp.ax
+        # Lots of stuff happens in this call
+        ax.helper.doPlots()
         if ax is None: return
         self.sp.setTicks(self.ticks)
-        if self.grid:
-            ax.grid(True, which='major')
+        if self.grid: ax.grid(True, which='major')
         self.opts = self.global_opts.deepcopy()
     
     def show(self, windowTitle=None, fh=None, filePath=None, noShow=False):
@@ -384,20 +371,16 @@ class Plotter(OptsBase):
                 fh = open(filePath, 'wb+')
         if fh is None:
             self.plt.draw()
-            if windowTitle:
-                self.fig.canvas.set_window_title(windowTitle)
-            if self.fc is not None:
-                self.fc.draw()
-            elif not noShow:
-                self.plt.show()
+            if windowTitle: self.fig.canvas.set_window_title(windowTitle)
+            if self.fc is not None: self.fc.draw()
+            elif not noShow: self.plt.show()
         else:
             self.fig.savefig(fh, format='png')
             self.plt.close()
             if filePath is not None:
                 # Only close a file handle I opened myself
                 fh.close()
-        if not noShow:
-            self.clear()
+        if not noShow: self.clear()
 
     def clear(self):
         self.fig.clear()
@@ -411,48 +394,58 @@ class Plotter(OptsBase):
     def yBounds(self, *args, **kw):
         self.sp.yBounds(*args, **kw)
 
-    def scaleTime(self, X):
-        if not self.timex:
-            return
-        T_max = X.max()
-        for mult, name in self.timeScales:
-            if mult < 1:
-                if T_max < 1000*mult:
-                    break
-            elif T_max < 150*mult:
-                break
-        self.opts['xlabel'] = name
-        self.opts['xscale'] = 1.0 / mult
+    def useLegend(self):
+        if not self.legend: return
+        if self.useLabels: return
+        return not self.annotations
 
-    def pickPlotter(self, ax, plotter, kw):
-        bogusMap = {
-            'bar': ('marker', 'linestyle', 'scaley'),
-            'step': ('marker', 'linestyle', 'scaley'),
-        }
-        kw['_no_parse'] = True
-        for name in (
-                'loglog', 'semilogx', 'semilogy',
-                'bar', 'step', 'stem', 'error'):
-            if plotter == name or getattr(self, name, False):
-                for bogus in bogusMap.get(name, []):
-                    kw.pop(bogus, None)
-                return getattr(ax, name)
-        return ax.plot 
+    def fontsize(self, name, default=None):
+        return self.opt['fontsizes'].get(name, default)
 
-    def addLegend(self, thisVector, thisLegend):
-        # Put an annotation at the right-most point where the
-        # value is at least 99.9% of the vector maximum
-        if max(thisVector) > 0:
-            m999 = np.greater(thisVector, 0.999*max(thisVector))
-        else:
-            m999 = np.less(thisVector, 0.999*min(thisVector))
-        k = max(np.nonzero(m999)[0])
-        self.annotations.append((kVector, k, thisLegend, False))
+    def doKeywords(self, kVector, kw):
+        """
+        Applies line style/marker/color settings as keywords for this
+        vector, except for options already set with keywords.
+        
+        Then applies plot keywords set via the set_plotKeyword call
+        and then, with higher priority, those set via the constructor,
+        if they don't conflict with explicitly set keywords to this
+        call which takes highest priority.
 
+        Returns the new kw dict.
+        """
+        kw = self.opts.kwModified(kVector, kw)
+        for thisDict in (self.kw, self.plotKeywords):
+            for name in thisDict:
+                if name not in kw:
+                    kw[name] = thisDict[name]
+        return kw
+    
+    def doSettings(self):
+        """
+        Does C{set_XXX} calls on ...
+        """
+        def bbAdd(textObj):
+            dims = self.adj.textDims(textObj)
+            self.dims.setdefault(k, {})[name] = dims
+
+        for name in self._settings:
+            value = self.opts[name]
+            if not value: continue
+            fontsize = self.opts['fontsizes'].get(name, None)
+            kw = {'size':fontsize} if fontsize else {}
+            bbAdd(self.sp.set_(name, value, **kw))
+            if name == 'xlabel':
+                self.xlabels[k] = value
+                continue
+        settings = self.opts['settings']
+        for name in settings:
+            bbAdd(self.sp.set_(name, settings[name]))
+    
     def __call__(self, *args, **kw):
         """
-        In the next subplot, plots the second supplied vector (and any
-        further ones) versus the first.
+        In the next (perhaps first) subplot, plots the second supplied
+        vector (and any further ones) versus the first.
 
         If you supply a container object that houses vectors and
         provides access to them as items as the first argument, you
@@ -502,157 +495,24 @@ class Plotter(OptsBase):
         object, for this subplot only. Use the new L{OptsBase.set}
         command instead.)
 
-        Returns a list of the axes created for the plot, or an C{Axes}
-        object if just one was created.
+        Returns a L{SpecialAx} wrapper object for the C{Axes} object
+        created for the plot.
         
-        If you want to do everything with the next subplot on your own
-        and only want a reference to its C{Axes} object, just call
-        this with no args. In this case, however, you will need to
-        call L{post_op} yourself after you're done doing what this
-        call would ordinarily do.
-        """
-        def plotVector(k, vector, ax, kw):
-            # Here is where the plotting actually happens
-            kw = self.opts.kwModified(k, kw)
-            plotter = self.pickPlotter(ax, kw_plotter, kw)
-            lineInfo[0].extend(plotter(X, vector, **kw))
-            if yscale:
-                ax.tick_params('y', colors=color)
-                if k == 0:
-                    ax.set_ylim(bottom=0)
-                else: ax.set_ylim(0, axFirst.get_ylim()[1]*yscale)
-            if isinstance(self.legend, bool):
-                if self.legend and names:
-                    legend = names[k+1]
-                else: return
-            elif k < len(self.legend):
-                legend = self.legend[k]
-            else: return
-            lineInfo[1].append(legend)
-            if yscale: ax.set_ylabel(legend, color=color)
-            if self.useLabels: self.addLegend(vector, legend)
-        
-        def adjustPlots(yscale, axvlines):
-            if self.axisExact.get('x', False):
-                ax.set_xlim(X.min(), X.max())
-            if self.axisExact.get('y', False):
-                V = np.array(vectors[1:])
-                ax.set_ylim(V.min(), V.max())
-            elif self.bump and yscale is None:
-                self.yBounds(ax, bump=True, zeroBottom=self.zeroBottom)
-            elif self.firstVectorTop and yMax is not None:
-                self.yBounds(ax, Ymax=yMax, zeroBottom=self.zeroBottom)
-            for axvline in axvlines:
-                x = None
-                if isinstance(axvline, int):
-                    if abs(axvline) < len(X):
-                        x = X[axvline]
-                else: x = axvline
-                if x is None: continue
-                axFirst.axvline(x=x, linestyle='--', color="#404040")
-            # Zero line (which may be non-zero)
-            yz = self.zeroLine
-            if yz is True: yz = 0
-            if yz is not None and yz is not False:
-                y0, y1 = axFirst.get_ylim()
-                if y0 < yz and y1 > yz:
-                    axFirst.axhline(
-                        y=yz, linestyle='--',
-                        linewidth=1, color="black", zorder=10)
-            if self.legend and (not self.annotations or not self.useLabels):
-                axFirst.legend(*lineInfo, **{
-                    'loc': "best",
-                    'fontsize': self.fontsizes.get('legend', "small")})
+        If you want to do everything with the next subplot on your
+        own, bit by bit, and only want a reference to its C{Axes}
+        object (still with special treatment via L{SpecialAx}) just
+        call this with no args.
 
-        def doAnnotations(axList, yscale):
-            self.plt.draw()
-            annotator = self.annotators[axList[0]] = Annotator(
-                axList, [X]+list(vectors[1:]),
-                fontsize=self.fontsizes.get('annotations', 'small'))
-            for k, text, kVector, is_yValue in self.annotations:
-                Y = vectors[kVector+1]
-                if not isinstance(k, int):
-                    if is_yValue:
-                        k = np.argmin(np.abs(Y-k))
-                    else: k = np.searchsorted(X, k)
-                x = X[k]
-                y = Y[k]
-                kAxis = 0 if yscale is None or kVector == 0 else 1
-                if isinstance(text, int):
-                    text = sub("{:d}", text)
-                elif isinstance(text, float):
-                    text = sub("{:.2f}", text)
-                annotator(kAxis, x, y, text)
-                annotator.update()
-
-        ax = axFirst = self.sp[kw.pop('k', None)]
-        # Apply plot keywords set via the set_plotKeyword call and
-        # then, with higher priority, those set via the constructor,
-        # if they don't conflict with explicitly set keywords to this
-        # call which takes highest priority
-        for thisDict in (self.kw, self.plotKeywords):
-            for name in thisDict:
-                if name not in kw:
-                    kw[name] = thisDict[name]
-        # The 'plotter' keyword is reserved for Yampex, unrecognized
-        # by Matplotlib
-        kw_plotter = kw.pop('plotter', None)
-        if 'scaley' not in kw:
-            kw['scaley'] = not self.firstVectorTop
-        if not args:
-            axList = [ax]
-            ax.helper.doSettings()
-        else:
-            lineInfo = [[], []]
-            yscale = self.yscale
-            ax.helper.parseArgs(args)
-            # TODO: Be smarter than this
-            vectors, names = ax.helper.vectors, ax.helper.names
-            X = vectors[0]
-            self.scaleTime(X)
-            ax.helper.doSettings()
-            if yscale is True:
-                if len(vectors) > 2:
-                    scaler = Scaler(vectors[1])
-                    yscales = [scaler(x) for x in vectors[2:]]
-                    yscale = 1 if 1 in yscales else min(yscales)
-                else: yscale = 1
-            N = len(X)
-            yMax = None
-            for kVector, thisVector in enumerate(vectors[1:]):
-                if len(thisVector):
-                    thisMax = thisVector.max()
-                    if yMax is None or thisMax > yMax:
-                        yMax = thisMax
-                if yscale and kVector == 1:
-                    ax = self.sp.twinx()
-                plotVector(kVector, thisVector, ax, kw)
-            adjustPlots(yscale, self.axvlines)
-            axList = self.sp.getTwins()
-            if self.annotations:
-                doAnnotations(axList, yscale)
-            if self.textBoxes:
-                tbm = TextBoxMaker(axFirst, self.sp.Nc, self.sp.Nr)
-                for quadrant in self.textBoxes:
-                    tbm(quadrant, self.textBoxes[quadrant])
-            self.post_op()
-        if len(axList) == 1:
-            return axList[0]
-        return axList
-
-    def get_annotators(self, ax=None):
+        For low-level Matplotlib operations, you can access the
+        underlying C{Axes} object via the returned L{SpecialAx}
+        object's I{ax} attribute. But none of its special features
+        will apply to what you do that way.
         """
-        Returns the annotator for the supplied axes object, or a list of
-        all annotators if no axes object is supplied.
-        """
-        if ax is None:
-            return self.annotators.values()
-        if ax not in self.annotators:
-            axax = getattr(ax, 'ax', None)
-            if axax and axax in self.annotators:
-                ax = axax
-            else:
-                print(sub("No annotator for axes object '{}'", repr(ax)))
-                import pdb; pdb.set_trace()
-        return self.annotators[ax]
-        
+        if self._isSubplot:
+            # Do the previous call's plotting
+            self.doPlots()
+        kw.setdefault('plotter', 'plot')
+        ax = self.sp[kw.pop('k', None)]
+        if args: ax.helper.addCall(args, kw)
+        return ax
+

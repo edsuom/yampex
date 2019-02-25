@@ -210,13 +210,13 @@ class Positioner(object):
     # Show warnings
     verbose = False
     
-    def __init__(self, sizer, axList, vectors):
+    def __init__(self, sizer, axList, pairs):
         self.sizer = sizer
         self.axList = axList
         self.xyLists = {}
-        self.vectors = vectors
+        self.pairs = pairs
         self.annList = []
-        self.prevData(vectors)
+        #self.prevData(pairs)
 
     @property
     def relpos(self):
@@ -243,8 +243,7 @@ class Positioner(object):
             if kAxes is None:
                 xy = ann.xy
             else:
-                xy = np.column_stack(
-                    (self.vectors[0], self.vectors[kAxes+1]))
+                xy = np.column_stack(self.pairs.getXY(kAxes))
         else: xy = xyData
         if isinstance(xy, list) and len(xy) == len(self.axList)+1:
             xy2 = []
@@ -299,7 +298,7 @@ class Positioner(object):
         y01 = shift(xy[1], dy, height)
         r = Rectangle(ann, relpos, x01, y01)
         return r
-
+    
     def setup(self, ann, dx, dy):
         """
         Sets up a new overlap analysis with the supplied annotation and
@@ -318,10 +317,10 @@ class Positioner(object):
             xyLists[1].insert(k, y)
         return np.column_stack(xyLists)
 
-    def prevData(self, XY=None):
-        if XY is None:
+    def prevData(self, pairs=None):
+        if pairs is None:
             return getattr(self, '_prevData', None)
-        self._prevData = XY
+        self._prevData = pairs.copy()
     
     def datarator(self):
         """
@@ -333,9 +332,10 @@ class Positioner(object):
             xyData = self.liveData(kAxes)
             if xyData.shape[0]:
                 yield self.dataToPixels(kAxes=kAxes, xyData=xyData)
-        xyData = self.prevData()
-        if xyData is not None:
-            yield self.dataToPixels(kAxes=kAxes, xyData=xyData)
+        # Why needed?
+        #xyData = self.prevData()
+        #if xyData is not None:
+        #    yield self.dataToPixels(kAxes=kAxes, xyData=xyData)
     
     def with_data(self):
         """
@@ -497,10 +497,10 @@ class Annotator(object):
     def setVerbose(cls, yes=True):
         Positioner.verbose = yes
     
-    def __init__(self, axList, vectors, **kw):
+    def __init__(self, axList, pairs, **kw):
         self.axList = axList
         self.sizer = Sizer()
-        self.p = Positioner(self.sizer, axList, vectors)
+        self.p = Positioner(self.sizer, axList, pairs)
         for name in kw:
             setattr(self, name, kw[name])
         self.boxprops = self._boxprops.copy()

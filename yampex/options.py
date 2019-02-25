@@ -113,7 +113,7 @@ class Opts(dict):
         obj = self[key]
         return obj[k] if k < len(obj) else obj[-1]
 
-    def kwModified(self, k, kw_orig, **moreOpts):
+    def kwModified(self, k, kw_orig):
         """
         Adds 'linestyle', 'linewidth', 'marker', and 'color' entries for
         the next plot to I{kw} if not already defined.
@@ -130,9 +130,6 @@ class Opts(dict):
             return True
 
         kw = kw_orig.copy()
-        for key in moreOpts:
-            if nd(key):
-                kw[key] = moreOpts[key]
         if self['markers']:
             marker, size = self.getLast('markers', k)
         else: marker, size = self['marker']

@@ -35,28 +35,133 @@ import numpy as np
 
 from yampex.util import sub
 
+
+class Pair(object):
+    """
+    I represent the information for one X, Y pair of vectors in a
+    plotting call.
+
+    @ivar call: The call name, 'plot', 'bar', etc.
     
+    @ivar X: The independent (x-axis) vector.
+
+    @ivar xName: The name of the I{X} vector, of C{None} if no name
+        was defined.
+    
+    @ivar Y: The dependent (y-axis) vector.
+    
+    @ivar yName: The name of the I{Y} vector, of C{None} if no name
+        was defined.
+    
+    @ivar fmt: A string-type line/markers/color formatting argument,
+        or a blank string if no such argument was supplied.
+
+    @ivar kw: Any keywords supplied for the call, shared with one or
+        more other instances of me if there was more than one
+        dependent vector in the call.
+    """
+    __slots__ = ['call', 'X', 'xName', 'Y', 'yName', 'fmt', 'kw']
+
+    def sameX(self, X):
+        """
+        Returns C{True} if the supplied vector I{X} is, or is a duplicate
+        of, my independent vector I{X}.
+        """
+        if X is self.X: return True
+        if X.shape != self.X.shape: return False
+        return np.all(np.equal(X, self.X))
+
+    def getXY(self):
+        """
+        Returns my I{X} and I{Y} vectors.
+        """
+        return self.X, self.Y
+        
+
+class Pairs(list):
+    """
+    A slightly improved C{list} for holding L{Pair} objects.
+    """
+    def copy(self):
+        np = Pairs()
+        for item in self:
+            np.append(item)
+        return np
+    
+    def getXY(self, k):
+        """
+        Returns the I{X} and I{Y} vectors of the L{Pair} at index I{k}.
+        """
+        return self[k].getXY()
+
+    def firstX(self):
+        """
+        Returns the Numpy array and name of the very first x-axis vector
+        added to me (possibly the only one). If no vectors have been
+        added yet, returns C{None}, C{None}.
+        """
+        if self:
+            firstPair = self[0]
+            return firstPair.X, firstPair.name
+        return None, None
+    
+    def minmax(self, useY=False):
+        """
+        Returns the lowest and highest values found in any of my pairs'
+        x-axis vectors, unless I{useY} is C{True}, in which their
+        y-axis vectors are looked at instead.
+        """
+        minmax = [None, None]
+        for pair in self:
+            Z = pair.Y if useY else pair.X
+            # Min
+            prev = minmax[0]
+            value = Z.min()
+            if prev is None or value < prev:
+                minmax[0] = value
+            # Max
+            prev = minmax[1]
+            value = Z.max()
+            if prev is None or value > prev:
+                minmax[1] = value
+        return minmax
+
+
 class PlotHelper(object):
     """
     I help with plotting calls for a single subplot.
-    """
-    settings = {'title', 'xlabel', 'ylabel'}
 
-    __slots__ = ['ax', 'p', 'vectors', 'names', 'stringArg']
+    @ivar ax: The first and possibly only Matplotlib C{Axes} object (a
+        real one, not a L{SpecialAx} instance) for my subplot.
     
-    def __init__(self, ax, p):
+    @ivar pairs: An instance of L{Pairs} containing L{Pair} instances,
+        one for each X, Y pair of vectors defined by plotting calls
+        made on this subplot. (A single plotting call may define more
+        than one X, Y pair.)
+    """
+    timeScales = [
+        (1E-9,          "Nanoseconds"),
+        (1E-6,          "Microseconds"),
+        (1E-3,          "Milliseconds"),
+        (1.0,           "Seconds"),
+        (60.0,          "Minutes"),
+        (3600.0,        "Hours"),
+    ]
+    plottingCalls = (
+        'loglog', 'semilogx', 'semilogy', 'bar', 'step', 'stem', 'error')
+    bogusMap = {
+        'bar': ('marker', 'linestyle', 'scaley'),
+        'step': ('marker', 'linestyle', 'scaley'),
+    }
+    __slots__ = ['ax', 'p', 'k', 'pairs', 'lineInfo']
+    
+    def __init__(self, ax, p, kSubplot):
         self.ax = ax
         self.p = p
-        self.vectors = []
-        self.names = []
-        self.stringArg = False
+        self.k = kSubplot
+        self.pairs = Pairs()
+        self.lineInfo = [[], []]
 
-    def __len__(self):
-        """
-        My length is the number of vectors (and names) I'm holding.
-        """
-        return len(self.vectors)
-        
     def __getattr__(self, name):
         """
         You can access any of my L{Plotter} object's attributes as my own
@@ -65,32 +170,54 @@ class PlotHelper(object):
         Best to refer to I{p} directly, though. This is a messy crutch.
         """
         return getattr(self.p, name)
+    
+    def arrayify(self, V, X):
+        """
+        Returns the 1-D Numpy array form of I{X}, if possible.
 
-    def _isDuplicateX(self, X):
+        If I{V} is not C{None} and I{X} is the key of an item in I{V},
+        replaces I{X} with that item. Then, if it's not one already,
+        converts I{X} to a 1-D Numpy array.
+
+        Returns a 3-tuple with (1) the 1-D Numpy array version of I{X}
+        or its original value if it couldn't be converted to one, (2)
+        its name or C{None} if it was not an item of I{V}, and (3) a
+        boolean C{True} if the result is a Numpy array.
         """
-        Returns C{True} if I have at least one vector and I{X} is, or is a
-        duplicate of, the first one.
+        isArray = True
+        if hasattr(V, '__contains__') and X in V:
+            orig = X
+            X = V[X]
+        else: orig = None
+        if isinstance(X, str):
+            isArray = False
+        elif not isinstance(X, np.ndarray):
+            try: X = np.array(X)
+            except: isArray = False
+        return X, orig, isArray
+
+    def timeScaling(self, X):
         """
-        if not self.vectors: return
-        X0 = self.vectors[0]
-        if X is X0: return True
-        if X.shape != X0.shape: return
-        return np.all(np.equal(X, X0))
+        If the 'timex' option is set C{True}, sets my subplot's x-axis
+        scaling to use the most appropriate time multiplier unit and
+        sets that unit name as the 'xlabel'.
+        """
+        if not self.p.opts['timex']:
+            return
+        T_max = X.max()
+        for mult, name in self.timeScales:
+            if mult < 1:
+                if T_max < 1000*mult:
+                    break
+            elif T_max < 150*mult:
+                break
+        self.p.opts['xlabel'] = name
+        self.p.opts['xscale'] = 1.0 / mult
     
-    def addVector(self, X, scale=None):
+    def addCall(self, args, kw):
         """
-        Appends I{X}, converted to a 1-D Numpy array if it's not one
-        already or a string, to my I{vectors} list.
-        """
-        if not isinstance(X, np.ndarray):
-            X = np.array(X)
-        if scale: X *= scale
-        self.vectors.append(X)
-    
-    def parseArgs(self, args):
-        """
-        Parses the supplied I{args} into vectors. Appends the vectors to
-        my I{vectors} list and the names to my I{names} list.
+        Parses the supplied I{args} into X, Y pairs of vectors, appending
+        a L{Pair} object for each to my I{pairs} list.
         
         Pops the first arg and uses it as a container if it is a
         container (e.g., a dict, not a Numpy array). Otherwise, refers
@@ -99,53 +226,177 @@ class PlotHelper(object):
         args are all strings referencing items that are in it, makes
         the remaining args into vectors.
 
-        Each item of my I{names} list is a string with the name of a
+        Each item of the names list is a string with the name of a
         vector at the same index of I{vectors}, or C{None} if that
         vector was supplied as-is and thus no name name was available.
         """
         args = list(args)
+        # The 'plotter' keyword is reserved for Yampex, unrecognized
+        # by Matplotlib
+        call = kw.pop('plotter')
         if not isinstance(args[0], (list, tuple, np.ndarray)):
             V = args.pop(0)
         else: V = self.p.V
+        X0, X0_name = self.pairs.firstX()
+        Xs = []
+        names = []
+        strings = {}
         for k, arg in enumerate(args):
-            if isinstance(arg, str):
-                if V is not None and arg in V:
-                    name = arg
-                    X = V[arg]
-                else:
-                    self.stringArg = True
-                    name = None
-                    self.vectors.append(arg)
-                    continue
-            else:
-                name = None
-                X = arg
-            if k == 0:
-                if self._isDuplicateX(X):
-                    continue
-                scale = self.p.opts['xscale']
-            else: scale = None
-            self.names.append(name)
-            self.addVector(X, scale)
+            X, name, isArray = self.arrayify(V, X)
+            if isArray:
+                Xs.append(X)
+                names.append(name)
+            else: strings[k] = X
+        if len(Xs) == 1:
+            kStart = 0
+            # Just one vector supplied...
+            if X0 is None:
+                # ...and no x-axis range vector yet, so create one
+                X0 = np.arange(len(Xs[0]))
+                X0_name = None
+            # ... but we have an x-axis range vector, so we'll just
+            # re-use it
+        else:
+            kStart = 1
+            # Use this call's x-axis vector
+            X = Xs.pop(0)
+            # Set time scaling based on this x-axis vector if it's the
+            # first one
+            if X0 is None: self.timeScaling(X)
+            X0 = X; X0_name = names.pop(0)
+        # Make pairs with the x-axis vector and the remaining vector(s)
+        for k, Y in enumerate(Xs):
+            pair = Pair()
+            pair.call = call
+            pair.X = X0
+            pair.Xname = X0_name
+            pair.Y = Y
+            pair.Yname = names[k]
+            key = k+kStart+1
+            if key in strings:
+                pair.fmt = strings.pop(key)
+            pair.kw = kw
+            self.pairs.append(pair)
 
-    def doSettings(self):
+    def addLegend(self, kVector, text=None):
         """
-        Does C{set_XXX} calls on ...
+        Adds an L{Annotation} for a legend, putting it at the right-most
+        point where the value is at least 99.9% of the vector maximum
         """
-        def bbAdd(textObj):
-            dims = self.adj.textDims(textObj)
-            self.dims.setdefault(k, {})[name] = dims
+        pair = self.pairs[kVector]
+        if not text: text = pair.name
+        if not text: return
+        Y = pair.Y
+        if max(Y) > 0:
+            m999 = np.greater(Y, 0.999*max(Y))
+        else: m999 = np.less(Y, 0.999*min(Y))
+        k = max(np.nonzero(m999)[0])
+        self.p.annotations.append((kVector, k, text, False))
 
-        k = self.sp.kLast
-        for name in self.settings:
-            value = self.opts[name]
-            if not value: continue
-            fontsize = self.opts['fontsizes'].get(name, None)
-            kw = {'size':fontsize} if fontsize else {}
-            bbAdd(self.sp.set_(name, value, **kw))
-            if name == 'xlabel':
-                self.xlabels[k] = value
-                continue
-        settings = self.opts['settings']
-        for name in settings:
-            bbAdd(self.sp.set_(name, settings[name]))
+    def pickPlotter(self, call, kw):
+        """
+        Returns a reference to the plotting method of my I{ax} object
+        named with I{call}, modifying the supplied I{kw} dict in-place
+        as needed to work with that call.
+        """
+        for name in self.plottingCalls:
+            if call == name:
+                func = getattr(self.ax, name, None)
+                if func:
+                    for bogus in self.bogusMap.get(name, []):
+                        kw.pop(bogus, None)
+                return func
+        raise LookupError(sub("No recognized Axes method '{}'", call))
+    
+    def plotVectors(self):
+        """
+        Here is where the plotting of my X, Y vector pairs.
+
+        B{TODO:} Support yscale, last seen in commit #e20e6c15. Or maybe not.
+        """
+        for k, pair in enumerate(self.pairs):
+            kw = {} if pair.fmt else self.p.doKeywords(k, pair.kw)
+            plotter = self.pickPlotter(pair.call, kw)
+            # Finally, the actual plotting call
+            self.lineInfo[0].append(plotter(pair.X, pair.Y, **kw))
+            legend = self.p.opts['legend']
+            if isinstance(legend, bool):
+                if legend and pair.name:
+                    legend = pair.name
+                else: return
+            elif k < len(legend):
+                legend = legend[k]
+            else: return
+            self.lineInfo[1].append(legend)
+            if self.p.opts.useLabels: self.addLegend(k, legend)
+    
+    def doAnnotations(self):
+        """
+        Creates an L{Annotator} for my annotations and then populates it.
+        """
+        self.p.plt.draw()
+        axList = self.p.sp.getTwins()
+        annotator = self.p.annotators[self.ax] = Annotator(
+            axList, self.pairs, fontsize=self.p.fontsize(
+                'annotations', 'small'))
+        for k, text, kVector, is_yValue in self.p.opt['annotations']:
+            X, Y = self.pairs[kVector].getXY()
+            if not isinstance(k, int):
+                if is_yValue: k = np.argmin(np.abs(Y-k))
+                else: k = np.searchsorted(X, k)
+            x = X[k]; y = Y[k]
+            if isinstance(text, int): text = sub("{:d}", text)
+            elif isinstance(text, float): text = sub("{:.2f}", text)
+            # Not supporting kAxis != 0 right now
+            annotator(0, x, y, text)
+            annotator.update()
+        
+    def doPlots(self):
+        """
+        Do all my plotting and then the follow-up work for it.
+        """
+        self.p.doSettings()
+        self.plotVectors()
+        Ymin, Ymax = self.pairs.minmax(useY=True)
+        axisExact = self.p.opts['axisExact']
+        zeroBottom = self.p.opts['zeroBottom']
+        # Axis bounds
+        if axisExact.get('x', False):
+            self.ax.set_xlim(*self.pairs.minmax())
+        if axisExact.get('y', False):
+            self.ax.set_ylim(Ymin, Ymax)
+        elif self.p.opts['bump']:
+            self.p.yBounds(
+                self.ax, bump=True, zeroBottom=zeroBottom)
+        elif self.p.opts['firstVectorTop']:
+            self.p.yBounds(ax, Ymax=Ymax, zeroBottom=zeroBottom)
+        # Vertical lines
+        for axvline in self.p.opts['axvlines']:
+            x = None
+            if isinstance(axvline, int):
+                if abs(axvline) < len(X):
+                    x = X[axvline]
+            else: x = axvline
+            if x is None: continue
+            self.ax.axvline(x=x, linestyle='--', color="#404040")
+        # Zero line (which may be non-zero)
+        yz = self.p.opts['zeroLine']
+        if yz is True: yz = 0
+        if yz is not None and yz is not False:
+            y0, y1 = self.ax.get_ylim()
+            if y0 < yz and y1 > yz:
+                self.ax.axhline(
+                    y=yz, linestyle='--',
+                    linewidth=1, color="black", zorder=10)
+        # Legend, if not done with annotations
+        if self.p.useLegend():
+            self.ax.legend(*self.lineInfo, **{
+                'loc': "best",
+                'fontsize': self.p.fontsize('legend', "small")})
+        self.doAnnotations()
+        # Text boxes
+        tbs = self.p.opts['textboxes']
+        if tbs:
+            tbm = TextBoxMaker(self.ax, self.p.Nc, self.p.Nr)
+            for quadrant in tbs:
+                tbm(quadrant, tbs[quadrant])
