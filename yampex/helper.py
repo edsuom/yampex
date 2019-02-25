@@ -342,7 +342,6 @@ class PlotHelper(object):
             axList, self.pairs, fontsize=self.p.fontsize(
                 'annotations', 'small'))
         for k, text, kVector, is_yValue in self.p.opts['annotations']:
-            print k, text, kVector, is_yValue
             X, Y = self.pairs[kVector].getXY()
             if not isinstance(k, int):
                 if is_yValue: k = np.argmin(np.abs(Y-k))
@@ -358,6 +357,7 @@ class PlotHelper(object):
         """
         Do all my plotting and then the follow-up work for it.
         """
+        self.p.opts.useLocal(self.k)
         self.p.doSettings(self.k)
         self.plotVectors()
         Ymin, Ymax = self.pairs.minmax(useY=True)
@@ -403,3 +403,4 @@ class PlotHelper(object):
             tbm = TextBoxMaker(self.ax, self.p.Nc, self.p.Nr)
             for quadrant in tbs:
                 tbm(quadrant, tbs[quadrant])
+        self.p.opts.useLastLocal()

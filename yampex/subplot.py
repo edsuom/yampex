@@ -103,7 +103,6 @@ class SpecialAx(object):
         def wrapper(*args, **kw):
             self.helper.addCall(args, kw)
             return self
-
         x = getattr(self.helper.ax, name)
         return wrapper if name in self._plotterNames else x
 

@@ -297,10 +297,10 @@ class Plotter(OptsBase):
         axes, preserves a copy of my global (all subplots) options,
         and returns a reference to myself.
         """
+        print "\nENTER"
         self.sp.setup()
         self._isSubplot = True
-        self.global_opts = self.opts
-        self.opts = self.global_opts.deepcopy()
+        self.opts.newLocal()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -312,8 +312,8 @@ class Plotter(OptsBase):
         # Do the last (and perhaps only) call's plotting
         self.doPlots()
         self._isSubplot = False
-        self.opts = self.global_opts
-        del self.global_opts
+        self.opts.goGlobal()
+        print "\nEXIT"
 
     def doPlots(self):
         """
@@ -324,13 +324,15 @@ class Plotter(OptsBase):
         I{opts} dict to a copy of the global (all subplots) options.
         """
         ax = self.sp.ax
-        if ax is None: return
-        # Lots of stuff happens in this next call
-        ax.helper.doPlots()
-        if ax is None: return
-        self.sp.setTicks(self.ticks)
-        if self.grid: ax.grid(True, which='major')
-        self.opts = self.global_opts.deepcopy()
+        print "\nDP", ax
+        if ax:
+            # Lots of stuff happens in this next call
+            ax.helper.doPlots()
+            # Decorate the subplot
+            self.sp.setTicks(self.ticks)
+            if self.grid: ax.grid(True, which='major')
+        # Setting calls now use new local options
+        self.opts.newLocal()
     
     def show(self, windowTitle=None, fh=None, filePath=None, noShow=False):
         """
@@ -508,9 +510,8 @@ class Plotter(OptsBase):
         object's I{ax} attribute. But none of its special features
         will apply to what you do that way.
         """
-        if self._isSubplot:
-            # Do the previous call's plotting
-            self.doPlots()
+        # Do plotting for the previous call (if any)
+        self.doPlots()
         kw.setdefault('plotter', 'plot')
         ax = self.sp[kw.pop('k', None)]
         if args: ax.helper.addCall(args, kw)
