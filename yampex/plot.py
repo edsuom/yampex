@@ -38,7 +38,6 @@ import screeninfo
 import numpy as np
 
 from yampex.options import Opts, OptsBase
-from yampex.annotate import Annotator, TextBoxMaker
 from yampex.subplot import Subplotter
 from yampex.scaling import Scaler
 from yampex.adjust import Adjuster
@@ -325,7 +324,8 @@ class Plotter(OptsBase):
         I{opts} dict to a copy of the global (all subplots) options.
         """
         ax = self.sp.ax
-        # Lots of stuff happens in this call
+        if ax is None: return
+        # Lots of stuff happens in this next call
         ax.helper.doPlots()
         if ax is None: return
         self.sp.setTicks(self.ticks)
@@ -400,7 +400,7 @@ class Plotter(OptsBase):
         return not self.annotations
 
     def fontsize(self, name, default=None):
-        return self.opt['fontsizes'].get(name, default)
+        return self.opts['fontsizes'].get(name, default)
 
     def doKeywords(self, kVector, kw):
         """
@@ -421,13 +421,13 @@ class Plotter(OptsBase):
                     kw[name] = thisDict[name]
         return kw
     
-    def doSettings(self):
+    def doSettings(self, kSubplot):
         """
         Does C{set_XXX} calls on ...
         """
         def bbAdd(textObj):
             dims = self.adj.textDims(textObj)
-            self.dims.setdefault(k, {})[name] = dims
+            self.dims.setdefault(kSubplot, {})[name] = dims
 
         for name in self._settings:
             value = self.opts[name]
@@ -436,7 +436,7 @@ class Plotter(OptsBase):
             kw = {'size':fontsize} if fontsize else {}
             bbAdd(self.sp.set_(name, value, **kw))
             if name == 'xlabel':
-                self.xlabels[k] = value
+                self.xlabels[kSubplot] = value
                 continue
         settings = self.opts['settings']
         for name in settings:

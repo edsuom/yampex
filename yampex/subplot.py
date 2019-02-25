@@ -132,11 +132,11 @@ class Subplotter(object):
         self.twins = {}
         self.kLast = None
         self.p.fig.clear()
-        for k in range(1, self.Nc*self.Nr+1):
-            ax = self.p.fig.add_subplot(self.Nr, self.Nc, k)
+        for k in range(self.Nc*self.Nr):
+            ax = self.p.fig.add_subplot(self.Nr, self.Nc, k+1)
             ax = SpecialAx(ax, self.p, k)
             self.axes.append(ax)
-            if k == self.N: break
+            if k == self.N-1: break
         for ax in self.axes:
             ax.clear()
             for axTwin in self.getTwins(ax, mplRoster=True):

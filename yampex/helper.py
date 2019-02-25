@@ -33,6 +33,7 @@ the plotting options you can set.
 
 import numpy as np
 
+from yampex.annotate import Annotator, TextBoxMaker
 from yampex.util import sub
 
 
@@ -45,12 +46,12 @@ class Pair(object):
     
     @ivar X: The independent (x-axis) vector.
 
-    @ivar xName: The name of the I{X} vector, of C{None} if no name
+    @ivar Xname: The name of the I{X} vector, of C{None} if no name
         was defined.
     
     @ivar Y: The dependent (y-axis) vector.
     
-    @ivar yName: The name of the I{Y} vector, of C{None} if no name
+    @ivar Yname: The name of the I{Y} vector, of C{None} if no name
         was defined.
     
     @ivar fmt: A string-type line/markers/color formatting argument,
@@ -60,7 +61,7 @@ class Pair(object):
         more other instances of me if there was more than one
         dependent vector in the call.
     """
-    __slots__ = ['call', 'X', 'xName', 'Y', 'yName', 'fmt', 'kw']
+    __slots__ = ['call', 'X', 'Xname', 'Y', 'Yname', 'fmt', 'kw']
 
     def sameX(self, X):
         """
@@ -102,7 +103,7 @@ class Pairs(list):
         """
         if self:
             firstPair = self[0]
-            return firstPair.X, firstPair.name
+            return firstPair.X, firstPair.Xname
         return None, None
     
     def minmax(self, useY=False):
@@ -148,7 +149,9 @@ class PlotHelper(object):
         (3600.0,        "Hours"),
     ]
     plottingCalls = (
-        'loglog', 'semilogx', 'semilogy', 'bar', 'step', 'stem', 'error')
+        'plot', 'loglog',
+        'semilogx', 'semilogy',
+        'bar', 'step', 'stem', 'error')
     bogusMap = {
         'bar': ('marker', 'linestyle', 'scaley'),
         'step': ('marker', 'linestyle', 'scaley'),
@@ -242,7 +245,7 @@ class PlotHelper(object):
         names = []
         strings = {}
         for k, arg in enumerate(args):
-            X, name, isArray = self.arrayify(V, X)
+            X, name, isArray = self.arrayify(V, arg)
             if isArray:
                 Xs.append(X)
                 names.append(name)
@@ -273,8 +276,7 @@ class PlotHelper(object):
             pair.Y = Y
             pair.Yname = names[k]
             key = k+kStart+1
-            if key in strings:
-                pair.fmt = strings.pop(key)
+            pair.fmt = strings.pop(key) if key in strings else None
             pair.kw = kw
             self.pairs.append(pair)
 
@@ -339,7 +341,8 @@ class PlotHelper(object):
         annotator = self.p.annotators[self.ax] = Annotator(
             axList, self.pairs, fontsize=self.p.fontsize(
                 'annotations', 'small'))
-        for k, text, kVector, is_yValue in self.p.opt['annotations']:
+        for k, text, kVector, is_yValue in self.p.opts['annotations']:
+            print k, text, kVector, is_yValue
             X, Y = self.pairs[kVector].getXY()
             if not isinstance(k, int):
                 if is_yValue: k = np.argmin(np.abs(Y-k))
@@ -355,7 +358,7 @@ class PlotHelper(object):
         """
         Do all my plotting and then the follow-up work for it.
         """
-        self.p.doSettings()
+        self.p.doSettings(self.k)
         self.plotVectors()
         Ymin, Ymax = self.pairs.minmax(useY=True)
         axisExact = self.p.opts['axisExact']
@@ -374,7 +377,7 @@ class PlotHelper(object):
         for axvline in self.p.opts['axvlines']:
             x = None
             if isinstance(axvline, int):
-                if abs(axvline) < len(X):
+                if abs(axvline) < len(self.pairs.firstX()):
                     x = X[axvline]
             else: x = axvline
             if x is None: continue
@@ -395,7 +398,7 @@ class PlotHelper(object):
                 'fontsize': self.p.fontsize('legend', "small")})
         self.doAnnotations()
         # Text boxes
-        tbs = self.p.opts['textboxes']
+        tbs = self.p.opts['textBoxes']
         if tbs:
             tbm = TextBoxMaker(self.ax, self.p.Nc, self.p.Nr)
             for quadrant in tbs:
