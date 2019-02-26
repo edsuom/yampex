@@ -29,7 +29,7 @@ Simple subplotting.
 import importlib
 
 from yampex.helper import PlotHelper
-from yampex.util import sub
+from yampex.util import PLOTTER_NAMES, sub
 
 
 class SpecialAx(object):
@@ -77,10 +77,6 @@ class SpecialAx(object):
         with my subplot. I either create a new instance or re-use one
         supplied to my constructor.
     """
-    _plotterNames = {
-        'plot', 'loglog',
-        'semilogx', 'semilogy', 'scatter', 'step', 'bar', 'stem'}
-
     __slots__ = ['helper']
     
     def __init__(self, *args):
@@ -105,7 +101,7 @@ class SpecialAx(object):
             self.helper.addCall(args, kw)
             return self
         x = getattr(self.helper.ax, name)
-        return wrapper if name in self._plotterNames else x
+        return wrapper if name in PLOTTER_NAMES else x
 
 
 class Subplotter(object):

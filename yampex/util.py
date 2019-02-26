@@ -26,6 +26,10 @@
 Utility stuff.
 """
 
+PLOTTER_NAMES = {
+    'plot', 'loglog',
+    'semilogx', 'semilogy', 'scatter', 'step', 'bar', 'stem'}
+
 
 def sub(proto, *args):
     """

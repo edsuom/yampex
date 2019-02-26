@@ -41,7 +41,7 @@ from yampex.options import Opts, OptsBase
 from yampex.subplot import Subplotter
 from yampex.scaling import Scaler
 from yampex.adjust import Adjuster
-from yampex.util import sub
+from yampex.util import PLOTTER_NAMES, sub
 
 
 class PlotterHolder(object):
@@ -226,6 +226,7 @@ class Plotter(OptsBase):
             Annotator.setVerbose(True)
         # This is an integer, not a reference to anything
         self.ID = self.ph.add(self)
+        self._plotter = None
 
     def __del__(self):
         """
@@ -287,8 +288,12 @@ class Plotter(OptsBase):
         
     def __getattr__(self, name):
         """
-        You can access a given subplot's plotting options as an attribute.
+        You can access plotting methods and a given subplot's plotting
+        options as attributes. If you request a plotting method, you'll get an instance of me but my 
         """
+        if name in PLOTTER_NAMES:
+            self._plotter = name
+            return self
         if name in self.opts:
             return self.opts[name]
         raise AttributeError(sub(
@@ -512,7 +517,10 @@ class Plotter(OptsBase):
         """
         # Do plotting for the previous call (if any)
         self.doPlots()
-        kw.setdefault('plotter', 'plot')
+        if 'plotter' not in kw:
+            plotter = self._plotter
+            self._plotter = None
+        if plotter: kw.setdefault('plotter', plotter)
         ax = self.sp[kw.pop('k', None)]
         if args: ax.helper.addCall(args, kw)
         return ax

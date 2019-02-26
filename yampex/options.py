@@ -38,7 +38,7 @@ editor, as a handy reference for all the plotting options you can set.
 from copy import copy
 from contextlib import contextmanager
 
-from yampex.util import sub
+from yampex.util import PLOTTER_NAMES, sub
 
 
 class Opts(object):
@@ -65,13 +65,8 @@ class Opts(object):
         'linestyles':           [],
         'grid':                 False,
         'firstVectorTop':       False,
-        'loglog':               False,
-        'semilogx':             False,
-        'semilogy':             False,
-        'bar':                  False,
-        'stem':                 False,
-        'step':                 False,
-        'error':                False,
+        'call':                 "plot",
+        'autolegend':           False,
         'legend':               [],
         'annotations':          [],
         'textBoxes':            {},
@@ -442,51 +437,60 @@ class OptsBase(object):
         Clears the dict of text boxes.
         """
         self.opts['textBoxes'].clear()
-        
     
+    
+    def plot(self, call="plot"):
+        """
+        Specifies a non-logarithmic regular plot, unless called with the
+        name of a different plot type.
+        """
+        if call not in PLOTTER_NAMES:
+            raise ValueError(sub("Unrecognized plot type '{}'", call))
+        self.opts['call'] = call
+
     def plot_bar(self, yes=True):
         """
         Specifies a bar plot, unless called with C{False}.
         """
-        self.opts['bar'] = yes
+        self.opts['call'] = "bar" if yes else "plot"
 
     def plot_error(self, yes=True):
         """
         Specifies an error bar plot, unless called with C{False}.
         """
-        self.opts['error'] = yes
+        self.opts['call'] = "error" if yes else "plot"
 
     def plot_loglog(self, yes=True):
         """
         Makes both axes logarithmic, unless called with C{False}.
         """
-        self.opts['loglog'] = yes
+        self.opts['call'] = "loglog" if yes else "plot"
 
     def plot_semilogx(self, yes=True):
         """
         Makes x-axis logarithmic, unless called with C{False}.
         """
-        self.opts['semilogx'] = yes
+        self.opts['call'] = "semilogx" if yes else "plot"
 
     def plot_semilogy(self, yes=True):
         """
         Makes y-axis logarithmic, unless called with C{False}.
         """
-        self.opts['semilogy'] = yes
+        self.opts['call'] = "semilogy" if yes else "plot"
         
     def plot_stem(self, yes=True):
         """
         Specifies a stem plot, unless called with C{False}.
         """
-        self.opts['stem'] = yes
+        self.opts['call'] = "stem" if yes else "plot"
 
     def plot_step(self, yes=True):
         """
         Specifies a step plot, unless called with C{False}.
         """
-        self.opts['step'] = yes
+        self.opts['call'] = "step" if yes else "plot"
 
-        
+    
     def set_axisExact(self, axisName, yes=True):
         """
         Forces the limits of the named axis ("x" or "y") to exactly the
@@ -546,8 +550,11 @@ class OptsBase(object):
     def set_grid(self, yes=True):
         """
         Adds a grid, unless called with C{False}.
+
+        @see: L{use_grid}, the preferred form of this call.
         """
-        self.opts['grid'] = yes
+        print("WARNING: Only use_grid will be supported in the future!")
+        self.use_grid(yes)
 
     def set_legend(self, *args, **kw):
         """
@@ -595,10 +602,11 @@ class OptsBase(object):
         """
         Uses intelligent time scaling for the x-axis, unless called with
         C{False}.
+
+        @see L{use_timex}, the preferred form of this call.
         """
-        self.opts['timex'] = yes
-        if not self._isSubplot:
-            self._universal_xlabel = True
+        print("WARNING: Only use_timex will be supported in the future!")
+        self.use_timex(yes)
 
     def set_title(self, proto, *args):
         """
@@ -620,8 +628,11 @@ class OptsBase(object):
         with text taken from the legend list.
 
         Call with C{False} to revert to default legend-box behavior.
+
+        @see L{use_labels}, the preferred form of this call.
         """
-        self.opts['useLabels'] = yes
+        print("WARNING: Only use_labels will be supported in the future!")
+        self.use_labels(yes)
 
     def set_xlabel(self, x):
         """
@@ -643,27 +654,6 @@ class OptsBase(object):
         """
         self.opts['ylabel'] = x
 
-    def set_yscale(self, x=True):
-        """
-        Rescales the plotted height of all vectors after the first
-        dependent one to be plotted, relative to that first dependent
-        one, by setting a y scale for it.
-
-        The result is two different twinned x-axes (one for the first
-        dependent vector and one for everybody else) and a different
-        y-axis label on the right.
-
-        Use a scale > 1 if the second (and later) vectors are bigger
-        than the first and you want to expand the right-hand scale.
-
-        Use a scale < 1 if the second (and later) vectors are smaller
-        than the first and you the right-hand scale to be shrunk.
-
-        Use C{True} for the argument to have the scaling done
-        automatically. (This is the default.)
-        """
-        self.opts['yscale'] = x
-
     def set_zeroBottom(self, yes=True):
         """
         Sets the bottom (minimum) of the Y-axis range to zero, unless
@@ -682,3 +672,42 @@ class OptsBase(object):
         If y is C{None} or C{False}, clears any previously set line.
         """
         self.opts['zeroLine'] = y
+
+
+    def use_grid(self, yes=True):
+        """
+        Adds a grid, unless called with C{False}.
+
+        @see: L{set_grid}, the old form of this call.
+        """
+        self.opts['grid'] = yes
+
+    def use_autolegend(self, yes=True):
+        """
+        Has an automatic legend entry added for each plot line, unless
+        called with C{False}.
+        """
+        self.opts['autolegend'] = yes
+        
+    def use_labels(self, yes=True):
+        """
+        Has annotation labels point to each plot line instead of a legend,
+        with text taken from the legend list.
+
+        Call with C{False} to revert to default legend-box behavior.
+
+        @see L{set_useLabels}, the old form of this call.
+        """
+        self.opts['useLabels'] = yes
+
+    def use_timex(self, yes=True):
+        """
+        Uses intelligent time scaling for the x-axis, unless called with
+        C{False}.
+
+        @see L{set_timex}, the old form of this call.
+        """
+        self.opts['timex'] = yes
+        if not self._isSubplot:
+            self._universal_xlabel = True
+

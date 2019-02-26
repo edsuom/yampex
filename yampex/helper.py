@@ -192,7 +192,7 @@ class PlotHelper(object):
             orig = X
             X = V[X]
         else: orig = None
-        if isinstance(X, str):
+        if isinstance(X, (str, unicode)):
             isArray = False
         elif not isinstance(X, np.ndarray):
             try: X = np.array(X)
@@ -205,11 +205,8 @@ class PlotHelper(object):
         scaling to use the most appropriate time multiplier unit and
         sets that unit name as the 'xlabel'.
 
-        Called by L{addCall}, with the next subplot's local options,
-        so need to temporarily switch back to options for the current
-        subplot.
+        Called by L{addCall}, with the current subplot's local options.
         """
-        self.p.opts.usePrevLocal()
         if self.p.opts['timex']:
             T_max = X.max()
             for mult, name in self.timeScales:
@@ -220,7 +217,6 @@ class PlotHelper(object):
                     break
             self.p.opts['xlabel'] = name
             self.p.opts['xscale'] = 1.0 / mult
-        self.p.opts.useLastLocal()
     
     def addCall(self, args, kw):
         """
@@ -237,11 +233,16 @@ class PlotHelper(object):
         Each item of the names list is a string with the name of a
         vector at the same index of I{vectors}, or C{None} if that
         vector was supplied as-is and thus no name name was available.
+
+        Called with the next subplot's local options, so need to
+        temporarily switch back to options for the current subplot,
+        for the duration of this call.
         """
+        self.p.opts.usePrevLocal()
         args = list(args)
         # The 'plotter' keyword is reserved for Yampex, unrecognized
         # by Matplotlib
-        call = kw.pop('plotter')
+        call = kw.pop('plotter', self.p.opts['call'])
         if not isinstance(args[0], (list, tuple, np.ndarray)):
             V = args.pop(0)
         else: V = self.p.V
@@ -274,6 +275,9 @@ class PlotHelper(object):
             X0 = X; X0_name = names.pop(0)
         # Make pairs with the x-axis vector and the remaining vector(s)
         for k, Y in enumerate(Xs):
+            if X0.shape != Y.shape:
+                raise ValueError(sub(
+                    "Shapes differ for X, Y: {} vs {}", X0.shape, Y.shape))
             pair = Pair()
             pair.call = call
             pair.X = X0
@@ -284,6 +288,7 @@ class PlotHelper(object):
             pair.fmt = strings.pop(key) if key in strings else None
             pair.kw = kw
             self.pairs.append(pair)
+        self.p.opts.useLastLocal()
 
     def addLegend(self, kVector, text=None):
         """
@@ -330,12 +335,11 @@ class PlotHelper(object):
             self.lineInfo[0].extend(plotter(scale*pair.X, pair.Y, **kw))
             # Add legend, if selected
             legend = self.p.opts['legend']
-            if isinstance(legend, bool):
-                if legend and pair.name:
-                    legend = pair.name
-                else: continue
-            elif k < len(legend):
+            if k < len(legend):
                 legend = legend[k]
+            elif self.p.opts['autolegend']:
+                legend = pair.Yname
+                if not legend: legend = sub("#{:d}", k+1)
             else: continue
             self.lineInfo[1].append(legend)
             if self.p.opts['useLabels']: self.addLegend(k, legend)
