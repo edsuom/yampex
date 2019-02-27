@@ -251,21 +251,17 @@ class Plotter(OptsBase):
             fontsize = self.opts['fontsizes'].get('title', None)
             kw = {'fontsize':fontsize} if fontsize else {}
             titleObj = self.fig.suptitle(self._figTitle, **kw)
-            titleHeight = self.adj.height(titleObj)
-            # Scale the title height a bit with figure size to make up for
-            # the extra space above
-            titleHeight *= 1 + max([0, (fHeight-400)/500])
-        else: titleHeight = 0
-        kw = self.adj(self.xlabels, self._universal_xlabel, titleHeight)
+        else: titleObj = None
+        kw = self.adj(self._universal_xlabel, titleObj)
         try:
             self.fig.subplots_adjust(**kw)
         except ValueError as e:
             if self.verbose:
                 print(sub(
                     "WARNING: ValueError '{}' doing subplots_adjust({})",
-                    e.message,
-                    ", ".join([sub("{}={}", x, kw[x]) for x in kw])))
-        
+                    e.message, ", ".join(
+                        [sub("{}={}", x, kw[x]) for x in kw])))
+    
     @property
     def width(self):
         """
@@ -289,7 +285,10 @@ class Plotter(OptsBase):
     def __getattr__(self, name):
         """
         You can access plotting methods and a given subplot's plotting
-        options as attributes. If you request a plotting method, you'll get an instance of me but my 
+        options as attributes.
+
+        If you request a plotting method, you'll get an instance of me
+        with my I{_plotter} method set to I{name} first.
         """
         if name in PLOTTER_NAMES:
             self._plotter = name
@@ -301,9 +300,9 @@ class Plotter(OptsBase):
         
     def __enter__(self):
         """
-        Upon an outer context entry, sets up the first subplot with cleared
-        axes, preserves a copy of my global (all subplots) options,
-        and returns a reference to myself.
+        Upon an outer context entry, sets up the first subplot with
+        cleared axes, preserves a copy of my global options, and
+        returns a reference to myself as a subplotting tool.
         """
         self.sp.setup()
         self._isSubplot = True
@@ -315,19 +314,23 @@ class Plotter(OptsBase):
         Upon completion of context, turns minor ticks and grid on if
         enabled for this subplot's axis, and restores global (all
         subplots) options.
+
+        @see: L{_doPlots}.
         """
         # Do the last (and perhaps only) call's plotting
-        self.doPlots()
+        self._doPlots()
         self._isSubplot = False
         self.opts.goGlobal()
 
-    def doPlots(self):
+    def _doPlots(self):
         """
-        Call this once after defining everything for each subplot.
+        This gets called by L{__call__} at the beginning of each call to
+        my subplot-context instance, and by L{__exit__} when subplot
+        context ends, to do all the plotting for the previous subplot.
 
-        Does all the plotting. Then adds minor ticks and a grid,
-        depending on the subplot-specific options. Then sets my
-        I{opts} dict to a copy of the global (all subplots) options.
+        Adds minor ticks and a grid, depending on the subplot-specific
+        options. Then calls L{Opts.newLocal} on my I{opts} to create a
+        new set of local options.
         """
         ax = self.sp.ax
         if ax:
@@ -390,21 +393,27 @@ class Plotter(OptsBase):
         if not noShow: self.clear()
 
     def clear(self):
+        """
+        Clears my figure with all annotators and artist
+        dimensions. Removes my ID from the class-wide
+        L{PlotterHolder}.
+        """
         self.fig.clear()
         self.annotators.clear()
         self.dims.clear()
         self.ph.remove(self.ID)
             
     def xBounds(self, *args, **kw):
+        """
+        See L{Subplotter.xBounds}.
+        """
         self.sp.xBounds(*args, **kw)
     
     def yBounds(self, *args, **kw):
+        """
+        See L{Subplotter.yBounds}.
+        """
         self.sp.yBounds(*args, **kw)
-
-    def useLegend(self):
-        if not self.legend: return
-        if self.useLabels: return
-        return not self.annotations
 
     def fontsize(self, name, default=None):
         return self.opts['fontsizes'].get(name, default)
@@ -428,13 +437,14 @@ class Plotter(OptsBase):
                     kw[name] = thisDict[name]
         return kw
     
-    def doSettings(self, kSubplot):
+    def doSettings(self, k):
         """
-        Does C{set_XXX} calls on ...
+        Does C{set_XXX} calls on the C{Axes} object for the subplot at
+        index I{k}.
         """
         def bbAdd(textObj):
             dims = self.adj.textDims(textObj)
-            self.dims.setdefault(kSubplot, {})[name] = dims
+            self.dims.setdefault(k, {})[name] = dims
 
         for name in self._settings:
             value = self.opts[name]
@@ -443,7 +453,7 @@ class Plotter(OptsBase):
             kw = {'size':fontsize} if fontsize else {}
             bbAdd(self.sp.set_(name, value, **kw))
             if name == 'xlabel':
-                self.xlabels[kSubplot] = value
+                self.xlabels[k] = value
                 continue
         settings = self.opts['settings']
         for name in settings:
@@ -457,42 +467,22 @@ class Plotter(OptsBase):
         If you supply a container object that houses vectors and
         provides access to them as items as the first argument, you
         can supply vector names instead of the vectors themselves. The
-        container object must evaluate C{NAME in OBJ} as C{True} if it
-        contains a vector with NAME, and must return the vector with
-        C{OBJ[NAME]}.
+        container object must evaluate C{b in a} as C{True} if it
+        contains a vector with I{b}, and must return the vector with
+        C{a[b]}.
         
-        Options are set via the methods in L{OptsBase}, including a
-        I{title}, a list of plot I{markers} and I{linestyles}, and a
-        list of I{legend} entries for the plots with those
-        keywords. I{legend} can also be set C{True} to use the default
-        Matplotlib legend.
+        Many options can be set via the methods in L{OptsBase},
+        including a title, a list of plot markers and linestyles, and
+        a list of legend entries for the plots with those keywords.
 
         Set I{useLabels} to C{True} to have annotation labels pointing
         to each plot line instead of a legend, with text taken from
-        the legend list. (Works best in interactive apps.)
-
-        Rescale all vectors after the first dependent one, relative to
-        that first dependent one, by setting a y scale with a call to
-        L{OptsBase.set_yscale} before making this plotting call. That
-        will result in two different twinned x-axes (one for the first
-        dependent vector and one for everybody else) and a different
-        y-axis label on the right. Use a scale < 1 if the second (and
-        later) vectors are bigger than the first and you want them to
-        look smaller.
-
-        If you don't provide any such yScale, you can set I{bump} to
-        C{True} to bump the common y-axis upper limit to 120% of what
-        Matplotlib decides.
-
-        If your x-axis is for time with units in seconds, you can set
-        I{timex} to C{True} and the x values will be in set to the
-        most sensible units, e.g., nanoseconds for values < 1E-6. Any
-        'xlabel' keyword is disregarded in such case because the x
-        label is set automatically.
+        the legend list.
 
         You can override my default plotter by specifying the name of
         another one with the I{plotter} keyword, e.g.,
-        C{plotter="step"}.
+        C{plotter="step"}. But the usual way to do that is to call the
+        corresponding method of my instance, e.g., C{sp.step(X, Y)}.
         
         Any other keywords you supply to this call are supplied to the
         underlying Matplotlib plotting call. (B{NOTE:} This is a
@@ -514,9 +504,11 @@ class Plotter(OptsBase):
         underlying C{Axes} object via the returned L{SpecialAx}
         object's I{ax} attribute. But none of its special features
         will apply to what you do that way.
+
+        @see: L{_doPlots}.
         """
         # Do plotting for the previous call (if any)
-        self.doPlots()
+        self._doPlots()
         if 'plotter' not in kw:
             plotter = self._plotter
             self._plotter = None

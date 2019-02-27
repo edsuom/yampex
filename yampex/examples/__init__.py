@@ -4,7 +4,7 @@
 # yampex:
 # Yet Another Matplotlib Extension
 #
-# Copyright (C) 2017-2018 by Edwin A. Suominen,
+# Copyright (C) 2017-2019 by Edwin A. Suominen,
 # http://edsuom.com/yampex
 #
 # See edsuom.com for API documentation as well as information about
@@ -22,25 +22,13 @@
 # express or implied. See the License for the specific language
 # governing permissions and limitations under the License.
 
-import numpy as np
-from yampex import Plotter
+"""
+Examples for L{yampex}.
 
-funcNames = ('sin', 'cos')
-X = np.linspace(0, 4*np.pi, 200)
-pt = Plotter(1, 2, width=7, height=5)
-pt.set_title("Sin and Cosine")
-pt.set_xlabel("X"); pt.set_grid()
-pt.add_annotation(199, "Last")
-with pt as p:
-    for funcName in funcNames:
-        Y = getattr(np, funcName)(X)
-        if funcName == 'sin':
-            p.add_line(':')
-        p.set_ylabel("{}(X)".format(funcName))
-        k = 0 if funcName == 'sin' else 75
-        for text in ("Pos ZC", "Max", "Neg ZC", "Min"):
-            p.add_annotation(k, text)
-            k += 25
-        p.set_axvline(k)
-        p(X, Y)
-pt.show()
+After installation of I{yampex}, run the C{yampex-examples} command to
+extract these example files to a subdirectory I{yampex-examples} of
+your home directory, creating the subdirectory if necessary. It will
+not overwrite existing files, so feel free to modify the
+examples. Delete a modified example file (or the whole subdirectory)
+and run this again to restore the default file.
+"""

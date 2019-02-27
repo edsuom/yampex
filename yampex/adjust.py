@@ -35,6 +35,111 @@ import numpy as np
 from yampex.util import sub
 
 
+class HeightComputer(object):
+    """
+    I compute vertical (height) spacings for an L{Adjuster} instance I{adj}.
+
+    @keyword universal_xlabel: Set C{True} if all subplots have
+        the same xlabel.
+    """
+    def __init__(self, adj, fHeight, universal_xlabel=False):
+        self.adj = adj
+        self.sp = adj.sp
+        self.fHeight = fHeight
+        self.universal_xlabel = universal_xlabel
+
+    def spaceForTitle(self, k):
+        """
+        Returns the spacing in pixels needed to accommodate the title of
+        the subplot at index I{k}.
+
+        The title height is multiplied by 2.0.
+        """
+        dims = self.adj.getDims(k, 'title')
+        return 2*dims[1] if dims else 0
+
+    def spaceForXlabel(self, k):
+        """
+        Returns the spacing in pixels needed to accommodate the title of
+        the subplot at index I{k}.
+
+        The title height is multiplied by 2.0.
+        """
+        dims = self.adj.getDims(k, 'xlabel')
+        return 2*dims[1] if dims else 0
+    
+    def spaceForTicks(self, k):
+        """
+        Returns the spacing in pixels needed to accommodate the x-axis
+        ticks, including labels, of the subplot at index I{k}.
+
+        The tick+label height is multiplied by 1.5.
+        """
+        maxTickHeight = 0
+        for ytl in self.sp[k].get_xticklabels():
+            thisHeight = self.adj.textDims(ytl)[1] * 1.5
+            if thisHeight > maxTickHeight:
+                maxTickHeight = thisHeight
+        return maxTickHeight
+    
+    def top(self, titleObj=None):
+        """
+        Returns the spacing in pixels needed to accommodate the top of the
+        figure, above all subplots. Supply any figure title
+        I{textObj}.
+
+        Unfortunately, the I{textObj} will have some gratuitous space
+        above and below it that needs to be accounted for. Scales the
+        title height a bit, more so with figure size to make up for
+        the extra space above.
+        """
+        ms = 0
+        if titleObj is None:
+            titleHeight = 0
+        else:
+            titleHeight = 1.5*self.adj.textDims(titleObj)[1]
+            titleHeight *= 1 + max([0, (self.fHeight-400)/500])
+        for k in range(self.sp.N):
+            if self.sp.onTop(k):
+                s = self.spaceForTitle(k)
+                if s: s += 0.65 * titleHeight
+                else: s = titleHeight
+                if s > ms: ms = s
+        #print "TOP", ms
+        return ms
+    
+    def between(self):
+        """
+        Returns the spacing in pixels needed to accommodate horizontal
+        (subplot above and below) gutters between subplots.
+        """
+        ms = 0
+        for k in range(self.sp.N):
+            if self.sp.onTop(k): continue
+            s = self.spaceForTitle(k)
+            kAbove = k - self.sp.Nc
+            if kAbove >= 0:
+                s += self.spaceForXlabel(kAbove)
+                s += self.spaceForTicks(kAbove)
+            if s > ms: ms = s
+        #print "BETWEEN", ms
+        return ms
+
+    def bottom(self):
+        """
+        Returns the spacing in pixels needed to accommodate the bottom of
+        the figure, below all subplots.
+        """
+        ms = 0
+        for k in range(self.sp.N):
+            if self.sp.atBottom(k):
+                s = self.spaceForXlabel(k)
+                s += self.spaceForTicks(k)
+                if s > ms: ms = s
+        #print "BOTTOM", ms
+        return ms
+    
+
 class Adjuster(object):
     """
     I do the hard work of trying to intelligently adjust white space
@@ -98,13 +203,17 @@ class Adjuster(object):
             dims.append(size*(0.8+text.count("\n")))
         return dims
         
-    def width(self, x):
-        return self.textDims(x)[0]
+    def width(self, textObj):
+        """
+        Returns the width of the supplied text object in pixels.
+        """
+        return self.textDims(textObj)[0]
 
-    def height(self, x):
-        return self.textDims(x)[1] * 1.5
-    
     def tickWidth(self, k):
+        """
+        Returns the maximum width of the y-axis ticks (with labels) for
+        subplot I{k}.
+        """
         maxTickWidth = 0
         for ytl in self.sp[k].get_yticklabels():
             thisWidth = self.width(ytl)
@@ -112,19 +221,23 @@ class Adjuster(object):
                 maxTickWidth = thisWidth
         return maxTickWidth
     
-    def tickHeight(self, k):
-        maxTickHeight = 0
-        for ytl in self.sp[k].get_yticklabels():
-            thisHeight = self.height(ytl)
-            if thisHeight > maxTickHeight:
-                maxTickHeight = thisHeight
-        return maxTickHeight
-
     def getDims(self, k, key):
+        """
+        Returns the dimensions of the artist referenced with the specified
+        I{key} in subplot I{k}, or C{None} if no such artist had its
+        dimensions defined for that subplot.
+        """
         if k not in self.dims: return
         return self.dims[k].get(key, None)
     
     def wSpace(self, left=False):
+        """
+        Returns the horizontal (width) space in pixels, to the left of all
+        subplots if I{left} is set, or between subplots otherwise.
+
+        @keyword left: Set C{True} to get horizontal space to the left
+            of all subplots.
+        """
         maxWidth = 0
         for k in range(len(self.sp)):
             if left and not self.sp.onLeft(k):
@@ -139,33 +252,6 @@ class Adjuster(object):
                 maxWidth = thisWidth
         return maxWidth
     
-    def hSpace(self, top=False, bottom=False, universal_xlabel=False):
-        maxHeight = 0
-        for k in range(len(self.sp)):
-            if top and not self.sp.onTop(k):
-                continue
-            if bottom and not self.sp.atBottom(k):
-                continue
-            thisHeight = 0
-            if not top:
-                # Ticks
-                thisHeight += self.tickHeight(k)
-                # Subplot xlabel, if shown for this row
-                if bottom or not universal_xlabel or self.sp.atBottom():
-                    dims = self.getDims(k, 'xlabel')
-                    if dims:
-                        # Add twice the xlabel's font height
-                        thisHeight += 2*dims[1]
-            # Subplot title
-            if not bottom:
-                dims = self.getDims(k, 'title')
-                if dims:
-                    # Add twice the title's font height
-                    thisHeight += 2*dims[1]
-            if thisHeight > maxHeight:
-                maxHeight = thisHeight
-        return maxHeight
-
     def scaledWidth(self, x, per_sp=False, scale=1.0, margin=0, pixmin=0):
         pw = self.fWidth
         if per_sp: pw /= self.sp.Nc
@@ -183,36 +269,29 @@ class Adjuster(object):
         self.fWidth = fWidth
         self.fHeight = fHeight
     
-    def __call__(self, xlabels, universal_xlabel=False, titleHeight=0):
+    def __call__(self, universal_xlabel=False, titleObj=0):
         kw = {}
+        xlabels = self.p.xlabels
         if universal_xlabel:
             # Thanks to kennytm,
             # https://stackoverflow.com/questions/3844801/
             #  check-if-all-elements-in-a-list-are-identical
             if len(set(xlabels.values())) > 1:
                 universal_xlabel = False
-        textObj = None
+        hc = HeightComputer(self, self.fHeight, universal_xlabel)
         for k in xlabels:
             if universal_xlabel and not self.sp.atBottom(k):
                 continue
             ax = self.sp.axes[k]
             ax.set_xlabel(xlabels[k])
-        top_pixels = self.hSpace(top=True)
-        if top_pixels: titleHeight *= 0.55
-        top_pixels += titleHeight
         kw['top'] = 1.0 - self.scaledHeight(
-            top_pixels,
-            margin=20, pmax=0.14)
+            hc.top(titleObj), margin=20, pmax=0.14)
         kw['hspace'] = self.scaledHeight(
-            self.hSpace(universal_xlabel=universal_xlabel), per_sp=True,
-            margin=30, pmax=0.3)
+            hc.between(), per_sp=True, margin=30, pmax=0.3)
         kw['bottom'] = self.scaledHeight(
-            self.hSpace(bottom=True),
-            margin=15, pmax=0.3)
+            hc.bottom(), margin=15, pmax=0.3)
         kw['wspace'] = self.scaledWidth(
-            self.wSpace(), per_sp=True,
-            scale=1.3, margin=15, pixmin=55)
+            self.wSpace(), per_sp=True, scale=1.3, margin=15, pixmin=55)
         kw['left'] = self.scaledWidth(
-            self.wSpace(left=True),
-            scale=1.3, margin=15, pixmin=45)
+            self.wSpace(left=True), scale=1.3, margin=15, pixmin=45)
         return kw

@@ -27,7 +27,7 @@ The L{Plotter} methods defined by its L{OptsBase} base class give
 you a convenient API for setting tons of options for the next subplot.
 
 Or, if you call your C{Plotter} instance outside the subplot in
-context (before the C{with...as} statement), calling these methods
+context (before the C{with ... as} statement), calling these methods
 defines options for all subplots.
 
 Keep the API for L{OptsBase} handy, and maybe a copy of the
@@ -174,6 +174,15 @@ class Opts(object):
         obj = self[key]
         return obj[k] if k < len(obj) else obj[-1]
 
+    def useLegend(self):
+        """
+        Returns C{True} if a legend should be added, given my current set
+        of options.
+        """
+        if not self['legend']: return
+        if self['useLabels']: return
+        return not self['annotations']
+
     def kwModified(self, k, kw_orig):
         """
         Adds 'linestyle', 'linewidth', 'marker', and 'color' entries for
@@ -290,6 +299,15 @@ class OptsBase(object):
         y = kw.get('y', False)
         self.opts['annotations'].append((k, text, kVector, y))
     
+    def add_axvline(self, k):
+        """
+        Adds a vertical dashed line at the data point with integer index
+        I{k}.
+
+        To set it to an x value, use a float for I{k}.
+        """
+        self.opts['axvlines'].append(k)
+
     def add_color(self, x=None):
         """
         Appends the supplied line style character to the list of colors
@@ -504,19 +522,11 @@ class OptsBase(object):
         I{k}.
 
         To set it to an x value, use a float for I{k}.
+
+        @see: L{add_axvline}, the preferred form of this call.
         """
-        self.opts['axvlines'].append(k)
-        
-    def set_bump(self, yes=True):
-        """
-        Bumps up the common y-axis upper limit.
-        
-        If you don't manually set a yscale with a call to
-        L{set_yscale}, you can call this method to increase the common
-        y-axis upper limit to 120% of what Matplotlib decides. Call
-        with C{False} to disable the bump.
-        """
-        self.opts['bump'] = yes
+        print("WARNING: Only add_axvline will be supported in the future!")
+        self.add_axvline(k)
         
     def set_colors(self, *args):
         """
@@ -603,7 +613,7 @@ class OptsBase(object):
         Uses intelligent time scaling for the x-axis, unless called with
         C{False}.
 
-        @see L{use_timex}, the preferred form of this call.
+        @see: L{use_timex}, the preferred form of this call.
         """
         print("WARNING: Only use_timex will be supported in the future!")
         self.use_timex(yes)
@@ -629,7 +639,7 @@ class OptsBase(object):
 
         Call with C{False} to revert to default legend-box behavior.
 
-        @see L{use_labels}, the preferred form of this call.
+        @see: L{use_labels}, the preferred form of this call.
         """
         print("WARNING: Only use_labels will be supported in the future!")
         self.use_labels(yes)
@@ -674,11 +684,16 @@ class OptsBase(object):
         self.opts['zeroLine'] = y
 
 
+    def use_bump(self, yes=True):
+        """
+        Bumps up the common y-axis upper limit to 120% of what Matplotlib
+        decides. Call with C{False} to disable the bump.
+        """
+        self.opts['bump'] = yes
+        
     def use_grid(self, yes=True):
         """
         Adds a grid, unless called with C{False}.
-
-        @see: L{set_grid}, the old form of this call.
         """
         self.opts['grid'] = yes
 
@@ -692,11 +707,10 @@ class OptsBase(object):
     def use_labels(self, yes=True):
         """
         Has annotation labels point to each plot line instead of a legend,
-        with text taken from the legend list.
+        with text taken from the legend list. (Works best in
+        interactive apps.)
 
         Call with C{False} to revert to default legend-box behavior.
-
-        @see L{set_useLabels}, the old form of this call.
         """
         self.opts['useLabels'] = yes
 
@@ -705,7 +719,11 @@ class OptsBase(object):
         Uses intelligent time scaling for the x-axis, unless called with
         C{False}.
 
-        @see L{set_timex}, the old form of this call.
+        If your x-axis is for time with units in seconds, you can call
+        this to have the X values rescaled to the most sensible units,
+        e.g., nanoseconds for values < 1E-6. Any I{xlabel} option is
+        disregarded in such case because the x label is set
+        automatically.
         """
         self.opts['timex'] = yes
         if not self._isSubplot:

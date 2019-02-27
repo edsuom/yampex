@@ -22,6 +22,15 @@
 # express or implied. See the License for the specific language
 # governing permissions and limitations under the License.
 
+"""
+A grid of subplots that each show a pair of amplitude-modulated
+waveforms at different time scales.
+
+Illustrates the use of L{options.OptsBase.use_timex} and calls to a
+subplot-context instance of L{plot.Plotter} with multiple y-axis
+arguments.
+"""
+
 import numpy as np
 from yampex import Plotter
 
@@ -29,10 +38,10 @@ EQs = ("sin(10*t)*cos(10000*t)", "cos(10*t)*cos(10000*t)")
 
 N = 6
 t = np.linspace(0, 2E-6, 1000)
-pt = Plotter(N, width=6, height=5)
+pt = Plotter(N, width=16, height=12)
 pt.set_title("With {:d} time scales: {}, {}", N, *EQs)
-pt.set_timex()
-pt.set_grid()
+pt.use_timex()
+pt.use_grid()
 for eq in EQs:
     pt.add_legend(eq)
 with pt as sp:

@@ -34,7 +34,7 @@ required = ['numpy', 'matplotlib', 'screeninfo']
 
 
 ### Define setup options
-kw = {'version':'0.8.5',
+kw = {'version':'0.9.0',
       'license':'Apache License (2.0)',
       'platforms':'OS Independent',
 
@@ -50,14 +50,19 @@ kw = {'version':'0.8.5',
       'maintainer_email':"foss@edsuom.com",
       
       'install_requires':required,
-      'packages':['yampex',],
-      
+      'packages':['yampex', 'yampex.scripts', 'yampex.examples'],
+      'entry_points': {
+          'console_scripts': [
+              'yampex-examples = yampex.scripts.examples:extract',
+          ],
+      },
       'zip_safe':True,
+      'long_description_content_type': "text/markdown",
 }
 
 kw['keywords'] = [
     'matplotlib', 'numpy',
-    'extension', 'subplots', 'annotations', 'plotting',
+    'extension', 'subplots', 'annotations', 'plots', 'plotting',
 ]
 
 
@@ -85,10 +90,17 @@ Yet Another Matplotlib Extension, with simplified subplotting & annotations.
 """.split("\n"))
 
 kw['long_description'] = """
-yampex makes Matplotlib_ easier to use, especially with subplots. You
-simply construct a Plotter_ object with the number of subplot rows
-and columns you want, and do a context call on it to get a version of
-the object that's all set up to do your subplots.
+The yampex package makes Matplotlib_ easier to use, especially with
+subplots. You simply construct a Plotter_ object with the number of
+subplots or subplot rows and columns you want, and do a context call
+on it to get a version of the object that's all set up to do your
+subplots.
+
+A powerful option-setting API lets you easily and intuitively
+configure all of your subplots globally and specific subplots locally.
+
+You can easily add annotations to your plots that get intelligently
+placed in a way that minimizes visual disruption.
 
 There's a quick example on the project page_ at edsuom.com.
 
@@ -102,4 +114,9 @@ There's a quick example on the project page_ at edsuom.com.
 
 ### Finally, run the setup
 setup(name=NAME, **kw)
+print("\n" + '-'*79)
+print("To create a subdirectory 'yampex-examples' of example files")
+print("in the current directory, you may run the command 'yampex-examples'.")
+print("It's not required to use the yampex package, but you might find")
+print("it instructive.")
 

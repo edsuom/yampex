@@ -292,7 +292,7 @@ class PlotHelper(object):
 
     def addLegend(self, kVector, text=None):
         """
-        Adds an L{Annotation} for a legend, putting it at the right-most
+        Adds an annotation for a legend, putting it at the right-most
         point where the value is at least 99.9% of the vector maximum
         """
         pair = self.pairs[kVector]
@@ -367,7 +367,7 @@ class PlotHelper(object):
         
     def doPlots(self):
         """
-        Do all my plotting and then the follow-up work for it.
+        Does all my plotting and then the follow-up work for it.
         """
         self.p.opts.useLocal(self.k)
         self.p.doSettings(self.k)
@@ -389,8 +389,9 @@ class PlotHelper(object):
         for axvline in self.p.opts['axvlines']:
             x = None
             if isinstance(axvline, int):
-                if abs(axvline) < len(self.pairs.firstX()):
-                    x = X[axvline]
+                X0 = self.pairs.firstX()[0]
+                if X0 is not None and abs(axvline) < len(X0):
+                    x = X0[axvline]
             else: x = axvline
             if x is None: continue
             self.ax.axvline(x=x, linestyle='--', color="#404040")
@@ -404,7 +405,7 @@ class PlotHelper(object):
                     y=yz, linestyle='--',
                     linewidth=1, color="black", zorder=10)
         # Legend, if not done with annotations
-        if self.p.useLegend():
+        if self.p.opts.useLegend():
             self.ax.legend(*self.lineInfo, **{
                 'loc': "best",
                 'fontsize': self.p.fontsize('legend', "small")})
