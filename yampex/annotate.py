@@ -237,6 +237,9 @@ class Positioner(object):
             self.annList.remove(ann)
     
     def dataToPixels(self, ann=None, kAxes=None, ax=None, xyData=None):
+        """
+        Returns...
+        """
         if ax is None:
             ax = self.axList[kAxes] if ann is None else ann.axes
         if xyData is None:

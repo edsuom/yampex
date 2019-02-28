@@ -112,6 +112,10 @@ class HeightComputer(object):
         """
         Returns the spacing in pixels needed to accommodate horizontal
         (subplot above and below) gutters between subplots.
+
+        If there's both a title and an xlabel in the subplot above,
+        the space for the title is scaled up to leave some whitespace
+        between xlabel and title.
         """
         ms = 0
         for k in range(self.sp.N):
@@ -119,7 +123,9 @@ class HeightComputer(object):
             s = self.spaceForTitle(k)
             kAbove = k - self.sp.Nc
             if kAbove >= 0:
-                s += self.spaceForXlabel(kAbove)
+                s_xlabel = self.spaceForXlabel(kAbove)
+                if s and s_xlabel: s *= 1.5
+                s += s_xlabel
                 s += self.spaceForTicks(kAbove)
             if s > ms: ms = s
         #print "BETWEEN", ms
@@ -287,9 +293,9 @@ class Adjuster(object):
         kw['top'] = 1.0 - self.scaledHeight(
             hc.top(titleObj), margin=20, pmax=0.14)
         kw['hspace'] = self.scaledHeight(
-            hc.between(), per_sp=True, margin=30, pmax=0.3)
+            hc.between(), per_sp=True, margin=30, pmax=0.4)
         kw['bottom'] = self.scaledHeight(
-            hc.bottom(), margin=15, pmax=0.3)
+            hc.bottom(), margin=15, pmax=0.2)
         kw['wspace'] = self.scaledWidth(
             self.wSpace(), per_sp=True, scale=1.3, margin=15, pixmin=55)
         kw['left'] = self.scaledWidth(
