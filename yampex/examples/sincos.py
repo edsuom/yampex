@@ -40,8 +40,10 @@ X = np.linspace(0, 4*np.pi, 200)
 pt.set_title("Sine and Cosine")
 # Each subplot will have an x-axis label of "X" and a grid.
 pt.set_xlabel("X"); pt.use_grid()
-# Each plot will have an annotation labeled "Last" at its last point.
-pt.add_annotation(199, "Last")
+# Each plot will have an annotation labeled "Last" at its last
+# point. Note that we can use negative indices referenced to the last
+# element, just as with Python sequences.
+pt.add_annotation(-1, "Last")
 
 # Make a subplotting context and work with the two subplots via the
 # subplot tool sp. It's actually just a reference to pt, but set up

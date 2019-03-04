@@ -127,6 +127,15 @@ class Pairs(list):
                 minmax[1] = value
         return minmax
 
+    def scaleX(self, scale):
+        """
+        Multiplies the x-axis vector of each of my pairs by the specified
+        I{scale}.
+        """
+        if not scale or scale == 1: return
+        for pair in self:
+            pair.X *= scale
+
 
 class PlotHelper(object):
     """
@@ -330,9 +339,7 @@ class PlotHelper(object):
             kw = {} if pair.fmt else self.p.doKeywords(k, pair.kw)
             plotter = self.pickPlotter(pair.call, kw)
             # Finally, the actual plotting call
-            scale = self.p.opts['xscale']
-            if not scale: scale = 1
-            args = [scale*pair.X, pair.Y]
+            args = [pair.X, pair.Y]
             if pair.fmt: args.append(pair.fmt)
             self.lineInfo[0].extend(plotter(*args, **kw))
             # Add legend, if selected
@@ -372,6 +379,7 @@ class PlotHelper(object):
         Does all my plotting and then the follow-up work for it.
         """
         self.p.opts.useLocal(self.k)
+        self.pairs.scaleX(self.p.opts['xscale'])
         self.p.doSettings(self.k)
         self.plotVectors()
         Ymin, Ymax = self.pairs.minmax(useY=True)
