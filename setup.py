@@ -34,7 +34,7 @@ required = ['numpy', 'matplotlib', 'screeninfo']
 
 
 ### Define setup options
-kw = {'version':'0.9.0',
+kw = {'version':'0.9.1',
       'license':'Apache License (2.0)',
       'platforms':'OS Independent',
 
@@ -99,10 +99,15 @@ subplots.
 A powerful option-setting API lets you easily and intuitively
 configure all of your subplots globally and specific subplots locally.
 
-You can easily add annotations to your plots that get intelligently
-placed in a way that minimizes visual disruption.
+You can easily add annotations to your plots. They get placed
+intelligently, in a way that minimizes visual disruption.
 
-There's a quick example on the project page_ at edsuom.com.
+Comes with a number of small and informative [example
+files](http://edsuom.com/yampex/yampex.examples.html), which you can
+install to a *yampex-examples* subdirectory of your home directory by
+typing `yampex-examples` as a shell command.
+
+There's a quick example on the project page_ at **edsuom.com**.
 
 .. _Matplotlib: https://matplotlib.org/
 
