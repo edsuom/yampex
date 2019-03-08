@@ -27,8 +27,12 @@ Utility stuff.
 """
 
 PLOTTER_NAMES = {
-    'plot', 'loglog',
-    'semilogx', 'semilogy', 'scatter', 'step', 'bar', 'stem'}
+    'plot', 'scatter',
+    'loglog', 'semilogx', 'semilogy',
+    'pie', 'plot_date', 'vlines', 'hlines',
+    'step', 'bar', 'barh', 'broken_barh', 'errorbar', 'stem',
+    'fill_between', 'fill_betweenx', 'eventplot', 'stackplot',
+}
 
 
 def sub(proto, *args):

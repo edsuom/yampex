@@ -509,6 +509,6 @@ class Plotter(OptsBase):
             self._plotter = None
         if plotter: kw.setdefault('plotter', plotter)
         ax = self.sp[kw.pop('k', None)]
-        if args: ax.helper.addCall(args, kw)
+        ax.helper.addCall(args, kw)
         return ax
 

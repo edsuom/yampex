@@ -34,7 +34,7 @@ the plotting options you can set.
 import numpy as np
 
 from yampex.annotate import Annotator, TextBoxMaker
-from yampex.util import sub
+from yampex.util import sub, PLOTTER_NAMES
 
 
 class Pair(object):
@@ -158,10 +158,6 @@ class PlotHelper(object):
         (60.0,          "Minutes"),
         (3600.0,        "Hours"),
     ]
-    plottingCalls = (
-        'plot', 'loglog',
-        'semilogx', 'semilogy',
-        'bar', 'step', 'stem', 'error')
     bogusMap = {
         'bar': ('marker', 'linestyle', 'scaley'),
         'step': ('marker', 'linestyle', 'scaley'),
@@ -184,13 +180,6 @@ class PlotHelper(object):
         """
         return getattr(self.p, name)
 
-    def likeArray(self, X):
-        """
-        Returns C{True} if I{X} is a Numpy array or something that can be
-        coerced into being one with C{np.array(X)}.
-        """
-        return isinstance(X, (list, tuple, np.ndarray))
-    
     def arrayify(self, V, X):
         """
         Returns the 1-D Numpy array form of I{X}, if possible.
@@ -204,8 +193,18 @@ class PlotHelper(object):
         its name or C{None} if it was not an item of I{V}, and (3) a
         boolean C{True} if the result is a Numpy array.
         """
-        isArray = self.likeArray(X)
-        if isArray:
+        def isArray(X):
+            """
+            Returns C{True} if I{X} is a Numpy array or something that can be
+            coerced into being one with C{np.array(X)}.
+            """
+            yes = isinstance(X, (list, tuple, np.ndarray))
+            if yes and not isinstance(X, np.ndarray):
+                X = np.array(X)
+            return yes, X
+
+        yes, X = isArray(X)
+        if yes:
             orig = None
         elif hasattr(V, '__contains__'):
             try: isItem = X in V
@@ -213,10 +212,10 @@ class PlotHelper(object):
             if isItem:
                 orig = X
                 X = V[X]
-                isArray = self.likeArray(X)
+                yes, X = isArray(X)
             else: orig = None
         else: orig = None
-        return X, orig, isArray
+        return X, orig, yes
 
     def _timeScaling(self, X):
         """
@@ -257,20 +256,23 @@ class PlotHelper(object):
         temporarily switch back to options for the current subplot,
         for the duration of this call.
         """
+        def likeArray(X):
+            return isinstance(X, (list, tuple, np.ndarray))
+
         self.p.opts.usePrevLocal()
         args = list(args)
         # The 'plotter' keyword is reserved for Yampex, unrecognized
         # by Matplotlib
         call = kw.pop('plotter', self.p.opts['call'])
-        if self.p.V is None:
-            if self.likeArray(args[0]):
+        if args and self.p.V is None:
+            if likeArray(args[0]):
                 V = None
                 OK = True
             elif len(args) < 2:
                 OK = False
             else:
                 V = args.pop(0)
-                try: OK = self.likeArray(V[args[0]])
+                try: OK = likeArray(V[args[0]])
                 except: OK = False
             if not OK:
                 raise ValueError(
@@ -296,7 +298,7 @@ class PlotHelper(object):
                 X0_name = None
             # ... but we have an x-axis range vector, so we'll just
             # re-use it
-        else:
+        elif Xs:
             kStart = 1
             # Use this call's x-axis vector
             X = Xs.pop(0)
@@ -342,21 +344,21 @@ class PlotHelper(object):
         named with I{call}, modifying the supplied I{kw} dict in-place
         as needed to work with that call.
         """
-        for name in self.plottingCalls:
-            if call == name:
-                func = getattr(self.ax, name, None)
-                if func:
-                    for bogus in self.bogusMap.get(name, []):
-                        kw.pop(bogus, None)
-                return func
+        if call in PLOTTER_NAMES:
+            func = getattr(self.ax, call, None)
+            if func:
+                for bogus in self.bogusMap.get(call, []):
+                    kw.pop(bogus, None)
+            return func
         raise LookupError(sub("No recognized Axes method '{}'", call))
     
     def plotVectors(self):
         """
-        Here is where the plotting of my X, Y vector pairs.
+        Here is where I finally plot my X, Y vector pairs.
 
         B{TODO:} Support yscale, last seen in commit #e20e6c15. Or maybe not.
         """
+        legend = self.p.opts['legend']
         for k, pair in enumerate(self.pairs):
             kw = {} if pair.fmt else self.p.doKeywords(k, pair.kw)
             plotter = self.pickPlotter(pair.call, kw)
@@ -365,7 +367,6 @@ class PlotHelper(object):
             if pair.fmt: args.append(pair.fmt)
             self.lineInfo[0].extend(plotter(*args, **kw))
             # Add legend, if selected
-            legend = self.p.opts['legend']
             if k < len(legend):
                 legend = legend[k]
             elif self.p.opts['autolegend']:
