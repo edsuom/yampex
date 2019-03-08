@@ -358,7 +358,6 @@ class PlotHelper(object):
 
         B{TODO:} Support yscale, last seen in commit #e20e6c15. Or maybe not.
         """
-        legend = self.p.opts['legend']
         for k, pair in enumerate(self.pairs):
             kw = {} if pair.fmt else self.p.doKeywords(k, pair.kw)
             plotter = self.pickPlotter(pair.call, kw)
@@ -367,12 +366,19 @@ class PlotHelper(object):
             if pair.fmt: args.append(pair.fmt)
             self.lineInfo[0].extend(plotter(*args, **kw))
             # Add legend, if selected
+            legend = self.p.opts['legend']
             if k < len(legend):
+                # We have a legend for this subplot
                 legend = legend[k]
             elif self.p.opts['autolegend']:
+                # We don't have a legend for the subplot, but
+                # autolegend is enabled, so make one up
                 legend = pair.Yname
                 if not legend: legend = sub("#{:d}", k+1)
-            else: continue
+            else:
+                # We have gone past the last defined legend, or none
+                # have been defined
+                legend = None
             self.lineInfo[1].append(legend)
             if self.p.opts['useLabels']: self.addLegend(k, legend)
     
