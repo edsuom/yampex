@@ -91,6 +91,19 @@ class Opts(object):
         self.lo = None
         self.loList = []
 
+    def __repr__(self):
+        maybeMore = ""
+        if self.lo in self.loList:
+            maybeMore = sub(" for subplot #{:d}", self.loList.index(self.lo)+1)
+        lines = [sub(
+            "Options at {}{}: global (local)", hex(
+                id(self)), maybeMore), "-"*50]
+        for name in sorted(self.go.keys()):
+            goVal = self.go[name]
+            loVal = sub(" ({})", self.lo[name]) if name in self.lo else ""
+            lines.append(sub("{:>18s}  {}{}", name, goVal, loVal))
+        return "\n".join(lines)
+        
     def __contains__(self, key):
         if key in self.go: return True
         if self.lo is None: return False
@@ -179,6 +192,7 @@ class Opts(object):
         Returns C{True} if a legend should be added, given my current set
         of options.
         """
+        if self['autolegend']: return True
         if not self['legend']: return
         if self['useLabels']: return
         return not self['annotations']
@@ -697,7 +711,7 @@ class OptsBase(object):
         """
         self.opts['grid'] = yes
 
-    def use_autolegend(self, yes=True):
+    def use_legend(self, yes=True):
         """
         Has an automatic legend entry added for each plot line, unless
         called with C{False}.

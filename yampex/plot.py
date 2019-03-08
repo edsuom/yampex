@@ -182,7 +182,7 @@ class Plotter(OptsBase):
     def __init__(self, N, *args, **kw):
         """C{Plotter(N, *args, **kw)}"""
         args = list(args)
-        if args:
+        if args and isinstance(args[0], int):
             # Nc, Nr specified
             self.Nc = N
             self.Nr = args.pop(0)
@@ -333,12 +333,7 @@ class Plotter(OptsBase):
         new set of local options.
         """
         ax = self.sp.ax
-        if ax:
-            # Lots of stuff happens in this next call
-            ax.helper.doPlots()
-            # Decorate the subplot
-            self.sp.setTicks(self.ticks)
-            if self.grid: ax.grid(True, which='major')
+        if ax: ax.helper.doPlots()
         # Setting calls now use new local options
         self.opts.newLocal()
     

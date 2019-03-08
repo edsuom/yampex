@@ -134,7 +134,8 @@ class Pairs(list):
         """
         if not scale or scale == 1: return
         for pair in self:
-            pair.X *= scale
+            # Can't do 'pair.X *= scale' because of Ngspice magic
+            pair.X = scale * pair.X
 
 
 class PlotHelper(object):
@@ -182,6 +183,13 @@ class PlotHelper(object):
         Best to refer to I{p} directly, though. This is a messy crutch.
         """
         return getattr(self.p, name)
+
+    def likeArray(self, X):
+        """
+        Returns C{True} if I{X} is a Numpy array or something that can be
+        coerced into being one with C{np.array(X)}.
+        """
+        return isinstance(X, (list, tuple, np.ndarray))
     
     def arrayify(self, V, X):
         """
@@ -196,16 +204,18 @@ class PlotHelper(object):
         its name or C{None} if it was not an item of I{V}, and (3) a
         boolean C{True} if the result is a Numpy array.
         """
-        isArray = True
-        if hasattr(V, '__contains__') and X in V:
-            orig = X
-            X = V[X]
+        isArray = self.likeArray(X)
+        if isArray:
+            orig = None
+        elif hasattr(V, '__contains__'):
+            try: isItem = X in V
+            except: isItem = False
+            if isItem:
+                orig = X
+                X = V[X]
+                isArray = self.likeArray(X)
+            else: orig = None
         else: orig = None
-        if isinstance(X, (str, unicode)):
-            isArray = False
-        elif not isinstance(X, np.ndarray):
-            try: X = np.array(X)
-            except: isArray = False
         return X, orig, isArray
 
     def _timeScaling(self, X):
@@ -224,6 +234,7 @@ class PlotHelper(object):
                         break
                 elif T_max < 150*mult:
                     break
+            print "TS", T_max, name, mult
             self.p.opts['xlabel'] = name
             self.p.opts['xscale'] = 1.0 / mult
     
@@ -252,8 +263,20 @@ class PlotHelper(object):
         # The 'plotter' keyword is reserved for Yampex, unrecognized
         # by Matplotlib
         call = kw.pop('plotter', self.p.opts['call'])
-        if not isinstance(args[0], (list, tuple, np.ndarray)):
-            V = args.pop(0)
+        if self.p.V is None:
+            if self.likeArray(args[0]):
+                V = None
+                OK = True
+            elif len(args) < 2:
+                OK = False
+            else:
+                V = args.pop(0)
+                try: OK = self.likeArray(V[args[0]])
+                except: OK = False
+            if not OK:
+                raise ValueError(
+                    "No instance-wide V container and first "+\
+                    "arg {} is not a valid container of a next arg", V)
         else: V = self.p.V
         X0, X0_name = self.pairs.firstX()
         Xs = []
@@ -426,4 +449,8 @@ class PlotHelper(object):
             tbm = TextBoxMaker(self.ax, self.p.Nc, self.p.Nr)
             for quadrant in tbs:
                 tbm(quadrant, tbs[quadrant])
+        # Decorate the subplot
+        self.p.sp.setTicks(self.ticks)
+        if self.p.opts['grid']:
+            self.ax.grid(True, which='major')
         self.p.opts.useLastLocal()
