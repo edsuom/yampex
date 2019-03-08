@@ -234,7 +234,6 @@ class PlotHelper(object):
                         break
                 elif T_max < 150*mult:
                     break
-            print "TS", T_max, name, mult
             self.p.opts['xlabel'] = name
             self.p.opts['xscale'] = 1.0 / mult
     
