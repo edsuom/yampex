@@ -275,9 +275,9 @@ class PlotHelper(object):
                 try: OK = likeArray(V[args[0]])
                 except: OK = False
             if not OK:
-                raise ValueError(
+                raise ValueError(sub(
                     "No instance-wide V container and first "+\
-                    "arg {} is not a valid container of a next arg", V)
+                    "arg {} is not a valid container of a next arg", V))
         else: V = self.p.V
         X0, X0_name = self.pairs.firstX()
         Xs = []

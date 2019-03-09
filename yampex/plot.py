@@ -444,7 +444,7 @@ class Plotter(OptsBase):
         for name in self._settings:
             value = self.opts[name]
             if not value: continue
-            fontsize = self.opts['fontsizes'].get(name, None)
+            fontsize = self.fontsize(name, None)
             kw = {'size':fontsize} if fontsize else {}
             bbAdd(self.sp.set_(name, value, **kw))
             if name == 'xlabel':
