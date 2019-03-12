@@ -264,6 +264,10 @@ class PlotHelper(object):
         # The 'plotter' keyword is reserved for Yampex, unrecognized
         # by Matplotlib
         call = kw.pop('plotter', self.p.opts['call'])
+        # The 'legend' keyword gets co-opted, but ultimately shows up
+        # in the plot like you would expect
+        legend = kw.pop('legend', None)
+        # Process args
         if args and self.p.V is None:
             if likeArray(args[0]):
                 V = None
@@ -287,6 +291,8 @@ class PlotHelper(object):
             X, name, isArray = self.arrayify(V, arg)
             if isArray:
                 Xs.append(X)
+                # A keyword-specified legend overrides any vector name
+                if legend: name = legend
                 names.append(name)
             else: strings[k] = X
         if len(Xs) == 1:
