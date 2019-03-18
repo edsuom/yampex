@@ -43,9 +43,9 @@ def vectors(N):
 
 # The number of waveforms
 N = 3
-# Construct a Plotter object for a 800x500 pixel (100 DPI) figure
-# with a single subplot.
-pt = Plotter(1, width=8, height=5)
+# Construct a Plotter object for a 800x500 pixel (specified directly
+# in pixels) figure with a single subplot.
+pt = Plotter(1, width=800, height=500)
 # As with many methods of opts.OptsBase, you can specify the title
 # with a string formatting prototype and its argument(s).
 pt.set_title("Sine Waves with {:d} frequency & amplitude multipliers", N)

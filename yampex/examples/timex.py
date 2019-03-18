@@ -38,7 +38,8 @@ EQs = ("sin(10*t)*cos(10000*t)", "cos(10*t)*cos(10000*t)")
 
 N = 6
 t = np.linspace(0, 2E-6, 1000)
-pt = Plotter(N, width=16, height=12)
+# This time, we specify the plot dimensions in pixels with a tuple
+pt = Plotter(N, figSize=(1600, 1200))
 pt.set_title("With {:d} time scales: {}, {}", N, *EQs)
 pt.use_timex()
 pt.use_grid()

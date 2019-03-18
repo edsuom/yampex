@@ -32,7 +32,7 @@ from yampex import Plotter
 
 # Construct a Plotter object for a 1000x700 pixel (100 DPI) figure
 # with a single subplot.
-pt = Plotter(1, width=10, height=7)
+pt = Plotter(1, width=10.0, height=7.0)
 # The plots will be of a sine (solid line) and cosine (dashed line)
 # with 200 points from 0 to 4*pi.
 funcNames = ('sin', 'cos')

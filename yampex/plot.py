@@ -115,13 +115,17 @@ class Plotter(OptsBase):
     With the I{filePath} keyword, you can specify the file path of a
     PNG file for me to create or overwrite with each call to L{show}.
     
-    You can set the I{width} and I{height} of the Figure in inches
-    (calculated with 100 DPI) with constructor keywords, and
-    (read-only) access them via my properties of the same names. Or
-    set my I{figSize} attribute (in a subclass or with that
-    constructor keyword) to a 2-sequence with figure width and height
-    in inches. The default width and height is just shy of the entire
-    monitor size.
+    You can set the I{width} and I{height} of the Figure with
+    constructor keywords, and (read-only) access them via my
+    properties of the same names. Or set my I{figSize} attribute (in a
+    subclass or with that constructor keyword) to a 2-sequence with
+    figure width and height. The default width and height is just shy
+    of the entire monitor size.
+
+    The dimensions are in inches, converted to pixels at 100 DPI,
+    unless they are both integers and either of them exceeds 75 (which
+    would equate to a huge 7,500 pixels). In that case, they are
+    considered to specify the pixel dimensions directly.
 
     Use the "Agg" backend by supplying the constructor keyword
     I{useAgg}. This works better for plotting to an image file, and is
@@ -208,6 +212,7 @@ class Plotter(OptsBase):
             figSize[0] = kw.pop('width')
         if 'height' in kw:
             figSize[1] = kw.pop('height')
+        figSize = self._maybePixels(figSize)
         self.figSize = figSize
         self.fig = self.plt.figure(figsize=figSize)
         if not useAgg:
@@ -237,6 +242,26 @@ class Plotter(OptsBase):
         self.ph.remove(self.ID)
         # No new references were created, nothing retained
 
+    def _maybePixels(self, figSize):
+        """
+        Considers the supplied I{figSize} to be in pixels if both its
+        elements are integers and at least one of them exceeds 75. In
+        that case, scales it down by DPI.
+
+        Returns the figSize in inches.
+        """
+        bigDim = False
+        newFigSize = []
+        for dim in figSize:
+            if not isinstance(dim, int):
+                # Not both integers, use original
+                return figSize
+            if dim > 75: bigDim = True
+            # Convert from (presumed) pixels to Matplotlib's stupid inches
+            newFigSize.append(float(dim)/self.DPI)
+        # Use the converted dims unless neither was > 75
+        return newFigSize if bigDim else figSize
+        
     def subplots_adjust(self, *args):
         """
         Adjusts spacings.
@@ -248,7 +273,7 @@ class Plotter(OptsBase):
         # above the title as the figure gets bigger, and it's
         # difficult to figure out how much extra space to add.
         if self._figTitle:
-            fontsize = self.opts['fontsizes'].get('title', None)
+            fontsize = self.fontsize('title')
             kw = {'fontsize':fontsize} if fontsize else {}
             titleObj = self.fig.suptitle(self._figTitle, **kw)
         else: titleObj = None

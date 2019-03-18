@@ -513,7 +513,7 @@ class Annotator(object):
     def paddingForSize(self):
         fs = self.fontsize
         if fs in self.fontsizeMap:
-            fs = self. fontsizeMap[fs]
+            fs = self.fontsizeMap[fs]
         return min([0.25, 0.44 - 0.008*fs])
     
     def offseterator(self, radius):
