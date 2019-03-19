@@ -34,7 +34,7 @@ required = ['numpy', 'matplotlib', 'screeninfo']
 
 
 ### Define setup options
-kw = {'version':'0.9.1',
+kw = {'version':'0.9.2',
       'license':'Apache License (2.0)',
       'platforms':'OS Independent',
 
@@ -90,10 +90,10 @@ Yet Another Matplotlib Extension, with simplified subplotting & annotations.
 """.split("\n"))
 
 kw['long_description'] = """
-The yampex package makes Matplotlib_ easier to use, especially with
-subplots. You simply construct a Plotter_ object with the number of
-subplots or subplot rows and columns you want, and do a context call
-on it to get a version of the object that's all set up to do your
+The yampex package makes Matplotlib_ much easier to use, especially
+with subplots. You simply construct a Plotter_ object with the number
+of subplots or subplot rows and columns you want, and do a context
+call on it to get a version of the object that's all set up to do your
 subplots.
 
 A powerful option-setting API lets you easily and intuitively
@@ -105,7 +105,9 @@ intelligently, in a way that minimizes visual disruption.
 Comes with a number of small and informative [example
 files](http://edsuom.com/yampex/yampex.examples.html), which you can
 install to a *yampex-examples* subdirectory of your home directory by
-typing `yampex-examples` as a shell command.
+typing `yampex-examples` as a shell command. Go there and you can run
+each example as a Python script, or all of them with the *runall.sh*
+shell script.
 
 There's a quick example on the project page_ at **edsuom.com**.
 

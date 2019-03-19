@@ -62,7 +62,5 @@ if __name__ == "__main__":
         if PID is None:
             try:
                 PID = os.spawnlp(os.P_NOWAIT, 'qiv', 'qiv', '-Te', 'sc.png')
-                print("Due to a quirk in the QIV program, you may have to")
-                print("click on the window to get image loading started.")
             except: PID = 0
     if PID: os.kill(PID, signal.SIGTERM)

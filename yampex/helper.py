@@ -267,6 +267,8 @@ class PlotHelper(object):
         # The 'legend' keyword gets co-opted, but ultimately shows up
         # in the plot like you would expect
         legend = kw.pop('legend', None)
+        if legend and not isinstance(legend, (list, tuple)):
+            legend = [legend]
         # Process args
         if args and self.p.V is None:
             if likeArray(args[0]):
@@ -291,8 +293,18 @@ class PlotHelper(object):
             X, name, isArray = self.arrayify(V, arg)
             if isArray:
                 Xs.append(X)
-                # A keyword-specified legend overrides any vector name
-                if legend: name = legend
+                # A keyword-specified legend overrides any auto-generated name set
+                # otherwise
+                thisLegend = None
+                if legend:
+                    if len(args) == 1:
+                        thisLegend = legend[0]
+                    elif k > 0 and k <= len(legend):
+                        thisLegend = legend[k-1]
+                if thisLegend:
+                    if self.p.opts['autolegend']:
+                        name = thisLegend
+                    else: self.p.add_legend(thisLegend)
                 names.append(name)
             else: strings[k] = X
         if len(Xs) == 1:
