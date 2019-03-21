@@ -97,7 +97,7 @@ class HeightComputer(object):
         if titleObj is None:
             titleHeight = 0
         else:
-            titleHeight = 1.5*self.adj.textDims(titleObj)[1]
+            titleHeight = 1.2*self.adj.textDims(titleObj)[1]
             titleHeight *= 1 + max([0, (self.fHeight-400)/500])
         for k in range(self.sp.N):
             if self.sp.onTop(k):
@@ -206,7 +206,7 @@ class Adjuster(object):
             # Width
             dims = [size*self.textWidth(text)]
             # Height
-            dims.append(size*(0.8+text.count("\n")))
+            dims.append(size*(1+0.8*text.count("\n")))
         return dims
         
     def width(self, textObj):
@@ -291,7 +291,7 @@ class Adjuster(object):
             ax = self.sp.axes[k]
             ax.set_xlabel(xlabels[k])
         kw['top'] = 1.0 - self.scaledHeight(
-            hc.top(titleObj), margin=20, pmax=0.14)
+            hc.top(titleObj), margin=20, pmax=0.18)
         kw['hspace'] = self.scaledHeight(
             hc.between(), per_sp=True, margin=30, pmax=0.4)
         kw['bottom'] = self.scaledHeight(
