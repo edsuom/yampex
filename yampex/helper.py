@@ -111,10 +111,15 @@ class Pairs(list):
         Returns the lowest and highest values found in any of my pairs'
         x-axis vectors, unless I{useY} is C{True}, in which their
         y-axis vectors are looked at instead.
+
+        Empty vectors are disregarded. If I have no pairs yet or only
+        pairs with an empty vector of interest, returns C{None} for
+        both.
         """
         minmax = [None, None]
         for pair in self:
             Z = pair.Y if useY else pair.X
+            if not len(Z): continue
             # Min
             prev = minmax[0]
             value = Z.min()
