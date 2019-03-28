@@ -401,7 +401,7 @@ class PlotHelper(object):
             else:
                 # We have gone past the last defined legend, or none
                 # have been defined
-                legend = None
+                continue
             self.lineInfo[1].append(legend)
             if self.p.opts['useLabels']: self.addLegend(k, legend)
     
