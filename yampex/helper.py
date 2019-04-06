@@ -167,7 +167,7 @@ class PlotHelper(object):
         'bar': ('marker', 'linestyle', 'scaley'),
         'step': ('marker', 'linestyle', 'scaley'),
     }
-    __slots__ = ['ax', 'p', 'k', 'pairs', 'lineInfo']
+    __slots__ = ['ax', 'p', 'k', 'pairs', 'lineInfo', 'legendIndices']
     
     def __init__(self, ax, p, kSubplot):
         self.ax = ax
@@ -175,6 +175,7 @@ class PlotHelper(object):
         self.k = kSubplot
         self.pairs = Pairs()
         self.lineInfo = [[], []]
+        self.legendIndices = []
 
     def __getattr__(self, name):
         """
@@ -354,12 +355,15 @@ class PlotHelper(object):
         pair = self.pairs[kVector]
         if not text: text = pair.name
         if not text: return
-        Y = pair.Y
-        if max(Y) > 0:
-            m999 = np.greater(Y, 0.999*max(Y))
-        else: m999 = np.less(Y, 0.999*min(Y))
-        k = max(np.nonzero(m999)[0])
-        self.p.annotations.append((kVector, k, text, False))
+        if not self.legendIndices:
+            Y = pair.Y
+            if max(Y) > 0:
+                m999 = np.greater(Y, 0.999*max(Y))
+            else: m999 = np.less(Y, 0.999*min(Y))
+            k = max(np.nonzero(m999)[0])
+        else: k = int(np.round(0.7*min(self.legendIndices)))
+        self.legendIndices.append(k)
+        self.p.annotations.append((k, text, kVector, False))
 
     def pickPlotter(self, call, kw):
         """
