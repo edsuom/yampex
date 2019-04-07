@@ -23,19 +23,20 @@
 # governing permissions and limitations under the License.
 
 """
-Plots of a primitive MOSFET drain current versus drain-to-source
-voltage model.
+Plots of a simple MOSFET model for drain current versus
+drain-to-source voltage.
 
 The model (it's actually a Numpy prototype of a much larger model for
-another project of mine) sums M{a[k]*tanh(b[k]*x)} for several
-I{k}. This example shows the total current with a solid line and the
-current of each component with dotted lines.
+another project of mine) sums the drain current of multiple MOSFET
+primitives that use the Schichman-Hodges quadratic equations. This
+example shows the total current with a solid line and the current of
+each component with dotted lines.
 
 There are two subplots, a top one for the drain current vs voltage and
 another for the effective resistance (dV/dI) vs current.
 
-Illustrates line colors and styles and legends, and the seamless use
-of object-oriented programming with Yampex.
+Illustrates line colors and styles, annotation-label legends, and the
+seamless use of object-oriented programming with Yampex.
 """
 
 import numpy as np
@@ -63,101 +64,114 @@ class Model(object):
         """
         My length is the number of components in my summation model.
         """
-        return len(self.ab)
+        return len(self.params)
         
     def clear(self):
         """
-        Clears my model of all M{a*tanh(b*v)} components.
+        Clears my model of all MOSFET primitive components.
         """
-        self.ab = []
+        self.params = []
 
-    def addComponent(self, a, b):
+    def add(self, kp, lamb, vto):
         """
-        Adds a M{a*tanh(b*v)} component to my summation (parallel current
-        paths) model.
+        Adds a MOSFET primitive component to my summation (parallel
+        current paths) model.
         """
-        self.ab.append([a, b])
+        self.params.append((kp, lamb, vto))
 
-    def currents(self):
+    def Ids(self, Vgs, kp, lamb, vto):
+        """
+        Returns a 1-D Numpy vector of drain current through a MOSFET
+        primitive at my I{Vds} values, given I{Vgs} and the specified
+        I{kp}, I{lamb}da, and I{vto} parameter values.
+        """
+        # Cutoff
+        if Vgs < vto: return np.zeros_like(self.Vds)
+        # Linear or Saturation
+        which = [0 if x < Vgs - vto else 1 for x in self.Vds]
+        L = (Vgs-vto)*self.Vds - 0.5*self.Vds**2
+        S = 0.5*((Vgs-vto)**2)*np.ones_like(self.Vds)
+        return np.choose(which, [L, S])*kp*(1+lamb*self.Vds)
+        
+    def currents(self, Vgs):
         """
         Returns a list of 1-D Numpy vectors to plot.
 
         The first two vectors in the list are (1) Vds and (2) the
-        total Ids at each Vds value. The vectors following are the
-        contributions of each M{a*tanh(b*v)} component to the total
+        total Idss at each Vds value. The vectors following are the
+        contributions of each MOSFET primitive component to the total
         Ids.
         """
         Vs = [self.Vds, 0]
-        for a, b in self.ab:
-            Ids = a*np.tanh(b*self.Vds)
+        for kp, lamb, vto in self.params:
+            Ids = self.Ids(Vgs, kp, lamb, vto)
             Vs[1] += Ids
             Vs.append(Ids)
         return Vs
-
-    def resistance(self, Id):
-        """
-        Returns the effective resistance of whatever produced drain
-        current (or contribution to drain current) I{Id} at each value
-        of my swept drain voltage I{Vds}.
-        """
-        return self.Vds / Id
 
     def labelerator(self):
         """
         Generates text of a label for each of my components.
         """
-        for a, b in self.ab:
-            yield sub("{:.1f}*tanh({:.1f}*Vds)", a, b)
-        
+        for kp, lamb, vto in self.params:
+            yield sub("kp={:.1f}, lambda={:.2f}, vto={:.1f}", kp, lamb, vto)
+
 
 class CurvePlotter(object):
     """
     I do the plotting.
     """
-    width = 1200
-    height = 1000
-    def __init__(self):
+    width = 1400
+    height = 970
+    Ids_max_for_Rds = 80.0
+    
+    def __init__(self, m):
         """
-        Constructs a Yampex Plotter object for a figure with a two subplots.
+        Constructs a Yampex Plotter object for a figure with a two
+        subplots using the supplied instance I{m} of L{Model}
         """
+        self.m = m
         pt = self.pt = Plotter(2, width=self.width, height=self.height)
         pt.use_grid()
         # Add line styles for the total and for each component
-        pt.add_line('-', ':')
+        pt.add_line('-', '-.')
         # Start with a legend for the total
         pt.add_legend("Overall Model")
-        # Use annotation labels insead of a legend, since the legend
-        # box tends to get in the way
-        pt.use_labels()
-
-    def plot(self, m):
-        """
-        Plots the curves for the supplied instance I{m} of L{Model}.
-        """
-        self.pt.set_title(
-            "DC MOSFET Model with fixed Vgs and {:d} parallel current paths",
-            len(m))
+        # Custom colors
+        pt.set_colors('blue', 'blue', 'red', 'green')
+        # Legend
         for label in m.labelerator():
-            self.pt.add_legend(label)
+            pt.add_legend(label)
+
+    def plot(self, Vgs):
+        """
+        Plots the curves with the specified gate-source voltage I{Vgs}.
+        """
         with self.pt as sp:
             sp.set_xlabel("Vds"); sp.set_ylabel("Ids")
-            Vs = m.currents()
+            Vs = self.m.currents(Vgs)
             sp(*Vs)
-            Rs = [m.resistance(Ids) for Ids in Vs[1:]]
+            Ids = Vs[1]
+            K = np.flatnonzero(np.logical_and(
+                np.greater(Ids, 0), np.less(Ids, self.Ids_max_for_Rds)))
+            Vds = self.m.Vds[K]
             sp.set_xlabel("Ids"); sp.set_ylabel("Rds")
-            sp.semilogy(Vs[1], *Rs)
+            sp(Ids[K], Vds/Ids[K])
         self.pt.show()
 
 
 def run():
+    # Gate-source voltage Vgs
+    Vgs = 7.0
     # The model
-    m = Model(20, 10.0)
+    m = Model(500, 12.0)
     # Define the model components
-    m.addComponent(1.0, 0.3)
-    m.addComponent(1.5, 0.7)
-    m.addComponent(2.5, 1.0)
+    #     kp, lambda, vto
+    m.add(2.2, 0.093, 3.54)
+    m.add(30.75, 0.188, 5.12)
+    m.add(100.48, 0.270, 6.0)
     # Plot the model
-    CurvePlotter().plot(m)
+    CurvePlotter(m).plot(Vgs)
 
 
 if __name__ == '__main__':
