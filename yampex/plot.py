@@ -213,24 +213,30 @@ class Plotter(OptsBase):
         if 'height' in kw:
             figSize[1] = kw.pop('height')
         figSize = self._maybePixels(figSize)
-        self.figSize = figSize
         self.fig = self.plt.figure(figsize=figSize)
         if not useAgg:
-            self.fig.canvas.mpl_connect(
-                'resize_event', self.subplots_adjust)
-        self.dims = {}
+            self.fig.canvas.mpl_connect('resize_event', self.subplots_adjust)
+        self.figSize = figSize
         self.sp = Subplotter(self, N, self.Nc, self.Nr)
-        self.adj = Adjuster(self)
-        self.annotators = {}
-        self.kw = kw
-        self._figTitle = None
-        self._isSubplot = False
-        self.xlabels = {}
-        self._universal_xlabel = False
-        if self.verbose:
-            Annotator.setVerbose(True)
         # This is an integer, not a reference to anything
         self.ID = self.ph.add(self)
+        if self.verbose: Annotator.setVerbose(True)
+        self.kw = kw
+        self.dims = {}
+        self.xlabels = {}
+        self.annotators = {}
+        self.adj = Adjuster(self)
+        self.reset()
+        
+    def reset(self):
+        """
+        """
+        self.dims.clear()
+        self.xlabels.clear()
+        self.annotators.clear()
+        self._figTitle = None
+        self._isSubplot = False
+        self._universal_xlabel = False
         self._plotter = None
 
     def __del__(self):
@@ -329,6 +335,8 @@ class Plotter(OptsBase):
         cleared axes, preserves a copy of my global options, and
         returns a reference to myself as a subplotting tool.
         """
+        # TODO: Allow my instance to be context-called again
+        #self.reset()
         self.sp.setup()
         self._isSubplot = True
         self.opts.newLocal()
