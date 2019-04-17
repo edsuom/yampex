@@ -184,16 +184,63 @@ class Plotter(OptsBase):
         cls.ph.removeAll()
             
     def __init__(self, N, *args, **kw):
-        """C{Plotter(N, *args, **kw)}"""
+        """
+        Constructor possibilities (not including keywords, except I{Nc}):
+        
+        C{Plotter(Nc, Nr)}: Specify I{Nc} columns and I{Nr} rows.
+        
+        C{Plotter(N)}: Specify up to I{N} subplots in optimal
+            arrangement of columns and rows.
+
+        C{Plotter(N, Nc=x)}: Specify up to I{N} columns subplots with
+            I{x} columns.
+        
+        C{Plotter(Nc, Nr, V)}: Specify I{Nc} columns and I{Nr} rows,
+        with container object I{V}.
+
+        C{Plotter(Nc, Nr, V)}: Specify up to I{N} subplots in optimal
+            arrangement of columns and rows, with container object
+            I{V}.
+
+        C{Plotter(N, V, Nc=x)}: Specify up to I{N} columns subplots
+            with I{x} columns, with container object I{V}.
+
+        @keyword verbose: Set C{True} to put out a bit of info about
+            annotator positioning. Not for regular use.
+
+        @keyword filePath: Specify the path of a PNG file to be
+            created instead of a plot window being opened. (Implies
+            I{useAgg}.)
+
+        @keyword useAgg: Set C{True} to use the "Agg" backend, which
+            works better for creating image files. If you're going to
+            specify it for multiple plot images, do so the first time
+            an instance of me is constructed.
+
+        @keyword figSize: Set to a 2-sequence with figure width and
+            height if not using the default, which is just shy of your
+            entire monitor size. Dimensions are in inches, converted
+            to pixels at 100 DPI, unless both are integers and either
+            exceeds 75. Then they are considered to specify the pixel
+            dimensions directly.
+
+        @keyword width: Specify the figure width part of I{figSize}.
+        
+        @keyword height: Specify the figure height part of I{figSize}.
+        """
         args = list(args)
+        Nc = kw.pop('Nc', None)
         if args and isinstance(args[0], int):
             # Nc, Nr specified
+            if Nc:
+                raise ValueError(
+                    "You can't specify Nc as both a second arg and keyword")
             self.Nc = N
             self.Nr = args.pop(0)
             N = self.Nc*self.Nr
         else:
             # N specified
-            self.Nc = 3 if N > 6 else 2 if N > 3 else 1
+            self.Nc = Nc if Nc else 3 if N > 6 else 2 if N > 3 else 1
             self.Nr = int(np.ceil(float(N)/self.Nc))
         self.V = args[0] if args else None
         self.opts = Opts()
@@ -208,10 +255,10 @@ class Plotter(OptsBase):
             else:
                 si = screeninfo.screeninfo.get_monitors()[0]
                 figSize = [float(x)/self.DPI for x in (si.width-80, si.height-80)]
-        if 'width' in kw:
-            figSize[0] = kw.pop('width')
-        if 'height' in kw:
-            figSize[1] = kw.pop('height')
+        width = kw.pop('width', None)
+        if width: figSize[0] = width
+        height = kw.pop('height', None)
+        if height: figSize[1] = height
         figSize = self._maybePixels(figSize)
         self.fig = self.plt.figure(figsize=figSize)
         if not useAgg:
@@ -245,7 +292,7 @@ class Plotter(OptsBase):
         instance of L{PlotterHolder}.
         """
         # Only an integer is passed to the call
-        self.ph.remove(self.ID)
+        self.ph.remove(ID)
         # No new references were created, nothing retained
 
     def _maybePixels(self, figSize):
