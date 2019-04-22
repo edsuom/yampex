@@ -76,7 +76,9 @@ class HeightComputer(object):
         The tick+label height is multiplied by 1.5.
         """
         maxTickHeight = 0
-        for ytl in self.sp[k].get_xticklabels():
+        sp = self.sp[k]
+        if sp is None: return 0
+        for ytl in sp.get_xticklabels():
             thisHeight = self.adj.textDims(ytl)[1] * 1.5
             if thisHeight > maxTickHeight:
                 maxTickHeight = thisHeight
