@@ -112,6 +112,7 @@ class Subplotter(object):
     A L{Plotter} instance constructs with a reference to itself and an
     integer number of columns and rows.
 
+    @ivar N: Number of subplots (no greater than Nc*Nr).
     @ivar Nc: Number of columns.
     @ivar Nr: Number of rows.
     """

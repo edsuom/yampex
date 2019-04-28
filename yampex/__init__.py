@@ -30,3 +30,15 @@ Everything you'll need is in the L{Plotter}.
 """
 
 from .plot import Plotter
+
+def xy(X, Y, **kw):
+    """
+    A quick way to do a simple scatter plot with a grid and
+    zero-crossing line.
+    """
+    pt = Plotter(1, **kw)
+    with pt as sp:
+        if len(X) < 30: sp.add_marker('o')
+        sp.use_grid(); sp.set_zeroLine()
+        sp(X, Y)
+    pt.show()

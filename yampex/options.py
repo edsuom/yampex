@@ -292,7 +292,9 @@ class OptsBase(object):
         
         You may include a text prototype with format-substitution args
         following it, or just supply the final text string with no
-        further arguments.
+        further arguments. If you supply just an integer or float
+        value with no further arguments, it will be formatted
+        reasonably.
 
         You can set the annotation to the first y-axis value that
         crosses a float value of I{k} by setting I{y} C{True}.
@@ -307,7 +309,11 @@ class OptsBase(object):
                 text = proto
                 kVector = args[0]
             else: text = sub(proto, *args)
-        else:  text = proto
+        elif isinstance(proto, int):
+            text = sub("{:+d}", proto)
+        elif isinstance(proto, float):
+            text = sub("{:+.4g}", proto)
+        else: text = proto
         if kVector is None:
             kVector = kw.get('kVector', 0)
         y = kw.get('y', False)
