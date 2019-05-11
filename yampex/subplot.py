@@ -84,7 +84,15 @@ class SpecialAx(object):
         if len(args) == 1:
             self.helper = args[0]
         else: self.helper = PlotHelper(*args)
-    
+
+    @property
+    def ax(self):
+        """
+        Property: Access the underlying Matplotlib C{Axes} object
+        directly.
+        """
+        return self.helper.ax
+        
     def __getattr__(self, name):
         """
         Returns a plotting method of my I{_ax} object, wrapped in a

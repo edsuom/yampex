@@ -164,8 +164,9 @@ class PlotHelper(object):
         (3600.0,        "Hours"),
     ]
     bogusMap = {
-        'bar': ('marker', 'linestyle', 'scaley'),
-        'step': ('marker', 'linestyle', 'scaley'),
+        'bar': ('marker', 'linestyle',),
+        'step': ('marker', 'linestyle',),
+        'errorbar': ('marker', 'linestyle',),
     }
     __slots__ = ['ax', 'p', 'k', 'pairs', 'lineInfo', 'legendIndices']
     

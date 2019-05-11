@@ -26,6 +26,9 @@
 Utility stuff.
 """
 
+# CAUTION: The errorbar plot doesn't yet work via the subplotter
+# object. Access the underlying Matplotlib Axes object directly with
+# sp().ax
 PLOTTER_NAMES = {
     'plot', 'scatter',
     'loglog', 'semilogx', 'semilogy',
