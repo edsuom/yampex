@@ -89,23 +89,16 @@ class HeightComputer(object):
         Returns the spacing in pixels needed to accommodate the top of the
         figure, above all subplots. Supply any figure title
         I{textObj}.
-
-        Unfortunately, the I{textObj} will have some gratuitous space
-        above and below it that needs to be accounted for. Scales the
-        title height a bit, more so with figure size to make up for
-        the extra space above.
         """
         ms = 0
         if titleObj is None:
             titleHeight = 0
         else:
-            titleHeight = 1.2*self.adj.textDims(titleObj)[1]
-            titleHeight *= 1 + max([0, (self.fHeight-400)/500])
+            titleHeight = 1.5*self.adj.textDims(titleObj)[1]
+            #titleHeight *= 1 + max([0, (self.fHeight-400)/500])
         for k in range(self.sp.N):
             if self.sp.onTop(k):
-                s = self.spaceForTitle(k)
-                if s: s += 0.65 * titleHeight
-                else: s = titleHeight
+                s = titleHeight + self.spaceForTitle(k)
                 if s > ms: ms = s
         #print "TOP", ms
         return ms

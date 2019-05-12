@@ -37,6 +37,7 @@ import screeninfo
 
 import numpy as np
 
+from yampex.annotate import TextBoxMaker
 from yampex.options import Opts, OptsBase
 from yampex.subplot import Subplotter
 from yampex.scaling import Scaler
@@ -322,13 +323,13 @@ class Plotter(OptsBase):
         dimThing = args[0] if args else self.fig.get_window_extent()
         fWidth, fHeight = [getattr(dimThing, x) for x in ('width', 'height')]
         self.adj.updateFigSize(fWidth, fHeight)
-        # This causes trouble because Matplotlib increases spacing
-        # above the title as the figure gets bigger, and it's
-        # difficult to figure out how much extra space to add.
         if self._figTitle:
-            fontsize = self.fontsize('title')
-            kw = {'fontsize':fontsize} if fontsize else {}
-            titleObj = self.fig.suptitle(self._figTitle, **kw)
+            kw = {
+                'fontsize': self.fontsize('title', 14),
+                #'fontweight': "bold",
+            }
+            ax = self.fig.get_axes()[0]
+            titleObj = TextBoxMaker(self.fig, **kw)("N", self._figTitle)
         else: titleObj = None
         kw = self.adj(self._universal_xlabel, titleObj)
         try:

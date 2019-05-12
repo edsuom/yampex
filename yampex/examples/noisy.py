@@ -44,7 +44,7 @@ with pt as sp:
         Y = np.sin(X)
         Y_noisy = Y + mult*np.random.randn(N_pts)
         k = np.argmax(np.abs(Y-Y_noisy))
-        sp.add_annotation(k, "{:+.3g} vs. {:+.3g}", Y_noisy[k], Y[k], kVector=1)
+        sp.add_textBox("NE", "Worst: {:+.3g} vs. {:+.3g}", Y_noisy[k], Y[k])
         ax = sp(X, Y)
         ax.plot(X, Y_noisy, 'r.')
 pt.show()

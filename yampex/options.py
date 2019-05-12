@@ -432,12 +432,31 @@ class OptsBase(object):
         """
         self.opts['plotKeywords'][name] = value
 
-    def add_textBox(self, quadrant, proto, *args):
+    def add_textBox(self, location, proto, *args):
         """
-        Adds a text box to the specified I{quadrant} of the subplot.
+        Adds a text box to the specified I{location} of the subplot.
 
-        Quadrants are "NW", "NE", "SE", and "SW". If there's already a
-        text box there, a line will be added to it.
+        Here are the locations (you can use the integer instead of the
+        abbreviation if you want), along with their text alignments:
+
+            1. "NE": right, top.
+
+            2. "E": right, center.
+
+            3. "SE": right, bottom.
+
+            4. "S": center, bottom.
+
+            5. "SW": left, bottom.
+
+            6. "W": left, center.
+
+            7. "NW": left, top.
+
+            8. "N": center, top.
+
+        If there's already a text box at the specified location, a
+        line will be added to it.
 
         You may include a text I{proto}type with format-substitution
         I{args}, or just supply the final text string with no further
@@ -446,10 +465,10 @@ class OptsBase(object):
         @see: L{clear_textBoxes}.
         """
         text = sub(proto, *args)
-        prevText = self.opts['textBoxes'].get(quadrant, None)
+        prevText = self.opts['textBoxes'].get(location, None)
         if prevText:
             text = prevText + "\n" + text
-        self.opts['textBoxes'][quadrant] = text
+        self.opts['textBoxes'][location] = text
 
     
     def clear_annotations(self):

@@ -51,6 +51,8 @@ class CurvePlotter(object):
         """
         self.pt = Plotter(2, width=self.width, height=self.height)
         self.pt.use_grid()
+        self.pt.set_title(
+            "Exponentials plotted from {:.1f} to {:.1f}", self.xMin, self.xMax)
 
     def func(self, X, a, b):
         """
@@ -94,10 +96,7 @@ class CurvePlotter(object):
 def run():
     bVals = [0.2,   0.5,   1.0,   2.0,   3.0]
     aVals = [0.25,  1.3,  17.0, 2.8E3, 4.0E5]
-    # The ratios between a and b values is interesting
-    for a, b in zip(aVals, bVals):
-        print a, b, a/b**4
-    # Plot the model
+    # Plot the curves
     CurvePlotter().plot(aVals, bVals)
 
 

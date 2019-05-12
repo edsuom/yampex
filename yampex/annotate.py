@@ -637,43 +637,90 @@ class Annotator(object):
 
 
 class TextBoxMaker(object):
-    _quadrants = {
-        'NE':   0,
-        'SE':   1,
-        'SW':   2,
-        'NW':   3,
+    """
+    Construct an instance with a Matplotlib C{Axes} object and, to add
+    the textbox to a subplot instead of the whole figure, two more
+    args: The number of columns and rows in the subplot.
+
+    Any keywords you supply to my constructor are used in the textbox,
+    with the exception of I{m}.
+    
+    @keyword m: The margin between the text box and the edge of the
+        figure, relative to figure or subplot dimensions. (Default:
+        0.02)
+
+    @keyword alpha: The alpha (opacity) of the text box
+        background. (Default: 0.8)
+
+    @keyword backgroundcolor: The background color of the text
+        box. (Default: white)
+    """
+    _locations = {
+        'NE':   1,
+        'E':    2,
+        'SE':   3,
+        'S':    4,
+        'SW':   5,
+        'W':    6,
+        'NW':   7,
+        'N':    8,
     }
-    m = 0.02
+    _XY = {
+        1:      (1.0,   1.0),
+        2:      (1.0,   0.5),
+        3:      (1.0,   0.0),
+        4:      (0.5,   0.0),
+        5:      (0.0,   0.0),
+        6:      (0.0,   0.5),
+        7:      (0.0,   1.0),
+        8:      (0.5,   1.0),
+    }
     _textAlignment = {
-        0: ('right', 'top'   ),
-        1: ('right', 'bottom'),
-        2: ('left',  'bottom'),
-        3: ('left',  'top'   ),
+        1: ('right',    'top'   ),
+        2: ('right',    'center'),
+        3: ('right',    'bottom'),
+        4: ('center',   'bottom'),
+        5: ('left',     'bottom'),
+        6: ('left',     'center'),
+        7: ('left',     'top'   ),
+        8: ('center',   'top'   ),
     }
-    alpha = 0.8
 
-    def __init__(self, ax, Nc, Nr):
+    kw = {
+        'm':                    0.02,
+        'alpha':                0.8,
+        'backgroundcolor':      "white",
+    }
+
+    def __init__(self, ax, *args, **kw):
         self.ax = ax
-        self.quadrantPositioning = {}
-        for k in range(4):
-            seq = []
-            m = Nc * self.m
-            seq.append(1-m if k < 2 else m)
-            m = Nr * self.m
-            seq.append(1-m if k in (0, 3) else m)
-            seq.extend(list(self._textAlignment[k]))
-            self.quadrantPositioning[k] = seq
+        self.NcNr = args
+        self.kw = self.kw.copy()
+        self.kw.update(kw)
 
-    def conformQuadrant(self, quadrant):
-        if not isinstance(quadrant, int):
-            quadrant = self._quadrants[quadrant.upper()]
-        return quadrant
-        
-    def __call__(self, quadrant, text):
-        quadrant = self.conformQuadrant(quadrant)
-        x, y, hAlign, vAlign = self.quadrantPositioning[quadrant]
-        self.ax.text(
-            x, y, text,
-            horizontalalignment=hAlign, verticalalignment=vAlign,
-            transform=self.ax.transAxes,
-            alpha=self.alpha, backgroundcolor='white')
+    def conformLocation(self, location):
+        if not isinstance(location, int):
+            location = self._locations[location.upper()]
+        return location
+
+    def get_XY(self, location, m):
+        xy = list(self._XY[location])
+        for k, value in enumerate(xy):
+            mk = m*self.NcNr[k] if self.NcNr else m
+            if value == 0.0:
+                xy[k] = mk
+                continue
+            if value == 1.0:
+                xy[k] = 1.0 - mk
+        return xy
+    
+    def __call__(self, location, proto, *args, **options):
+        kw = self.kw.copy()
+        kw.update(options)
+        location = self.conformLocation(location)
+        x, y  = self.get_XY(location, kw.pop('m'))
+        kw['horizontalalignment'], kw['verticalalignment'] = \
+            self._textAlignment[location]
+        if hasattr(self.ax, 'transAxes'):
+            kw['transform'] = self.ax.transAxes
+        return self.ax.text(x, y, sub(proto, *args), **kw)
