@@ -79,10 +79,23 @@ class HeightComputer(object):
         sp = self.sp[k]
         if sp is None: return 0
         for ytl in sp.get_xticklabels():
-            thisHeight = self.adj.textDims(ytl)[1] * 1.5
+            thisHeight = self.adj.tsc.dims(ytl)[1] * 1.5
             if thisHeight > maxTickHeight:
                 maxTickHeight = thisHeight
         return maxTickHeight
+
+    def scaleForHeight(self, h0=700, s0=0.8, s1=2.5):
+        """
+        Returns a scaling factor that increases with figure height,
+        starting at I{s0} for a very short figure.
+
+        The scaling factor doesn't increase much until height gets
+        close to I{h0} where the slope attains a maximum.
+        Then it starts increasing more slowly until it gradually maxes
+        out at I{s1}. Uses the M{tanh} function.
+        """
+        h = self.fHeight
+        return 0.5*(s0 + s1 + (s1-s0)*np.tanh(float(h-h0)/h0))
     
     def top(self, titleObj=None):
         """
@@ -93,12 +106,11 @@ class HeightComputer(object):
         ms = 0
         if titleObj is None:
             titleHeight = 0
-        else:
-            titleHeight = 1.5*self.adj.textDims(titleObj)[1]
-            #titleHeight *= 1 + max([0, (self.fHeight-400)/500])
+        else: titleHeight = self.adj.tsc.dims(titleObj)[1]
         for k in range(self.sp.N):
             if self.sp.onTop(k):
-                s = titleHeight + self.spaceForTitle(k)
+                s = self.spaceForTitle(k)
+                s = titleHeight + 0.7*s if s else s
                 if s > ms: ms = s
         #print "TOP", ms
         return ms
@@ -141,15 +153,13 @@ class HeightComputer(object):
         return ms
     
 
-class Adjuster(object):
+class TextSizeComputer(object):
     """
-    I do the hard work of trying to intelligently adjust white space
-    around and in between subplots.
-
-    There is definitely some empiricism involved with this, as
-    Matplotlib's C{subplots_adjust} command doesn't account for text
-    and ticks.
+    I compute dimensions of text strings and Matplotlib text objects,
+    using my default DPI of 100 or a different one you supply in my
+    constructor.
     """
+    DPI = 100
     charWidths = (
         (37,  u"lij|' "),
         (50,  u"![]fI.,:;/\\t"),
@@ -158,17 +168,20 @@ class Adjuster(object):
         (95,  u"aebdhnopqug#$L+<>=?_~FZT0123456789"),
         (112, u"BSPEAKVXY&UwNRCHD"),
         (135, u"QGOMm%W@\u22121"))
-    
-    def __init__(self, p):
-        """
-        C{Adjuster(p)}
-        """
-        self.p = p
-        self.sp = p.sp
-        self.DPI = p.DPI
-        self.dims = p.dims
+    fontsizeMap = {
+        'xx-small':     6.0,
+        'x-small':      7.5,
+        'small':        10.0,
+        'medium':       12.0,
+        'large':        13.5,
+        'x-large':      18.0,
+        'xx-large':     24.0,
+    }
 
-    def textWidth(self, text):
+    def __init__(self, DPI=None):
+        if DPI: self.DPI = DPI
+    
+    def width(self, text):
         """
         Returns an estimated width of the supplied I{text} proportional to
         full height. For Arial font.
@@ -185,30 +198,72 @@ class Adjuster(object):
         # Convert to full-height proportion
         return 0.0065 * width
         
-    def textDims(self, textObj):
+    def dims(self, textObj, size=None):
         """
         Returns the dimensions of the supplied text object in pixels.
 
         If there's no renderer yet, estimates the dimensions based on
         font size and DPI.
+
+        If you supply a string as the I{textObj}, you must also
+        specify the font I{size}.
         """
-        try:
-            bb = textObj.get_window_extent()
-            dims = bb.width, bb.height
-        except:
-            size = self.DPI * textObj.get_size() / 72
-            text = textObj.get_text()
-            # Width
-            dims = [size*self.textWidth(text)]
-            # Height
-            dims.append(size*(1+0.8*text.count("\n")))
+        if isinstance(textObj, str):
+            if size is None:
+                raise ValueError("You must specify size of text in a string")
+            if size in self.fontsizeMap:
+                size = self.fontsizeMap[size]
+            size = self.DPI * float(size) / 72
+            text = textObj
+        else:
+            try:
+                bb = textObj.get_window_extent()
+                return bb.width, bb.height
+            except:
+                size = self.DPI * textObj.get_size() / 72
+                text = textObj.get_text()
+        # Width
+        dims = [size*self.width(text)]
+        # Height
+        dims.append(size*(1+0.8*text.count("\n")))
         return dims
-        
+
+    @staticmethod
+    def pixels2fraction(dimsObj, dimsFig):
+        """
+        Given a 2-sequence of dimensions I{dimsObj} of some object and
+        another 2-sequence of dimensions I{dimsFig} of the figure,
+        returns fractional dimensions.
+        """
+        result = []
+        for dimObj, dimFig in zip(dimsObj, dimsFig):
+            result.append(float(dimObj)/dimFig)
+        return result
+
+
+class Adjuster(object):
+    """
+    I do the hard work of trying to intelligently adjust white space
+    around and in between subplots.
+
+    There is definitely some empiricism involved with this, as
+    Matplotlib's C{subplots_adjust} command doesn't account for text
+    and ticks.
+    """
+    def __init__(self, p):
+        """
+        C{Adjuster(p)}
+        """
+        self.p = p
+        self.sp = p.sp
+        self.tsc = TextSizeComputer(p.DPI)
+        self.dims = p.dims
+
     def width(self, textObj):
         """
         Returns the width of the supplied text object in pixels.
         """
-        return self.textDims(textObj)[0]
+        return self.tsc.dims(textObj)[0]
 
     def tickWidth(self, k):
         """
@@ -270,7 +325,7 @@ class Adjuster(object):
         self.fWidth = fWidth
         self.fHeight = fHeight
     
-    def __call__(self, universal_xlabel=False, titleObj=0):
+    def __call__(self, universal_xlabel=False, titleObj=None):
         kw = {}
         xlabels = self.p.xlabels
         if universal_xlabel:
@@ -286,7 +341,7 @@ class Adjuster(object):
             ax = self.sp.axes[k]
             ax.set_xlabel(xlabels[k])
         kw['top'] = 1.0 - self.scaledHeight(
-            hc.top(titleObj), margin=20, pmax=0.18)
+            hc.top(titleObj), margin=30, pmax=0.18)
         kw['hspace'] = self.scaledHeight(
             hc.between(), per_sp=True, margin=30, pmax=0.4)
         kw['bottom'] = self.scaledHeight(

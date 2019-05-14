@@ -470,7 +470,7 @@ class PlotHelper(object):
             if y0 < yz and y1 > yz:
                 self.ax.axhline(
                     y=yz, linestyle='--',
-                    linewidth=1, color="black", zorder=10)
+                    linewidth=1, color="black", zorder=-5)
         # Legend, if not done with annotations
         if self.p.opts.useLegend():
             self.ax.legend(*self.lineInfo, **{
@@ -480,7 +480,9 @@ class PlotHelper(object):
         # Text boxes
         tbs = self.p.opts['textBoxes']
         if tbs:
-            tbm = TextBoxMaker(self.ax, self.p.Nc, self.p.Nr)
+            tbm = TextBoxMaker(
+                self.ax, self.p.Nc, self.p.Nr,
+                alpha=0.8, fontsize=self.p.fontsize('textbox', "small"))
             for quadrant in tbs:
                 tbm(quadrant, tbs[quadrant])
         # Decorate the subplot

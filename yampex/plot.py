@@ -283,6 +283,7 @@ class Plotter(OptsBase):
         self.xlabels.clear()
         self.annotators.clear()
         self._figTitle = None
+        self.tbmTitle = None
         self._isSubplot = False
         self._universal_xlabel = False
         self._plotter = None
@@ -325,12 +326,16 @@ class Plotter(OptsBase):
         self.adj.updateFigSize(fWidth, fHeight)
         if self._figTitle:
             kw = {
+                'm': 10,
                 'fontsize': self.fontsize('title', 14),
-                #'fontweight': "bold",
+                'alpha': 1.0,
+                'fDims': (fWidth, fHeight),
             }
             ax = self.fig.get_axes()[0]
-            titleObj = TextBoxMaker(self.fig, **kw)("N", self._figTitle)
-        else: titleObj = None
+            if self.tbmTitle: self.tbmTitle.remove()
+            self.tbmTitle = TextBoxMaker(self.fig, **kw)("N", self._figTitle)
+            titleObj = self.tbmTitle.t
+        else: self.tbmTitle = titleObj = None
         kw = self.adj(self._universal_xlabel, titleObj)
         try:
             self.fig.subplots_adjust(**kw)
@@ -519,7 +524,7 @@ class Plotter(OptsBase):
         index I{k}.
         """
         def bbAdd(textObj):
-            dims = self.adj.textDims(textObj)
+            dims = self.adj.tsc.dims(textObj)
             self.dims.setdefault(k, {})[name] = dims
 
         for name in self._settings:
