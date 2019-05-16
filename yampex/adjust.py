@@ -109,8 +109,12 @@ class HeightComputer(object):
         else: titleHeight = self.adj.tsc.dims(titleObj)[1]
         for k in range(self.sp.N):
             if self.sp.onTop(k):
-                s = self.spaceForTitle(k)
-                s = titleHeight + 0.7*s if s else s
+                s = titleHeight
+                # Subplot title
+                subplotTitleHeight = self.spaceForTitle(k)
+                if s and subplotTitleHeight:
+                    s += 0.7*subplotTitleHeight
+                else: s += subplotTitleHeight
                 if s > ms: ms = s
         #print "TOP", ms
         return ms
@@ -225,7 +229,7 @@ class TextSizeComputer(object):
         # Width
         dims = [size*self.width(text)]
         # Height
-        dims.append(size*(1+0.8*text.count("\n")))
+        dims.append(size*(2+text.count("\n")))
         return dims
 
     @staticmethod
