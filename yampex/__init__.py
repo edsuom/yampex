@@ -29,16 +29,69 @@ subplotting.
 Everything you'll need is in the L{Plotter}.
 """
 
+from contextlib import contextmanager
+
 from .plot import Plotter
 
 def xy(X, Y, **kw):
     """
-    A quick way to do a simple scatter plot with a grid and
-    zero-crossing line.
+    A quick way to do a simple plot with a grid and zero-crossing
+    line.
+
+    @keyword plot: Set to the name of a plot type, e.g., "semilogy" if
+        a particular plot type is desired.
+
+    @keyword dots: Set C{True} to show a marker at each coordinate
+        pair.
+
+    @keyword figSize: Set to a 2-sequence with figure width and height
+        if not using the default, which is just shy of your entire
+        monitor size. Dimensions are in inches, converted to pixels at
+        100 DPI, unless both are integers and either exceeds 75. Then
+        they are considered to specify the pixel dimensions directly.
+
+    @keyword width: Specify the figure width part of I{figSize}.
+        
+    @keyword height: Specify the figure height part of I{figSize}.
     """
+    plot = kw.pop('plot', None)
+    dots = kw.pop('dots', False)
     pt = Plotter(1, **kw)
     with pt as sp:
-        if len(X) < 30: sp.add_marker('o')
-        sp.use_grid(); sp.set_zeroLine()
-        sp(X, Y)
+        if dots:
+            sp.add_line(':')
+            sp.add_marker('o')
+        sp.use_grid()
+        if plot is None:
+            sp.set_zeroLine()
+            func = sp
+        else: func = getattr(sp, plot)
+        func(X, Y)
     pt.show()
+
+
+@contextmanager
+def xyc(X, Y, **kw):
+    """
+    Call L{xy} in context. Yields a L{SpecialAx} object for the
+    (single) subplot in context so you can add to it. Then shows the
+    plot.
+    """
+    # Copy-paste code smell, I know...
+    plot = kw.pop('plot', None)
+    dots = kw.pop('dots', False)
+    pt = Plotter(1, **kw)
+    with pt as sp:
+        if dots:
+            sp.add_line(':')
+            sp.add_marker('o')
+        sp.use_grid()
+        if plot is None:
+            sp.set_zeroLine()
+            func = sp
+        else: func = getattr(sp, plot)
+        yield func(X, Y)
+    pt.show()
+
+    
+    

@@ -90,11 +90,12 @@ Yet Another Matplotlib Extension, with simplified subplotting & annotations.
 """.split("\n"))
 
 kw['long_description'] = """
-The yampex package makes Matplotlib_ much easier to use, especially
-with subplots. You simply construct a Plotter_ object with the number
-of subplots or subplot rows and columns you want, and do a context
-call on it to get a version of the object that's all set up to do your
-subplots.
+The yampex package makes [Matplotlib](https://matplotlib.org/) much
+easier to use, especially with subplots. You simply construct a
+[Plotter](http://edsuom.com/yampex/yampex.plot.Plotter.html) object
+with the number of subplots or subplot rows and columns you want, and
+do a context call on it to get a version of the object that's all set
+up to do your subplots.
 
 A powerful option-setting API lets you easily and intuitively
 configure all of your subplots globally and specific subplots locally.
@@ -109,13 +110,8 @@ typing `yampex-examples` as a shell command. Go there and you can run
 each example as a Python script, or all of them with the *runall.sh*
 shell script.
 
-There's a quick example on the project page_ at **edsuom.com**.
-
-.. _Matplotlib: https://matplotlib.org/
-
-.. _Plotter: http://edsuom.com/yampex/yampex.plot.Plotter.html
-
-.. _page: http://edsuom.com/yampex.html
+There's also a quick example on the project
+[page](http://edsuom.com/yampex.html) at **edsuom.com**.
 
 """
 
@@ -125,5 +121,5 @@ print("\n" + '-'*79)
 print("To create a subdirectory 'yampex-examples' of example files")
 print("in the current directory, you may run the command 'yampex-examples'.")
 print("It's not required to use the yampex package, but you might find")
-print("it instructive.")
+print("it instructive.\n")
 

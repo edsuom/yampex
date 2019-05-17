@@ -191,20 +191,19 @@ class Plotter(OptsBase):
         C{Plotter(Nc, Nr)}: Specify I{Nc} columns and I{Nr} rows.
         
         C{Plotter(N)}: Specify up to I{N} subplots in optimal
-            arrangement of columns and rows.
+        arrangement of columns and rows.
 
         C{Plotter(N, Nc=x)}: Specify up to I{N} columns subplots with
-            I{x} columns.
+        I{x} columns.
         
         C{Plotter(Nc, Nr, V)}: Specify I{Nc} columns and I{Nr} rows,
         with container object I{V}.
 
         C{Plotter(Nc, Nr, V)}: Specify up to I{N} subplots in optimal
-            arrangement of columns and rows, with container object
-            I{V}.
+        arrangement of columns and rows, with container object I{V}.
 
         C{Plotter(N, V, Nc=x)}: Specify up to I{N} columns subplots
-            with I{x} columns, with container object I{V}.
+        with I{x} columns, with container object I{V}.
 
         @keyword verbose: Set C{True} to put out a bit of info about
             annotator positioning. Not for regular use.
@@ -255,7 +254,8 @@ class Plotter(OptsBase):
                 figSize = [10.0, 7.0]
             else:
                 si = screeninfo.screeninfo.get_monitors()[0]
-                figSize = [float(x)/self.DPI for x in (si.width-80, si.height-80)]
+                figSize = [
+                    float(x)/self.DPI for x in (si.width-80, si.height-80)]
         width = kw.pop('width', None)
         if width: figSize[0] = width
         height = kw.pop('height', None)
@@ -278,6 +278,7 @@ class Plotter(OptsBase):
         
     def reset(self):
         """
+        Clears everything out to start fresh.
         """
         self.dims.clear()
         self.xlabels.clear()
