@@ -53,20 +53,20 @@ class HeightComputer(object):
         Returns the spacing in pixels needed to accommodate the title of
         the subplot at index I{k}.
 
-        The text height is multiplied by 2.0.
+        The text height is scaled up a bit.
         """
         dims = self.adj.getDims(k, 'title')
-        return 2*dims[1] if dims else 0
+        return 1.1*dims[1] if dims else 0
 
     def spaceForXlabel(self, k):
         """
         Returns the spacing in pixels needed to accommodate the xlabel of
         the subplot at index I{k}.
 
-        The text height is multiplied by 2.0.
+        The text height is scaled up a bit.
         """
         dims = self.adj.getDims(k, 'xlabel')
-        return 2*dims[1] if dims else 0
+        return 1.1*dims[1] if dims else 0
     
     def spaceForTicks(self, k):
         """
@@ -112,9 +112,8 @@ class HeightComputer(object):
                 s = titleHeight
                 # Subplot title
                 subplotTitleHeight = self.spaceForTitle(k)
-                if s and subplotTitleHeight:
-                    s += 0.7*subplotTitleHeight
-                else: s += subplotTitleHeight
+                if not s: subplotTitleHeight *= 0.8
+                s += subplotTitleHeight
                 if s > ms: ms = s
         #print "TOP", ms
         return ms
