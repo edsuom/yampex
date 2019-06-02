@@ -33,10 +33,11 @@ from contextlib import contextmanager
 
 from .plot import Plotter
 
-def xy(X, Y, **kw):
+def xy(*args, **kw):
     """
     A quick way to do a simple plot with a grid and zero-crossing
-    line.
+    line. You can provide one or more vectors to plot as args. If two
+    or more, the first one will be used for the x axis.
 
     @keyword plot: Set to the name of a plot type, e.g., "semilogy" if
         a particular plot type is desired.
@@ -66,12 +67,12 @@ def xy(X, Y, **kw):
             sp.set_zeroLine()
             func = sp
         else: func = getattr(sp, plot)
-        func(X, Y)
+        func(*args)
     pt.show()
 
 
 @contextmanager
-def xyc(X, Y, **kw):
+def xyc(*args, **kw):
     """
     Call L{xy} in context. Yields a L{SpecialAx} object for the
     (single) subplot in context so you can add to it. Then shows the
@@ -90,7 +91,7 @@ def xyc(X, Y, **kw):
             sp.set_zeroLine()
             func = sp
         else: func = getattr(sp, plot)
-        yield func(X, Y)
+        yield func(*args)
     pt.show()
 
     
