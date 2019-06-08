@@ -36,11 +36,11 @@ class CurvePlotter(object):
     I do the plotting.
     """
     width = 1400
-    height = 1200
+    height = 1400
     N = 100
 
-    gamma = (0.5, 2.5)
-    Vgs = (0.0, 10.0)
+    gamma = [0.5, 1.0, 2.5]
+    Vgs = [0.0, 10.0]
     
     def __init__(self):
         """
