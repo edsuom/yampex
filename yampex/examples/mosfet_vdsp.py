@@ -144,6 +144,7 @@ class CurvePlotter(object):
         self.pt.set_ylabel("Vdsp")
         self.pt.add_legend("Vgst/n")
         self.pt.add_legend("(Vgst-f(x))/n")
+        self.pt.use_labels()
 
     def Vdsp_1(self, m, Vgs):
         Vgst = Vgs - m.VT

@@ -29,6 +29,9 @@ values of I{a} and I{b}.
 There are two subplots, a top one for a range of interest for I{X} and
 a bottom one for positive values of I{X} from zero to double the
 maximum I{X} in the range of interest.
+
+This example shows how a subplot can contain both a legend and an
+annotation.
 """
 
 import numpy as np
@@ -60,16 +63,34 @@ class CurvePlotter(object):
         """
         return a*np.exp(-b*X)
 
+    def leastDiff(self, Ys, logspace=False):
+        """
+        Returns the index of the vectors of I{Ys} where there is the least
+        difference between their values.
+
+        Set I{logspace} C{True} to have the difference calculated in
+        logspace, for a semilog plot.
+        """
+        Z = np.row_stack(Ys)
+        if logspace: Z = np.log(Z)
+        V = np.var(Z, axis=0)
+        return np.argmin(V)
+    
     def subplot(self, sp, X, aVals, bVals, semilog=False):
         """
         Given the subplotting tool I{sp} and the supplied 1-D Numpy array
         of I{X} values, plots the curves for each combination of I{a}
         in I{aVals} and I{b} in I{bVals}.
+
+        Returns the value of I{X} where there is the least difference
+        between the curves.
         """
         Ys = []
         for a, b in zip(aVals, bVals):
             Ys.append(self.func(X, a, b))
             sp.add_legend("a={:.2f}, b={:.2f}", a, b)
+        k = self.leastDiff(Ys, semilog)
+        sp.add_annotation(k, X[k])
         if semilog:
             sp.semilogy(X, *Ys)
         else: sp(X, *Ys)

@@ -165,17 +165,14 @@ class Rectangle(object):
         For debugging annotation box placement. Call L{clear} at some
         point to remove box drawings.
         """
-        if self.ann not in self.drawnBoxes:
-            self.drawnBoxes.append(self.ann)
-        color = self.colors[
-            self.drawnBoxes.index(self.ann) % len(self.colors)]
+        color = self.colors[len(self.drawnBoxes) % len(self.colors)]
         r = patches.Rectangle(
             [self.x0, self.y0], self.x1-self.x0, self.y1-self.y0,
             color=color, fill=False)
         if not hasattr(self, 'fig'):
             self.fig = self.ann.axes.get_figure()
         self.fig.patches.append(r)
-        self.fig.draw_artist(r)
+        self.drawnBoxes.append(r)
 
     @classmethod
     def clear(cls, fig):

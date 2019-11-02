@@ -194,8 +194,7 @@ class Opts(object):
         """
         if self['autolegend']: return True
         if not self['legend']: return
-        if self['useLabels']: return
-        return not self['annotations']
+        return not self['useLabels']
 
     def kwModified(self, k, kw_orig):
         """
