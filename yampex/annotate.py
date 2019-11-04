@@ -76,13 +76,10 @@ class Sizer(object):
         return self.dims[text]
 
 
-class Rectangle(object):
+class RectangleRegion(object):
     """
     I am a rectangular plot region where an annotation is or might go.
     """
-    colors = ['#ff8080', '#c0c080', '#80c0c0', '#c080c0']
-    drawnBoxes = []
-    
     def __init__(self, ann, relpos, x01, y01):
         self.ann = ann
         self.relpos = relpos
@@ -91,11 +88,21 @@ class Rectangle(object):
         self.y0, self.y1 = y01
 
     def __repr__(self):
+        args = list(self.ann.xy)
+        for x in self.xy[0], self.xy[1], self.x0, self.y0, self.x1, self.y1:
+            args.append(int(round(x)))
         return sub(
-            "({:.0f}, {:.0f}) <--- [{:.0f},{:.0f} {:.0f},{:.0f}]",
-            self.xy[0], self.xy[1],
-            self.x0, self.y0, self.x1, self.y1)
+            "({:.0f}, {:.0f}): ({:d}, {:d}) --> [{:d},{:d} {:d},{:d}]", *args)
 
+    def patch(self, color):
+        """
+        Returns a Matplotlib patch object representing me. It will be
+        drawn as an unfilled rectangle of the specified I{color}.
+        """
+        return patches.Rectangle(
+            [self.x0, self.y0], self.x1-self.x0, self.y1-self.y0,
+            color=color, fill=False)
+    
     def xOverlap(self, other):
         if self.x1 < other.x0:
             # My annotation is fully to the left of this one
@@ -113,7 +120,7 @@ class Rectangle(object):
             # Mine is fully above it
             return False
         return True
-
+    
     def overlap(self, other):
         return self.xOverlap(other) and self.yOverlap(other)
 
@@ -121,7 +128,7 @@ class Rectangle(object):
         def zBetweenAB(a, b, z):
             """Is z between a and b? (Make sure a < b)"""
             return z > a and z < b
-        
+
         x, y = self.xy
         if self.relpos[0] == 0.5:
             # Vertical arrow
@@ -160,30 +167,6 @@ class Rectangle(object):
         # TODO: Angled arrow, not (yet) tested
         return False
 
-    def draw(self):
-        """
-        For debugging annotation box placement. Call L{clear} at some
-        point to remove box drawings.
-        """
-        color = self.colors[len(self.drawnBoxes) % len(self.colors)]
-        r = patches.Rectangle(
-            [self.x0, self.y0], self.x1-self.x0, self.y1-self.y0,
-            color=color, fill=False)
-        if not hasattr(self, 'fig'):
-            self.fig = self.ann.axes.get_figure()
-        self.fig.patches.append(r)
-        self.drawnBoxes.append(r)
-
-    @classmethod
-    def clear(cls, fig):
-        """
-        This only needs to be called if L{draw} was.
-        """
-        cls.drawnBoxes = []
-        patches = fig.patches
-        for r in patches:
-            patches.remove(r)
-
 
 class Positioner(object):
     """
@@ -191,6 +174,10 @@ class Positioner(object):
     
     All data is saved and computations done in pixel units. 
     """
+    colors = [
+        'black', 'brown', 'red', 'orange',
+        'yellow', 'green', 'blue', 'violet']
+    
     relpos = [
         (0.0, 0.0),     # NE
         (0.0, 0.5),     # E
@@ -201,19 +188,19 @@ class Positioner(object):
         (1.0, 0.0),     # NW
         (0.5, 0.0),     # N
     ]
-    rectanglePadding = 2
+    rectanglePadding = 0 #2
     # I hate fudge factors, but rectangle analysis region is shifted
     # too far without this
-    ffShift = 5
-    # Show warnings
+    ffShift = 0 #5
+    # Show warnings and trial position rectangles
     verbose = False
     
     def __init__(self, sizer, axList, pairs):
+        self.annotations = {}
         self.sizer = sizer
         self.axList = axList
         self.xyLists = {}
         self.pairs = pairs
-        self.annList = []
         #self.prevData(pairs)
 
     @property
@@ -221,18 +208,72 @@ class Positioner(object):
         if not getattr(self, 'r', None):
             return
         return self.r.relpos
-    
+
     def __iter__(self):
-        for ann in copy(self.annList):
-            if ann in self.annList:
+        for ann, r in self.annotations.copy().itervalues():
+            if self.key(ann) in self.annotations:
                 yield ann
-    
-    def add(self, ann):
-        self.annList.append(ann)
-        
-    def remove(self, ann):
-        if ann in self.annList:
-            self.annList.remove(ann)
+
+    def key(self, ann):
+        """
+        Returns a unique integer key based on the supplied annotation
+        object's non-transformed (original) x,y coordinates and which
+        axis it belongs to.
+        """
+        return hash((ann.axes, ann.xy))
+                
+    def add(self, ann, r=None):
+        """
+        Adds a record for the supplied annotation object I{ann},
+        sub-categorized by the axis I{ax} it belongs to.
+
+        Unless a rectangle object is also supplied, cleanly
+        replaces any annotation that already exists for that axis with
+        the same non-transformed x,y coordinates, deleting all
+        rectangle objects from the record.
+
+        If a rectangle object is supplied with the I{r} keyword, adds
+        it to the list associated with the supplied annotation in the
+        record.
+
+        If my I{verbose} attribute is C{True}, adds an unfilled
+        colored rectangle to the figure for annotation position
+        debugging purposes. The colors follow the resistor color code,
+        with the first attempted position being drawn in black, the
+        second being brown, etc.
+        """
+        key = self.key(ann)
+        if r is None:
+            if key in self.annotations:
+                self.remove(ann)
+        elif key in self.annotations:
+            rList = self.annotations[key][1]
+            rList.append(r)
+            if self.verbose:
+                k = len(rList) % len(self.colors)
+                patch = r.patch(self.colors[k])
+                ann.axes.get_figure().patches.append(patch)
+            return
+        self.annotations[key] = (ann, [])
+            
+    def remove(self, ann, ax=None):
+        """
+        Removes the record for the supplied annotation object I{ann}.
+
+        If an Axes object is found, removes all rectangle patches
+        present in the Figure for the Axes. If an Axes object is also
+        supplied via the keyword I{ax}, uses that instead of looking
+        for one as an I{axes} attribute of the annotation object.
+        """
+        key = self.key(ann)
+        if ax is None: ax = ann.axes
+        fig = None if ax is None else ax.get_figure()
+        if key in self.annotations:
+            null, rList = self.annotations.pop(key)
+        else: rList = []
+        if fig is None: return
+        for r in rList:
+            if r in fig.patches: fig.patches.remove(r)
     
     def dataToPixels(self, ann=None, kAxes=None, ax=None, xyData=None):
         """
@@ -274,7 +315,7 @@ class Positioner(object):
         puts the right or upper corner there, and zero x or y offset
         puts the middle of the edge there.
 
-        Returns a L{Rectangle} with the four points
+        Returns a L{RectangleRegion} with the four points
         """
         def shift(x_y, dx_y, dim):
             if dx_y < 0:
@@ -297,18 +338,10 @@ class Positioner(object):
         width, height = self.sizer(ann)
         x01 = shift(xy[0], dx, width)
         y01 = shift(xy[1], dy, height)
-        r = Rectangle(ann, relpos, x01, y01)
+        print "P-R", self, ann.xy, relpos, x01, y01
+        r = RectangleRegion(ann, relpos, x01, y01)
         return r
     
-    def setup(self, ann, dx, dy):
-        """
-        Sets up a new overlap analysis with the supplied annotation and
-        proposed x and y offset (pixel units) from its current location.
-        """
-        self.dx = dx
-        self.ann = ann
-        self.r = self.rectangle(ann, dx, dy)
-
     def liveData(self, kAxes, *xy):
         xyLists = self.xyLists.setdefault(kAxes, [[], []])
         if xy:
@@ -338,16 +371,14 @@ class Positioner(object):
         #if xyData is not None:
         #    yield self.dataToPixels(kAxes=kAxes, xyData=xyData)
     
-    def with_data(self):
+    def with_data(self, ann, r):
         """
         Returns score for overlapping with X,Y data for all
         axes. Increases with number of plot lines overlapped.
         """
         def sliceSpanningRectangle():
-            if self.r is None:
-                return slice(*Xmm)
-            k0 = np.searchsorted(X, self.r.x0)
-            k1 = np.searchsorted(X, self.r.x1) + 1
+            k0 = np.searchsorted(X, r.x0)
+            k1 = np.searchsorted(X, r.x1) + 1
             return slice(k0, k1)
         
         s = None
@@ -369,69 +400,72 @@ class Positioner(object):
                     # previous one
                     Xmm = thisXmm
                     s = sliceSpanningRectangle()
-            if self.r and np.all(np.less(Y[s], self.r.y0)):
+            if r and np.all(np.less(Y[s], r.y0)):
                 continue
-            if self.r and np.all(np.greater(Y[s], self.r.y1)):
+            if r and np.all(np.greater(Y[s], r.y1)):
                 continue
             score += 1.5
             if score >= self.mustBeat: break
         return score
 
-    def with_boundary(self):
+    def with_boundary(self, ann, r):
         """
         Returns score for overlapping with (or going beyond) axis
         boundary, and twice as bad a score for such a conflict with
         the figure boundary.
         """
         score = 0.0
-        if self.r is None: return score
-        ax = self.ann.axes
+        ax = ann.axes
         for k, obj in enumerate((ax, ax.figure)):
             points = obj.get_window_extent().get_points()
             x0, y0 = points[0]
             x1, y1 = points[1]
-            if self.r.x0 < x0 or \
-               self.r.x1 > x1 or \
-               self.r.y0 < y0 or \
-               self.r.y1 > y1:
+            if r.x0 < x0 or \
+               r.x1 > x1 or \
+               r.y0 < y0 or \
+               r.y1 > y1:
                 score += 3*(k+1)
             else:
                 return score
         return score
 
-    def with_others(self):
+    def with_others(self, ann, r):
         """
         Returns score for overlapping with any other annotation.
         """
         score = 0.0
         for other in self:
-            if other is self.ann:
+            if other is ann:
                 continue
             tr = self.rectangle(other, *other.xyann)
             if tr is None: continue
-            if self.r and self.r.overlap(tr):
+            if r and r.overlap(tr):
                 return 4.0
             # Return somewhat less bad score if there is arrow overlap
-            if self.r and self.r.arrowOverlap(tr):
+            if r and r.arrowOverlap(tr):
                 score += 2.0
             # TODO: Account for angled arrows, too
             if score >= self.mustBeat:
                 break
         return score
-
+    
     def __call__(self, ann, offset, radius, mustBeat=1E9):
-        offset = [radius*x for x in offset]
-        self.setup(ann, *offset)
+        """
+        Sets up a new overlap analysis with the supplied annotation and
+        proposed x and y offset (pixel units) from its current location.
+        """
+        fig = ann.axes.get_figure()
+        r = self.rectangle(ann, *[radius*x for x in offset])
+        self.add(ann, r)
         self.mustBeat = mustBeat
-        #self.r.draw() # DEBUG
-        score = self.with_boundary()
+        score = self.with_boundary(ann, r)
         if score < mustBeat:
-            score += self.with_others()
+            score += self.with_others(ann, r)
         if score < mustBeat:
-            score += self.with_data()
+            score += self.with_data(ann, r)
         return radius*score
-    
-    
+
+
 class Annotator(object):
     """
     I manage the annotations for all axes in a subplot. Construct me
@@ -605,10 +639,11 @@ class Annotator(object):
         for thisAnn in ax.findobj(match=type(ann)):
             if thisAnn.get_text() == ann.get_text():
                 thisAnn.remove()
-                self.p.remove(thisAnn)
-        self.p.remove(ann)
+                self.p.remove(thisAnn, ax)
+        self.p.remove(ann, ax)
     
     def replace(self, ann, **kw):
+        # Doesn't the annotation always have an .axes attribute?
         ax = kw.get('ax', None)
         if ax is None: ax = ann.axes
         xy = kw.get('xy', None)

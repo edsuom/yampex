@@ -163,7 +163,8 @@ class CurvePlotter(object):
             for m in self.mList:
                 sp.set_title("Vdsp vs Vgst, computed both ways, for {}", m)
                 Vgs = np.linspace(self.Vgs[0], self.Vgs[1], 100)
-                sp(Vgs, self.Vdsp_1(m, Vgs), self.Vdsp_2(m, Vgs))
+                #sp(Vgs, self.Vdsp_1(m, Vgs), self.Vdsp_2(m, Vgs))
+                sp(Vgs, self.Vdsp_2(m, Vgs))
         self.pt.show()
 
 
