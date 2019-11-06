@@ -37,9 +37,11 @@ from yampex.util import sub
 
 class Sizer(object):
     """
-    I try to provide accurate sizing of annotations.
+    I try to provide accurate sizing of annotations. Call my instance
+    with a Matplotlib annotation object to get an estimate of its
+    dimensions in pixels.
 
-    Burned up a lot of CPU cycles in the __call__ method, which is
+    Burned up a lot of CPU cycles in the L{__call__} method, which is
     called many thousands of times. Added use of I{legitDims} list,
     which speeds things up and doesn't seem to incur any problems with
     mis-sizing of evaluation rectangles.
@@ -79,6 +81,11 @@ class Sizer(object):
 class RectangleRegion(object):
     """
     I am a rectangular plot region where an annotation is or might go.
+
+    @ivar patch: A Matplotlib C{Rectangle} patch object that draws an
+        outline-only colored rectangle indicating the space occupied
+        by my in the subplot. For debugging. C{None} if no such
+        rectangle is being drawn.
     """
     def __init__(self, ann, relpos, x01, y01):
         self.ann = ann
@@ -86,6 +93,7 @@ class RectangleRegion(object):
         self.xy = ann.axes.transData.transform(ann.xy)
         self.x0, self.x1 = x01
         self.y0, self.y1 = y01
+        self.patch = None
 
     def __repr__(self):
         args = list(self.ann.xy)
@@ -94,14 +102,29 @@ class RectangleRegion(object):
         return sub(
             "({:.0f}, {:.0f}): ({:d}, {:d}) --> [{:d},{:d} {:d},{:d}]", *args)
 
-    def patch(self, color):
+    def getPatch(self, color):
         """
-        Returns a Matplotlib patch object representing me. It will be
-        drawn as an unfilled rectangle of the specified I{color}.
+        Returns a Matplotlib C{Rectangle} patch object representing me,
+        generating it if necessary. It will be drawn as an unfilled
+        rectangle of the specified I{color}.
         """
-        return patches.Rectangle(
-            [self.x0, self.y0], self.x1-self.x0, self.y1-self.y0,
-            color=color, fill=False)
+        if self.patch is None:
+            self.patch = patches.Rectangle(
+                [self.x0, self.y0], self.x1-self.x0, self.y1-self.y0,
+                color=color, fill=False)
+        return self.patch
+
+    def removePatch(self):
+        """
+        Removes the Matplotlib C{Rectangle} patch object and discards it.
+
+        TODO: This doesn't actually work. Figure out how to move the
+        annotations or clear the whole figure and re-draw the plot
+        after all undesired annotations and patches have been removed.
+        """
+        # TODO: Fix this mess!!!!
+        self.patch.remove()
+        self.patch = None
     
     def xOverlap(self, other):
         if self.x1 < other.x0:
@@ -174,9 +197,7 @@ class Positioner(object):
     
     All data is saved and computations done in pixel units. 
     """
-    colors = [
-        'black', 'brown', 'red', 'orange',
-        'yellow', 'green', 'blue', 'violet']
+    colors = ['brown', 'red', 'orange', 'yellow', 'green', 'blue', 'violet']
     
     relpos = [
         (0.0, 0.0),     # NE
@@ -227,31 +248,35 @@ class Positioner(object):
         Adds a record for the supplied annotation object I{ann},
         sub-categorized by the axis I{ax} it belongs to.
 
-        Unless a rectangle object is also supplied, cleanly
+        Unless a L{RectangleRegion} object is also supplied, cleanly
         replaces any annotation that already exists for that axis with
         the same non-transformed x,y coordinates, deleting all
         rectangle objects from the record.
 
-        If a rectangle object is supplied with the I{r} keyword, adds
-        it to the list associated with the supplied annotation in the
-        record.
+        If a L{RectangleRegion} object is supplied with the I{r}
+        keyword, adds it to the list associated with the supplied
+        annotation in the record.
 
         If my I{verbose} attribute is C{True}, adds an unfilled
         colored rectangle to the figure for annotation position
-        debugging purposes. The colors follow the resistor color code,
-        with the first attempted position being drawn in black, the
-        second being brown, etc.
+        debugging purposes. The colors follow the resistor color code
+        indexed from 1, with the first attempted position being drawn
+        in brown (#1), the second being red (#2), etc.
+
+        The rectangle is a Matplotlib C{Patch} object, stored in the
+        I{patch} attribute of the I{RectangleRegion} object.
         """
         key = self.key(ann)
         if r is None:
             if key in self.annotations:
+                import pdb; pdb.set_trace() 
                 self.remove(ann)
         elif key in self.annotations:
             rList = self.annotations[key][1]
             rList.append(r)
             if self.verbose:
                 k = len(rList) % len(self.colors)
-                patch = r.patch(self.colors[k])
+                patch = r.getPatch(self.colors[k])
                 ann.axes.get_figure().patches.append(patch)
             return
         self.annotations[key] = (ann, [])
@@ -273,7 +298,8 @@ class Positioner(object):
         else: rList = []
         if fig is None: return
         for r in rList:
-            if r in fig.patches: fig.patches.remove(r)
+            # Remove the rectangle from the Figure
+            if r.patch: r.removePatch()
     
     def dataToPixels(self, ann=None, kAxes=None, ax=None, xyData=None):
         """
@@ -338,8 +364,8 @@ class Positioner(object):
         width, height = self.sizer(ann)
         x01 = shift(xy[0], dx, width)
         y01 = shift(xy[1], dy, height)
-        print "P-R", self, ann.xy, relpos, x01, y01
         r = RectangleRegion(ann, relpos, x01, y01)
+        print "P-R", r
         return r
     
     def liveData(self, kAxes, *xy):
@@ -468,9 +494,34 @@ class Positioner(object):
 
 class Annotator(object):
     """
-    I manage the annotations for all axes in a subplot. Construct me
-    with a list of the axes and call the instance to add each new
+    I manage the annotations for all axes in a single subplot. You'll
+    need an instance of me for each subplot that contains annotations.
+
+    Construct me with a list of the axes in that subplot (the main one
+    and possibly another for y-values that are scaled differently) and
+    a L{PlotHelper.Pairs} instance that holds L{PlotHelper.Pair}
+    objects representing the info for one X, Y pair of vectors to be
+    plotted. Then call the instance to add each new
     annotation.
+
+    B{TODO}: Unfortunately, only a single axes object per subplot is
+    supported at this point; until multiple axes are supported, the
+    list will always contain exactly one Matplotlib C{Axes} object.
+
+    @ivar sizer: An instance of L{Sizer} for estimating dimensions of
+        Matplotlib annotation objects.
+    
+    @ivar p: An instance of L{Positioner} that uses my I{sizer}
+        instance.
+
+    @ivar boxprops: A dict containing names and values for the
+        properties of the bounding boxes for the annotations I
+        create. Based on defaults in I{_boxprops}.
+
+    @cvar _boxprops: Default values for annotation object bounding box
+        properties.
+
+    @see: L{PlotHelper.doAnnotations}.
     """
     rp = 28.3
     offsets = [
@@ -516,10 +567,6 @@ class Annotator(object):
     }
     maxDepth = 10
 
-    # PROFILE
-    #from cProfile import Profile
-    #P = Profile()
-
     @classmethod
     def setVerbose(cls, yes=True):
         Positioner.verbose = yes
@@ -564,7 +611,7 @@ class Annotator(object):
             va = "center"
         return ha, va
 
-    def evaluate(self, ann, depth=0):
+    def evaluate(self, ann):
         def setBest():
             best['score'] = score
             best['offset'] = self.scaledOffset(radius, offset)
@@ -597,22 +644,43 @@ class Annotator(object):
             
         offset = best['offset']
         if realDifference(offset, ann.xyann):
-            return self.replace(
-                ann, offset=offset, relpos=best['relpos'], depth=depth)
+            return self.replace(ann, offset=offset, relpos=best['relpos'])
         return ann
     
     def update(self, *args, **kw):
-        depth = kw.pop('depth', 0) + 1
-        if depth > self.maxDepth:
-            return False
+        """
+        Call this to have all added annotations intelligently
+        repositioned.
+
+        All arguments and keywords are accepted but disregarded,
+        making this is a convenient GUI hook or Twisted callback.
+
+        Returns C{True} if anything was repositioned, C{False} if
+        everything stayed the same. You can use that info to decide
+        whether to redraw.
+        """
         updated = False
         for ann in self.p:
-            result = self.evaluate(ann, depth)
+            result = self.evaluate(ann)
             if result != ann:
                 updated = True
         return updated
     
-    def add(self, ax, text, xy, offset=None, relpos=None, depth=0):
+    def add(self, ax, text, xy, offset=None, relpos=None):
+        """
+        Adds to the specified Matplotlib C{Axes} object I{ax} an
+        annotation with the supplied I{text}, with an arrow pointing
+        at data-value coordinates I{xy}.
+
+        The annotation will always be added right on top of the
+        data-value coordinates. Obviously, it can't stay there, so you
+        need to call L{update} to move it to an appropriate place once
+        the rest of the subplot has been added.
+
+        The keywords I{offset} and I{relpos} are specified when this
+        method gets called again by L{replace} to intelligently
+        reposition annotations.
+        """
         if offset is None: offset = (0,0)
         arrowprops = self.arrowprops.copy()
         if relpos:
@@ -627,11 +695,6 @@ class Annotator(object):
             arrowprops=arrowprops, bbox=self.boxprops, zorder=100)
         self.p.add(ann)
         ann.draw(ax.figure.canvas.get_renderer())
-        # PROFILE
-        # ---------------------------------------------
-        #self.P.runcall(self.update, depth=depth)
-        self.update(depth=depth)
-        # ---------------------------------------------
         return ann
 
     def remove(self, ann, ax=None):
@@ -652,145 +715,19 @@ class Annotator(object):
         if text is None: text = ann.get_text()
         self.remove(ann, ax)
         return self.add(
-            ax, text, xy,
-            kw.get('offset', None), kw.get('relpos', None), kw.get('depth', 0))
+            ax, text, xy, kw.get('offset', None), kw.get('relpos', None))
     
     def __call__(self, kAxis, x, y, text):
+        """
+        Call my instance with the axes index (always zero until twinning
+        is supported), the I{x} and I{y} data-value coordinates of the
+        plot point to be annotated, and the annotation text.
+
+        Returns a Matplotlib C{Text} object with an arrow that points
+        to the data point of interest.
+
+        @see: L{add}.
+        """
         ax = self.axList[kAxis]
         ann = self.add(ax, text, (x, y))
         return ann
-
-
-class TextBoxMaker(object):
-    """
-    Construct an instance with a Matplotlib C{Axes} object and, to add
-    the textbox to a subplot instead of the whole figure, two more
-    args: The number of columns and rows in the subplot.
-
-    Any keywords you supply to my constructor are used in the textbox,
-    with the exception of I{m}.
-
-    @keyword DPI: The dots per inch of the figure the text box will be
-        going into.
-    
-    @keyword m: The margin between the text box and the edge of the
-        figure. If a float, relative to figure or subplot
-        dimensions. If an int, in pixels; requires I{fDims} to be
-        supplied. (Default: 0.02)
-
-    @keyword fDims: A 2-sequence containing the figure dimensions in
-        pixels.
-    
-    @keyword alpha: The alpha (opacity) of the text box
-        background. (Default: 0.8)
-
-    @keyword backgroundcolor: The background color of the text
-        box. (Default: white)
-    """
-    DEBUG = False
-    
-    _locations = {
-        'NE':   1,
-        'E':    2,
-        'SE':   3,
-        'S':    4,
-        'SW':   5,
-        'W':    6,
-        'NW':   7,
-        'N':    8,
-    }
-    _XY = {
-        1:      (1.0,   1.0),
-        2:      (1.0,   0.5),
-        3:      (1.0,   0.0),
-        4:      (0.5,   0.0),
-        5:      (0.0,   0.0),
-        6:      (0.0,   0.5),
-        7:      (0.0,   1.0),
-        8:      (0.5,   1.0),
-    }
-    _textAlignment = {
-        1: ('right',    'top'   ),
-        2: ('right',    'center'),
-        3: ('right',    'bottom'),
-        4: ('center',   'center'),
-        5: ('left',     'bottom'),
-        6: ('left',     'center'),
-        7: ('left',     'top'   ),
-        8: ('center',   'center'),
-    }
-
-    kw = {
-        'm':                    0.02,
-        'fontsize':             10.0,
-        'alpha':                1.0,
-        'backgroundcolor':      "white",
-        'zorder':               5,
-        'fDims':                None,
-    }
-
-    def __init__(self, axOrFig, *args, **kw):
-        self.fig = axOrFig.get_figure()
-        if self.fig is None:
-            self.ax = None
-            self.fig = axOrFig
-        else: self.ax = axOrFig
-        self.NcNr = args
-        self.kw = self.kw.copy()
-        self.kw.update(kw)
-        self.tsc = TextSizeComputer(kw.pop('DPI', None))
-
-    def conformLocation(self, location):
-        if not isinstance(location, int):
-            location = self._locations[location.upper()]
-        return location
-
-    def get_XY(self, location, dims, margins):
-        xy = list(self._XY[location])
-        for k, value in enumerate(xy):
-            mk = margins[k]*self.NcNr[k] if self.NcNr else margins[k]
-            if value == 0.0:
-                xy[k] = 0.5*dims[k] + mk
-                continue
-            if value == 1.0:
-                xy[k] = 1.0 - 0.5*dims[k] - mk
-        return xy
-    
-    def __call__(self, location, proto, *args, **options):
-        kw = self.kw.copy()
-        kw.update(options)
-        location = self.conformLocation(location)
-        text = sub(proto, *args)
-        fDims = kw.pop('fDims')
-        margin = kw.pop('m')
-        if fDims:
-            dims = self.tsc.pixels2fraction(
-                self.tsc.dims(text, kw['fontsize']), fDims)
-            if isinstance(margin, int):
-                margins = [float(margin)/x for x in fDims]
-            else: margins = [margin, margin]
-        else:
-            dims = [0, 0]
-            if isinstance(margin, int):
-                raise ValueError(
-                    "You must supply figure dims with integer margin")
-            margins = [margin, margin]
-        x, y  = self.get_XY(location, dims, margins)
-        kw['horizontalalignment'], kw['verticalalignment'] = \
-            self._textAlignment[location]
-        if self.ax:
-            kw['transform'] = self.ax.transAxes
-            self.t = self.ax.text(x, y, text, **kw)
-        else: self.t = self.fig.text(x, y, text, **kw)
-        if self.DEBUG:
-            self.t.set_bbox({'facecolor': "white", 'edgecolor': "red"})
-        return self
-
-    def remove(self):
-        """
-        Removes my text object from the figure, catching the exception
-        raised if it's not there.
-        """
-        try:
-            self.t.remove()
-        except: pass

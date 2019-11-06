@@ -33,7 +33,8 @@ the plotting options you can set.
 
 import numpy as np
 
-from yampex.annotate import Annotator, TextBoxMaker
+from yampex.annotate import Annotator
+from yampex.textbox import TextBoxMaker
 from yampex.util import sub, PLOTTER_NAMES
 
 
@@ -147,8 +148,10 @@ class PlotHelper(object):
     """
     I help with plotting calls for a single subplot.
 
-    @ivar ax: The first and possibly only Matplotlib C{Axes} object (a
-        real one, not a L{SpecialAx} instance) for my subplot.
+    @ivar ax: The first and possibly only Matplotlib C{Axes} object
+        for the subplot (a real one, not a L{SpecialAx} instance) for
+        my subplot. (Will be the only one until twinning is
+        supported.)
     
     @ivar pairs: An instance of L{Pairs} containing L{Pair} instances,
         one for each X, Y pair of vectors defined by plotting calls
@@ -384,7 +387,8 @@ class PlotHelper(object):
         """
         Here is where I finally plot my X, Y vector pairs.
 
-        B{TODO:} Support yscale, last seen in commit #e20e6c15. Or maybe not.
+        B{TODO:} Support yscale, last seen in commit #e20e6c15. Or
+        maybe don't bother.
         """
         for k, pair in enumerate(self.pairs):
             kw = {} if pair.fmt else self.p.doKeywords(k, pair.kw)
@@ -410,15 +414,35 @@ class PlotHelper(object):
             self.lineInfo[1].append(legend)
             if self.p.opts['useLabels']: self.addLegend(k, legend)
     
-    def doAnnotations(self):
+    def addAnnotations(self):
         """
-        Creates an L{Annotator} for my annotations and then populates it.
+        Creates an L{Annotator} for my annotations to this subplot and
+        then populates it.
+
+        Since twinned C{Axes} objects in a single subplot are not yet
+        supported (and may never be), the annotator object will always
+        be called with zero as its first argument, the C{Axes}
+        index. That does B{not} mean that only a single vector can be
+        annotated within one subplot. Multiple vectors often share the
+        same C{Axes} object. An annotation can point its arrow to any
+        X,Y coordinate in the subplot, whether that is on a plotted
+        curve or not.
+
+        This method only adds the annotations, plopping them right on
+        top of the data points of interest. You need to call
+        L{updateAnnotations} to have them intelligently repositioned
+        after the subplot has been completed and its final dimensions
+        are established, or (B{TODO}) if it is resized and the
+        annotationed need repositioning.
         """
         self.p.plt.draw()
+        # There will be no twinned axes as that's not yet supported;
+        # axList will always contain a single Axes object.
         axList = self.p.sp.getTwins()
+        fontsize = self.p.fontsize('annotations', 'small')
+        # This one Annotator will take care of all my annotations
         annotator = self.p.annotators[self.ax] = Annotator(
-            axList, self.pairs, fontsize=self.p.fontsize(
-                'annotations', 'small'))
+            axList, self.pairs, fontsize=fontsize)
         for k, text, kVector, is_yValue in self.p.opts['annotations']:
             X, Y = self.pairs[kVector].getXY()
             if not isinstance(k, int):
@@ -429,7 +453,12 @@ class PlotHelper(object):
             elif isinstance(text, float): text = sub("{:.2f}", text)
             # Not supporting kAxis != 0 right now
             annotator(0, x, y, text)
-            annotator.update()
+
+    def updateAnnotations(self):
+        self.p.plt.draw()
+        annotator = self.p.annotators[self.ax]
+        if annotator.update():
+            self.p.plt.draw()
         
     def doPlots(self):
         """
@@ -476,7 +505,7 @@ class PlotHelper(object):
             self.ax.legend(*self.lineInfo, **{
                 'loc': "best",
                 'fontsize': self.p.fontsize('legend', "small")})
-        self.doAnnotations()
+        self.addAnnotations()
         # Text boxes
         tbs = self.p.opts['textBoxes']
         if tbs:
@@ -490,3 +519,6 @@ class PlotHelper(object):
         if self.p.opts['grid']:
             self.ax.grid(True, which='major')
         self.p.opts.useLastLocal()
+        # Have any annotations intelligently repositioned now that the
+        # subplot is completed.
+        self.updateAnnotations()

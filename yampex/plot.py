@@ -37,7 +37,8 @@ import screeninfo
 
 import numpy as np
 
-from yampex.annotate import TextBoxMaker, Annotator
+from yampex.annotate import Annotator
+from yampex.textbox import TextBoxMaker
 from yampex.options import Opts, OptsBase
 from yampex.subplot import Subplotter
 from yampex.scaling import Scaler
