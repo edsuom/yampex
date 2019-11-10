@@ -82,72 +82,88 @@ class RectangleRegion(object):
     """
     I am a rectangular plot region where an annotation is or might go.
 
-    @ivar patch: A Matplotlib C{Rectangle} patch object that draws an
-        outline-only colored rectangle indicating the space occupied
-        by my in the subplot. For debugging. C{None} if no such
-        rectangle is being drawn.
+    Construct me with the annotation I{ann}, the number of pixels to
+    the right I{dx} and up I{dy} from that annotation's data-point
+    location to the center of the proposed location, the I{width}, and
+    the I{height}.
+
+    The positioning of the region is like so, with "A" being the
+    annotation's data-point location, "C" being the center of my
+    rectangular region::
+
+                      |
+                      |         +------------------+ y1   ^
+                      |         |                  |      :
+                      ^ ....... |....... C         |   height
+                      :         |        .         |      :
+                      :         +------------------+ y0   V
+                      dy       x0        .         x1
+                      :         <=== width ========>
+                      :                  .
+                      V                  .
+        --------------A<=== dx ==========>------------------------------------
+                      |
+                      |
     """
-    def __init__(self, ann, relpos, x01, y01):
+    def __init__(self, ann, dx, dy, width, height):
         self.ann = ann
-        self.relpos = relpos
-        self.xy = ann.axes.transData.transform(ann.xy)
-        self.x0, self.x1 = x01
-        self.y0, self.y1 = y01
-        self.patch = None
+        Ax, Ay = self._annXY()
+        Cx = Ax + dx
+        Cy = Ay + dy
+        self.x0 = Cx - 0.5*width
+        self.x1 = Cx + 0.5*width
+        self.y0 = Cy - 0.5*width
+        self.y1 = Cy + 0.5*width
 
     def __repr__(self):
-        args = list(self.ann.xy)
-        for x in self.xy[0], self.xy[1], self.x0, self.y0, self.x1, self.y1:
+        args = [int(round(x)) for x in self._annXY()]
+        for x in self.x0, self.y0, self.x1, self.y1:
             args.append(int(round(x)))
-        return sub(
-            "({:.0f}, {:.0f}): ({:d}, {:d}) --> [{:d},{:d} {:d},{:d}]", *args)
+        return sub("({:d}, {:d}) --> [{:d},{:d} {:d},{:d}]", *args)
 
-    def getPatch(self, color):
-        """
-        Returns a Matplotlib C{Rectangle} patch object representing me,
-        generating it if necessary. It will be drawn as an unfilled
-        rectangle of the specified I{color}.
-        """
-        if self.patch is None:
-            self.patch = patches.Rectangle(
-                [self.x0, self.y0], self.x1-self.x0, self.y1-self.y0,
-                color=color, fill=False)
-        return self.patch
-
-    def removePatch(self):
-        """
-        Removes the Matplotlib C{Rectangle} patch object and discards it.
-
-        TODO: This doesn't actually work. Figure out how to move the
-        annotations or clear the whole figure and re-draw the plot
-        after all undesired annotations and patches have been removed.
-        """
-        # TODO: Fix this mess!!!!
-        self.patch.remove()
-        self.patch = None
+    def _annXY(self):
+        return self.ann.axes.transData.transform(self.ann.xy)
     
-    def xOverlap(self, other):
+    def _xOverlap(self, other):
         if self.x1 < other.x0:
-            # My annotation is fully to the left of this one
+            # I am fully to the left of the other
             return False
         if self.x0 > other.x1:
-            # Mine is fully to the right of it
+            # I am fully to the right of it
             return False
         return True
         
-    def yOverlap(self, other):
+    def _yOverlap(self, other):
         if self.y1 < other.y0:
-            # My annotation is fully below this one
+            # I am fully below the other
             return False
         if self.y0 > other.y1:
-            # Mine is fully above it
+            # I am fully above it
             return False
         return True
-    
-    def overlap(self, other):
-        return self.xOverlap(other) and self.yOverlap(other)
 
-    def arrowOverlap(self, other):
+    def overlaps_data(self):
+        """
+        Returns C{True} if I overlap my annotation's data point.
+        """
+        Ax, Ay = self._annXY()
+        if self.x0 < Ax and self.x1 > Ax:
+            return True
+        if self.y0 < Ay and self.y1 > Ay:
+            return True
+    
+    def overlaps_other(self, other):
+        """
+        Returns C{True} if I overlap the I{other} L{RectangleRegion}
+        instance.
+        """
+        return self._xOverlap(other) and self._yOverlap(other)
+
+    def overlaps_arrow(self, other):
+        """
+        Returns C{True} if my arrow overlaps the I{other}
+        L{RectangleRegion} instance.
+        """
         def zBetweenAB(a, b, z):
             """Is z between a and b? (Make sure a < b)"""
             return z > a and z < b
@@ -156,12 +172,14 @@ class RectangleRegion(object):
         if self.relpos[0] == 0.5:
             # Vertical arrow
             if x < other.x0 or x > other.x1:
+                # No overlap because arrow is entirely to the left or
+                # right of the other
                 return False
             # Arrow between other's vertical sides
             if self.y1 < other.y0:
                 # Other is above me...
                 if y < self.y0 or zBetweenAB(self.y1, other.y0, y):
-                    # ...so no overlap if arrow points down or is
+                    # ...so no overlap because arrow points down or is
                     # between us
                     return False
             elif y > self.y1 or zBetweenAB(other.y1, self.y0, y):
@@ -191,24 +209,15 @@ class RectangleRegion(object):
         return False
 
 
-class Positioner(object):
+class PositionEvaluator(object):
     """
-    I take care of positioning an annotation. 
+    Use an instance of me to evaluate the overlap score of a proposed
+    position of an annotation, based on subplot data, boundaries, and
+    the positions of all other annotations in the subplot.
     
-    All data is saved and computations done in pixel units. 
+    All subplot data is converted to, and computations done in, pixel
+    units.
     """
-    colors = ['brown', 'red', 'orange', 'yellow', 'green', 'blue', 'violet']
-    
-    relpos = [
-        (0.0, 0.0),     # NE
-        (0.0, 0.5),     # E
-        (0.0, 1.0),     # SE
-        (0.5, 1.0),     # S
-        (1.0, 1.0),     # SW
-        (1.0, 0.5),     # W
-        (1.0, 0.0),     # NW
-        (0.5, 0.0),     # N
-    ]
     rectanglePadding = 0 #2
     # I hate fudge factors, but rectangle analysis region is shifted
     # too far without this
@@ -216,109 +225,23 @@ class Positioner(object):
     # Show warnings and trial position rectangles
     verbose = False
     
-    def __init__(self, sizer, axList, pairs):
-        self.annotations = {}
-        self.sizer = sizer
-        self.axList = axList
-        self.xyLists = {}
+    def __init__(self, ax, pairs, annotations):
+        self.ax = ax
         self.pairs = pairs
-        #self.prevData(pairs)
+        self.annotations = annotations
+        self.sizer = Sizer()
 
-    @property
-    def relpos(self):
-        if not getattr(self, 'r', None):
-            return
-        return self.r.relpos
-
-    def __iter__(self):
-        for ann, r in self.annotations.copy().itervalues():
-            if self.key(ann) in self.annotations:
-                yield ann
-
-    def key(self, ann):
+    def _dataToPixels(self, ann=None, Pair=None):
         """
-        Returns a unique integer key based on the supplied annotation
-        object's non-transformed (original) x,y coordinates and which
-        axis it belongs to.
+        Returns the 
         """
-        return hash((ann.axes, ann.xy))
-                
-    def add(self, ann, r=None):
-        """
-        Adds a record for the supplied annotation object I{ann},
-        sub-categorized by the axis I{ax} it belongs to.
-
-        Unless a L{RectangleRegion} object is also supplied, cleanly
-        replaces any annotation that already exists for that axis with
-        the same non-transformed x,y coordinates, deleting all
-        rectangle objects from the record.
-
-        If a L{RectangleRegion} object is supplied with the I{r}
-        keyword, adds it to the list associated with the supplied
-        annotation in the record.
-
-        If my I{verbose} attribute is C{True}, adds an unfilled
-        colored rectangle to the figure for annotation position
-        debugging purposes. The colors follow the resistor color code
-        indexed from 1, with the first attempted position being drawn
-        in brown (#1), the second being red (#2), etc.
-
-        The rectangle is a Matplotlib C{Patch} object, stored in the
-        I{patch} attribute of the I{RectangleRegion} object.
-        """
-        key = self.key(ann)
-        if r is None:
-            if key in self.annotations:
-                import pdb; pdb.set_trace() 
-                self.remove(ann)
-        elif key in self.annotations:
-            rList = self.annotations[key][1]
-            rList.append(r)
-            if self.verbose:
-                k = len(rList) % len(self.colors)
-                patch = r.getPatch(self.colors[k])
-                ann.axes.get_figure().patches.append(patch)
-            return
-        self.annotations[key] = (ann, [])
-            
-    def remove(self, ann, ax=None):
-        """
-        Removes the record for the supplied annotation object I{ann}.
-
-        If an Axes object is found, removes all rectangle patches
-        present in the Figure for the Axes. If an Axes object is also
-        supplied via the keyword I{ax}, uses that instead of looking
-        for one as an I{axes} attribute of the annotation object.
-        """
-        key = self.key(ann)
-        if ax is None: ax = ann.axes
-        fig = None if ax is None else ax.get_figure()
-        if key in self.annotations:
-            null, rList = self.annotations.pop(key)
-        else: rList = []
-        if fig is None: return
-        for r in rList:
-            # Remove the rectangle from the Figure
-            if r.patch: r.removePatch()
-    
-    def dataToPixels(self, ann=None, kAxes=None, ax=None, xyData=None):
-        """
-        Returns...
-        """
-        if ax is None:
-            ax = self.axList[kAxes] if ann is None else ann.axes
-        if xyData is None:
-            if kAxes is None:
-                xy = ann.xy
-            else:
-                xy = np.column_stack(self.pairs.getXY(kAxes))
-        else: xy = xyData
-        if isinstance(xy, list) and len(xy) == len(self.axList)+1:
-            xy2 = []
-            if kAxes is None: kAxes = self.axList.index(ax)
-            for k in range(len(xy[0])):
-                xy2.append([xy[0][k], xy[kAxes][k]])
-            xy = xy2
+        ax = ann.axes
+        if ann is None:
+            if Pair is None:
+                raise ValueError(
+                    "You must specify either an annotation or a Pair")
+            xy = np.column_stack(self.pairs.getXY(kAxes))
+        xy = ann.xy
         try:
             XY = ax.transData.transform(xy)
         except:
@@ -331,17 +254,15 @@ class Positioner(object):
             return [XY[:,k] for k in (0,1)]
         return XY
                 
-    def rectangle(self, ann, dx, dy):
+    def rectangleRegion(self, ann, dx, dy):
         """
-        Sets up a new overlap analysis with the supplied annotation and
-        proposed x and y offset (pixel units) from its current location.
+        Constructs a new L{RectangleRegion} for proposed position of the
+        supplied annotation I{ann}, with its center shifted I{dx}
+        pixels to the right and I{dy} pixels up from its data point.
 
-        The offset is adjusted so that positive x or y offset puts the
-        left or lower corner at that point, negative x or y offset
-        puts the right or upper corner there, and zero x or y offset
-        puts the middle of the edge there.
+            
 
-        Returns a L{RectangleRegion} with the four points
+        Returns the L{RectangleRegion}.
         """
         def shift(x_y, dx_y, dim):
             if dx_y < 0:
@@ -359,43 +280,19 @@ class Positioner(object):
             return x_y0 - self.rectanglePadding, x_y1 + self.rectanglePadding
         
         relpos = []
-        xy = self.dataToPixels(ann=ann)
-        if xy is None: return
+        xy = ax.transData.transform(ann.xy)
         width, height = self.sizer(ann)
         x01 = shift(xy[0], dx, width)
         y01 = shift(xy[1], dy, height)
-        r = RectangleRegion(ann, relpos, x01, y01)
-        print "P-R", r
-        return r
-    
-    def liveData(self, kAxes, *xy):
-        xyLists = self.xyLists.setdefault(kAxes, [[], []])
-        if xy:
-            x, y = xy
-            k = np.searchsorted(xyLists[0], x)
-            xyLists[0].insert(k, x)
-            xyLists[1].insert(k, y)
-        return np.column_stack(xyLists)
-
-    def prevData(self, pairs=None):
-        if pairs is None:
-            return getattr(self, '_prevData', None)
-        self._prevData = pairs.copy()
+        rr = RectangleRegion(ann, relpos, x01, y01)
+        print "P-R", rr
+        return rr
     
     def datarator(self):
         """
         Yields X and Y transformed to pixels with current axes display
         """
-        N = len(self.axList)
-        for kAxes in range(N):
-            yield self.dataToPixels(kAxes=kAxes)
-            xyData = self.liveData(kAxes)
-            if xyData.shape[0]:
-                yield self.dataToPixels(kAxes=kAxes, xyData=xyData)
-        # Why needed?
-        #xyData = self.prevData()
-        #if xyData is not None:
-        #    yield self.dataToPixels(kAxes=kAxes, xyData=xyData)
+        yield self._dataToPixels(kAxes=0)
     
     def with_data(self, ann, r):
         """
@@ -475,21 +372,28 @@ class Positioner(object):
                 break
         return score
     
-    def __call__(self, ann, offset, radius, mustBeat=1E9):
+    def score(self, ann, dx, dy, mustBeat=1E9):
         """
-        Sets up a new overlap analysis with the supplied annotation and
-        proposed x and y offset (pixel units) from its current location.
+        Computes the total overlap score for the annotation if it were
+        positioned in my subplot at the specified offset I{dx} and
+        I{dy} in pixels from its data point.
+
+        A higher overlap score is worse. A zero overlap score (best
+        case) indicates no overlap with anything else at that offset.
+
+        Returns a 2-tuple with the overlap score and the
+        L{RectangleRegion} object I construct for its proposed
+        location in my subplot.
         """
         fig = ann.axes.get_figure()
-        r = self.rectangle(ann, *[radius*x for x in offset])
-        self.add(ann, r)
+        rr = self.rectangle(ann, dx, dy)
         self.mustBeat = mustBeat
         score = self.with_boundary(ann, r)
         if score < mustBeat:
             score += self.with_others(ann, r)
         if score < mustBeat:
             score += self.with_data(ann, r)
-        return radius*score
+        return score
 
 
 class Annotator(object):
@@ -497,22 +401,23 @@ class Annotator(object):
     I manage the annotations for all axes in a single subplot. You'll
     need an instance of me for each subplot that contains annotations.
 
-    Construct me with a list of the axes in that subplot (the main one
-    and possibly another for y-values that are scaled differently) and
+    Construct me with the Matplotlib C{Axes} object for my subplot and
     a L{PlotHelper.Pairs} instance that holds L{PlotHelper.Pair}
     objects representing the info for one X, Y pair of vectors to be
-    plotted. Then call the instance to add each new
-    annotation.
-
-    B{TODO}: Unfortunately, only a single axes object per subplot is
-    supported at this point; until multiple axes are supported, the
-    list will always contain exactly one Matplotlib C{Axes} object.
+    plotted. Call L{add} on the instance to add each new annotation,
+    and L{update} to intelligently (re)position the annotations to
+    avoid overlap with subplot borders, plot data, and other
+    annotations.
 
     @ivar sizer: An instance of L{Sizer} for estimating dimensions of
         Matplotlib annotation objects.
     
-    @ivar p: An instance of L{Positioner} that uses my I{sizer}
-        instance.
+    @ivar pos: An instance of L{PositionEvaluator} that uses my
+        I{sizer} instance.
+
+    @ivar annotations: A list of all Matplotlib annotation objects in
+        my subplot. A reference is passed to the constructor of
+        L{Sizer} and used by it as well.
 
     @ivar boxprops: A dict containing names and values for the
         properties of the bounding boxes for the annotations I
@@ -521,7 +426,8 @@ class Annotator(object):
     @cvar _boxprops: Default values for annotation object bounding box
         properties.
 
-    @see: L{PlotHelper.doAnnotations}.
+    @see: L{PlotHelper.addAnnotations} and
+        L{PlotHelper.updateAnnotations}.
     """
     rp = 28.3
     offsets = [
@@ -545,7 +451,7 @@ class Annotator(object):
         (-11, +26),     # NNW
     ]
     radii = [1.0, 2.0, 4.0, 8.0, 12.0, 16.0]
-
+    
     fontsize = 12 # points
     # Estimated mapping of string fontsizes to points
     fontsizeMap = TextSizeComputer.fontsizeMap
@@ -566,87 +472,79 @@ class Annotator(object):
         'alpha':                0.8,
     }
     maxDepth = 10
-
+    
     @classmethod
     def setVerbose(cls, yes=True):
-        Positioner.verbose = yes
+        PositionEvaluator.verbose = yes
     
-    def __init__(self, axList, pairs, **kw):
-        self.axList = axList
-        self.sizer = Sizer()
-        self.p = Positioner(self.sizer, axList, pairs)
+    def __init__(self, ax, pairs, **kw):
+        self.ax = ax
+        self.annotations = []
+        self.pos = PositionEvaluator(ax, pairs, self.annotations)
         for name in kw:
             setattr(self, name, kw[name])
         self.boxprops = self._boxprops.copy()
         self.boxprops['boxstyle'] = sub(
-            "round,pad={:0.3f}", self.paddingForSize())
-
-    def paddingForSize(self):
+            "round,pad={:0.3f}", self._paddingForSize())
+    
+    def _paddingForSize(self):
+        """
+        Returns the amount of padding (in what units???) for the bounding
+        boxes of all annotations I produce, given my I{fontsize}.
+        """
         fs = self.fontsize
         if fs in self.fontsizeMap:
             fs = self.fontsizeMap[fs]
         return min([0.25, 0.44 - 0.008*fs])
     
-    def offseterator(self, radius):
-        for k, offsets in enumerate(self.offsets):
-            yield offsets
-            if radius > 2:
-                yield self.moreOffsets[k]
+    def _offseterator(self):
+        """
+        Iterates over possible annotation offset positions, rotating
+        clockwise around a central point.
+
+        After one full rotation, another rotation is done at a larger
+        offset radius. Once the radius get big enough, the box
+        positions include not just 45-degree points on the compass,
+        but also points in between.
+
+        Each iteration yields a 2-tuple with (1) the horizontal offset
+        I{dx} in pixels to the right of the data point, and (2) the
+        vertical offset I{dx} in pixels above the data point.
+        """
+        def scaleOffset(radius, dx, dy):
+            return radius*dx, radius*dy
         
-    def scaledOffset(self, radius, offset):
-        return [radius*x for x in offset]
-        
-    def textAlignment(self, relpos):
-        if relpos[0] == 0:
-            ha = "left"
-        elif relpos[0] == 1:
-            ha = "right"
-        else:
-            ha = "center"
-        if relpos[1] == 0:
-            va = "bottom"
-        elif relpos[1] == 1:
-            va = "top"
-        else:
-            va = "center"
-        return ha, va
+        for radius in self.radii:
+            for k, offset in enumerate(self.offsets):
+                yield scaleOffset(radius, *offset)
+                if radius > 2:
+                    yield scaleOffset(radius, *self.moreOffsets[k])
 
-    def evaluate(self, ann):
-        def setBest():
-            best['score'] = score
-            best['offset'] = self.scaledOffset(radius, offset)
-            best['relpos'] = self.p.relpos
+    def add(self, x, y, text):
+        """
+        Adds an annotation with an arrow pointing at data-value
+        coordinates I{x} and I{y} and displaying the supplied I{text}
+        inside a round-bordered text box.
 
-        def realDifference(a, b):
-            for k in (0, 1):
-                if abs(a[k] - b[k]) > 0.5: return True
-            return False
+        The annotation will be added to my Matplotlib C{Axes} object
+        I{ax} right on top of its data-value coordinates. Obviously,
+        it can't stay there, so you need to call L{update} to move it
+        to an appropriate place once the rest of the subplot has been
+        added. You also should call L{update} if the annotation needs
+        to be repositioned due to a change in the figure dimensions.
 
-        def radiusPenalty(radius):
-            if radius > 2:
-                return 0.2*np.sqrt(radius)
-            return 0
+        The keywords I{offset} and I{relpos} are specified when this
+        method gets called again by L{replace} to intelligently
+        reposition annotations.
+        """
+        arrowprops = self.arrowprops.copy()
+        ann = ax.annotate(
+            text, xy=xy, textcoords="offset pixels", size=self.fontsize,
+            weight=self.fontWeight, ha='center', va='center',
+            arrowprops=arrowprops, bbox=self.boxprops, zorder=100)
+        ann.draw(ax.figure.canvas.get_renderer())
+        self.annotations.append(ann)
 
-        best = {'score': 1E9}
-        for k, radius in enumerate(self.radii):
-            for offset in self.offseterator(radius):
-                score = self.p(ann, offset, radius, mustBeat=best['score'])
-                if score < best['score']: setBest()
-                if score == 0: break
-            if best['score'] == 0: break
-            best['score'] += radiusPenalty(radius)
-            if k+1 < len(self.radii):
-                nextRadius = self.radii[k+1]
-                if best['score'] < radiusPenalty(nextRadius):
-                    # Even a clear spot would be scored worse at next
-                    # higher radius, so we're done
-                    break
-            
-        offset = best['offset']
-        if realDifference(offset, ann.xyann):
-            return self.replace(ann, offset=offset, relpos=best['relpos'])
-        return ann
-    
     def update(self, *args, **kw):
         """
         Call this to have all added annotations intelligently
@@ -660,74 +558,13 @@ class Annotator(object):
         whether to redraw.
         """
         updated = False
-        for ann in self.p:
-            result = self.evaluate(ann)
-            if result != ann:
+        for ann in self.annotations:
+            dx0, dy0 = ann.xydata
+            for dx, dy in self._offseterator:
+                score = self.pos.score(ann, dx, dy)
+                if not score:
+                    break
+            if (dx, dy) != (dx0, dy0):
                 updated = True
+                ann.xytext = dx, dy
         return updated
-    
-    def add(self, ax, text, xy, offset=None, relpos=None):
-        """
-        Adds to the specified Matplotlib C{Axes} object I{ax} an
-        annotation with the supplied I{text}, with an arrow pointing
-        at data-value coordinates I{xy}.
-
-        The annotation will always be added right on top of the
-        data-value coordinates. Obviously, it can't stay there, so you
-        need to call L{update} to move it to an appropriate place once
-        the rest of the subplot has been added.
-
-        The keywords I{offset} and I{relpos} are specified when this
-        method gets called again by L{replace} to intelligently
-        reposition annotations.
-        """
-        if offset is None: offset = (0,0)
-        arrowprops = self.arrowprops.copy()
-        if relpos:
-            arrowprops['relpos'] = relpos
-            ha, va = self.textAlignment(relpos)
-        else:
-            ha, va = ['center']*2
-        ann = ax.annotate(
-            text, xy=xy, xytext=offset,
-            textcoords="offset pixels",
-            ha=ha, va=va, size=self.fontsize, weight=self.fontWeight,
-            arrowprops=arrowprops, bbox=self.boxprops, zorder=100)
-        self.p.add(ann)
-        ann.draw(ax.figure.canvas.get_renderer())
-        return ann
-
-    def remove(self, ann, ax=None):
-        if ax is None: ax = ann.axes
-        for thisAnn in ax.findobj(match=type(ann)):
-            if thisAnn.get_text() == ann.get_text():
-                thisAnn.remove()
-                self.p.remove(thisAnn, ax)
-        self.p.remove(ann, ax)
-    
-    def replace(self, ann, **kw):
-        # Doesn't the annotation always have an .axes attribute?
-        ax = kw.get('ax', None)
-        if ax is None: ax = ann.axes
-        xy = kw.get('xy', None)
-        if xy is None: xy = ann.xy
-        text = kw.get('text', None)
-        if text is None: text = ann.get_text()
-        self.remove(ann, ax)
-        return self.add(
-            ax, text, xy, kw.get('offset', None), kw.get('relpos', None))
-    
-    def __call__(self, kAxis, x, y, text):
-        """
-        Call my instance with the axes index (always zero until twinning
-        is supported), the I{x} and I{y} data-value coordinates of the
-        plot point to be annotated, and the annotation text.
-
-        Returns a Matplotlib C{Text} object with an arrow that points
-        to the data point of interest.
-
-        @see: L{add}.
-        """
-        ax = self.axList[kAxis]
-        ann = self.add(ax, text, (x, y))
-        return ann

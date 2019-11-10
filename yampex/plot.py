@@ -267,8 +267,9 @@ class Plotter(OptsBase):
             self.fig.canvas.mpl_connect('resize_event', self.subplots_adjust)
         self.figSize = figSize
         self.sp = Subplotter(self, N, self.Nc, self.Nr)
-        # This is an integer, not a reference to anything
+        # The ID is an integer, not a reference to anything
         self.ID = self.ph.add(self)
+        # All Annotator instances are verbose if I am
         if self.verbose: Annotator.setVerbose(True)
         self.kw = kw
         self.dims = {}

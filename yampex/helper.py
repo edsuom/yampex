@@ -419,21 +419,22 @@ class PlotHelper(object):
         Creates an L{Annotator} for my annotations to this subplot and
         then populates it.
 
-        Since twinned C{Axes} objects in a single subplot are not yet
-        supported (and may never be), the annotator object will always
-        be called with zero as its first argument, the C{Axes}
-        index. That does B{not} mean that only a single vector can be
-        annotated within one subplot. Multiple vectors often share the
-        same C{Axes} object. An annotation can point its arrow to any
-        X,Y coordinate in the subplot, whether that is on a plotted
-        curve or not.
+        Twinned C{Axes} objects in a single subplot are not yet
+        supported (and may never be), so the annotator object is
+        constructed with my single C{Axes} object and operates only
+        with that. That does B{not} mean that only a single vector can
+        be annotated within one subplot. Twinning is an unusual use
+        case and multiple vectors typically share the same C{Axes}
+        object. An annotation can point its arrow to any X,Y
+        coordinate in the subplot, whether that is on a plotted curve
+        or not.
 
         This method only adds the annotations, plopping them right on
         top of the data points of interest. You need to call
         L{updateAnnotations} to have them intelligently repositioned
         after the subplot has been completed and its final dimensions
         are established, or (B{TODO}) if it is resized and the
-        annotationed need repositioning.
+        annotations need repositioning.
         """
         self.p.plt.draw()
         # There will be no twinned axes as that's not yet supported;
@@ -442,17 +443,21 @@ class PlotHelper(object):
         fontsize = self.p.fontsize('annotations', 'small')
         # This one Annotator will take care of all my annotations
         annotator = self.p.annotators[self.ax] = Annotator(
-            axList, self.pairs, fontsize=fontsize)
+            axList[0], self.pairs, fontsize=fontsize)
         for k, text, kVector, is_yValue in self.p.opts['annotations']:
             X, Y = self.pairs[kVector].getXY()
             if not isinstance(k, int):
-                if is_yValue: k = np.argmin(np.abs(Y-k))
+                if is_yValue:
+                    k = np.argmin(np.abs(Y-k))
                 else: k = np.searchsorted(X, k)
             x = X[k]; y = Y[k]
-            if isinstance(text, int): text = sub("{:d}", text)
-            elif isinstance(text, float): text = sub("{:.2f}", text)
-            # Not supporting kAxis != 0 right now
-            annotator(0, x, y, text)
+            if isinstance(text, int):
+                text = sub("{:d}", text)
+            elif isinstance(text, float):
+                text = sub("{:.2f}", text)
+            # Annotator does not yet support twinned axes, nor are
+            # they yet used
+            annotator.add(x, y, text)
 
     def updateAnnotations(self):
         self.p.plt.draw()

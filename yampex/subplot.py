@@ -114,14 +114,19 @@ class SpecialAx(object):
 
 class Subplotter(object):
     """
-    I handle your subplots, with axis twinning, boundary setting, and
-    ticks.
+    I handle your subplots, boundary setting and ticks. A L{Plotter}
+    instance constructs me with a reference to itself and an integer
+    number of columns and rows.
 
-    A L{Plotter} instance constructs with a reference to itself and an
-    integer number of columns and rows.
+    B{TODO}: Support axis twinning.
 
+    @ivar p: An instance of L{Plotter} that handles all subplots in a
+        Matplotlib C{Figure}.
+    
     @ivar N: Number of subplots (no greater than Nc*Nr).
+    
     @ivar Nc: Number of columns.
+    
     @ivar Nr: Number of rows.
     """
     def __init__(self, plotter, N, Nc, Nr):
@@ -241,6 +246,8 @@ class Subplotter(object):
         Maintains a list of the twinned axes in the order they were
         created along with an index of the latest-created twin (for
         axes re-use).
+
+        B{TODO}: Not yet supported!
         """
         if ax is None: ax = self.ax
         # Shouldn't need redundant storage from what MatplotLib does,
@@ -263,6 +270,9 @@ class Subplotter(object):
         Returns a list of the twins for the last (or supplied) axes
         object, starting with the axes object itself and then the
         twins in the order they were created.
+
+        B{TODO}: Twinned axes are not yet supported! Always returns a
+        single-element list.
         """
         if ax is None: ax = self.ax
         if mplRoster:
