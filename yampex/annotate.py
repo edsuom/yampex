@@ -117,30 +117,38 @@ class RectangleRegion(object):
     """
     def __init__(self, ann, dx, dy, width, height):
         self.ann = ann
-        Ax, Ay = self._annXY()
-        Cx = Ax + dx
-        Cy = Ay + dy
-        self.x0 = Cx - 0.5*width
-        self.x1 = Cx + 0.5*width
-        self.y0 = Cy - 0.5*height
-        self.y1 = Cy + 0.5*height
+        self.Ax, self.Ay = self.ann.axes.transData.transform(ann.xy)
+        self.Cx = self.Ax + dx
+        self.Cy = self.Ay + dy
+        self.x0 = self.Cx - 0.5*width
+        self.x1 = self.Cx + 0.5*width
+        self.y0 = self.Cy - 0.5*height
+        self.y1 = self.Cy + 0.5*height
 
     def __repr__(self):
-        args = [int(round(x)) for x in self._annXY()]
-        for x in self.x0, self.y0, self.x1, self.y1:
+        args = [int(round(x)) for x in (self.Ax, self.Ay)]
+        for x in (self.x0, self.y0, self.x1, self.y1):
             args.append(int(round(x)))
         return sub("({:d}, {:d}) --> [{:d},{:d} {:d},{:d}]", *args)
 
-    def _annXY(self, ann=None):
+    @property
+    def arrow_line(self):
         """
-        Returns my annotation object's data point coordinates, in pixels.
+        B{Property}: A 2-tuple with endpoints of the annotation's arrow
+        line from its data point (Ax, Ay) to my center (Cx, Cy).
         """
-        try:
-            Ax, Ay = self.ann.axes.transData.transform(self.ann.xy)
-        except:
-            import pdb; pdb.set_trace()
-        return Ax, Ay
-            
+        return (self.Ax, self.Ay), (self.Cx, self.Cy)
+    
+    def overlaps_point(self, x, y):
+        """
+        Returns C{True} if I overlap the point specified in pixels.
+        """
+        if x < self.x0 or x > self.x1:
+            return False
+        if y < self.y0 or y > self.y1:
+            return False
+        return True
+    
     def _xOverlap(self, other):
         if self.x1 < other.x0:
             # I am fully to the left of the other
@@ -159,18 +167,6 @@ class RectangleRegion(object):
             return False
         return True
 
-    def overlaps_datapoint(self):
-        """
-        Returns C{True} if I overlap my annotation's data point and thus
-        its arrow.
-        """
-        Ax, Ay = self._annXY()
-        if Ax < self.x0 or Ax > self.x1:
-            return False
-        if Ay < self.y0 or Ay > self.y1:
-            return False
-        return True
-    
     def overlaps_other(self, other):
         """
         Returns C{True} if I overlap the I{other} L{RectangleRegion}
@@ -178,56 +174,49 @@ class RectangleRegion(object):
         """
         return self._xOverlap(other) and self._yOverlap(other)
 
-    def overlaps_arrow(self, other):
+    def overlaps_line(self, xya, xyb):
         """
-        Returns C{True} if my arrow overlaps the I{other}
-        L{RectangleRegion} instance.
-
-        B{TODO}: Make this work, deal with relpos.
+        Returns C{True} if I overlap the line segment from I{xya} (xa,ya)
+        to I{xyb} (xb,yb).
         """
-        def zBetweenAB(a, b, z):
-            """Is z between a and b? (Make sure a < b)"""
-            return z > a and z < b
+        def y(x):
+            return m*(x-xa) + ya
 
-        x, y = self._annXY()
-        if self.relpos[0] == 0.5:
-            # Vertical arrow
-            if x < other.x0 or x > other.x1:
-                # No overlap because arrow is entirely to the left or
-                # right of the other
-                return False
-            # Arrow between other's vertical sides
-            if self.y1 < other.y0:
-                # Other is above me...
-                if y < self.y0 or zBetweenAB(self.y1, other.y0, y):
-                    # ...so no overlap because arrow points down or is
-                    # between us
-                    return False
-            elif y > self.y1 or zBetweenAB(other.y1, self.y0, y):
-                # Other is below me, so no overlap if arrow points up
-                # or is in between us
-                return False
-            # There must be overlap
+        xa, ya = xya
+        xb, yb = xyb
+        if xa > xb:
+            # Swap so first segment is always to the left of the
+            # second one
+            return self.overlaps_line(xyb, xya)
+        if self.x0 > xb or self.x1 < xa:
+            # I am entirely to the left or right of the line segment
+            return False
+        if self.y0 > yb or self.y1 < ya:
+            # I am entirely above or below the line segment
+            return False
+        if xa == xb:
+            # Special case: Vertical line, must overlap
             return True
-        if self.relpos[1] == 0.5:
-            # Horizontal arrow
-            if y < other.y0 or y > other.y1:
+        m = (yb-ya) / (xb-xa)
+        if ya < yb:
+            # Ascending line segment
+            if y(self.x0) > self.y1:
+                # My NW corner is below and to the right of it
                 return False
-            # Arrow between other's horizontal sides
-            if self.x1 < other.x0:
-                # Other is to my right...
-                if x < self.x0 or zBetweenAB(self.x1, other.x0, x):
-                    # ...so no overlap if arrow points to the left or
-                    # is between us
-                    return False
-            elif x > self.x1 or zBetweenAB(other.x1, self.x0, x):
-                # Other is to my left, so no overlap if arrow points
-                # to the right or is in between us
+            if y(self.x1) < self.y0:
+                # My SE corner is above and to the left of it
                 return False
-            # There must be overlap
+            # Overlaps
             return True
-        # TODO: Angled arrow, not (yet) tested
-        return False
+        # Descending line segment
+            if y(self.x1) > self.y1:
+                # My NE corner is below and to the left of it
+                return False
+            if y(self.x0) < self.y0:
+                # My SW corner is above and to the right of it
+                return False
+            # Overlaps
+            return True
 
 
 class PositionEvaluator(object):
@@ -252,61 +241,16 @@ class PositionEvaluator(object):
         self.annotations = annotations
         self.sizer = Sizer()
 
-    def with_data(self, ann, rr):
+    def with_boundary(self, rr):
         """
-        Returns score for the proposed I{RectangleRegion} I{rr} of the
-        annotation I{ann} overlapping with X,Y data.
-
-        The score increases with the number of plot lines overlapped.
-        """
-        def sliceSpanningRectangle():
-            k0 = np.searchsorted(X, rr.x0) - 1
-            k1 = np.searchsorted(X, rr.x1) + 1
-            return slice(k0, k1)
-        
-        s = None
-        score = 0.0
-        for pair in self.pairs:
-            XY = pair.getXY(asArray=True)
-            XY = ann.axes.transData.transform(XY)
-            X = XY[:,0]; Y = XY[:,1]
-            # Get slice of Y spanning same X interval as annotation
-            newX = False
-            if s is None:
-                # First data set
-                Xmm = X.min(), X.max()
-                s = sliceSpanningRectangle()
-            else:
-                thisXmm = X.min(), X.max()
-                if thisXmm != Xmm:
-                    # Data set with different X interval from the
-                    # previous one
-                    Xmm = thisXmm
-                    s = sliceSpanningRectangle()
-            if np.all(np.less(Y[s], rr.y0)):
-                # All data points below rectangle region
-                continue
-            if np.all(np.greater(Y[s], rr.y1)):
-                # All data points above rectangle region
-                continue
-            score += 1.5
-            if score >= self.awful:
-                # It's as bad as it's meaningfully going to get, no
-                # point looking any further
-                break
-        return score
-
-    def with_boundary(self, ann, rr):
-        """
-        Returns score for the proposed I{RectangleRegion} I{rr} of the
-        annotation I{ann} overlapping with (or going beyond) axis or
-        figure boundary.
+        Returns score for the proposed L{RectangleRegion} I{rr} possibly
+        overlapping with (or going beyond) axis or figure boundary.
 
         The score is twice as high for an overlap with the figure
         boundary.
         """
         score = 0.0
-        ax = ann.axes
+        ax = self.ax
         for k, obj in enumerate((ax, ax.figure)):
             points = obj.get_window_extent().get_points()
             x0, y0 = points[0]
@@ -320,10 +264,11 @@ class PositionEvaluator(object):
                 return score
         return score
     
-    def with_others(self, ann, rr):
+    def with_others(self, rr, ann):
         """
-        Returns score for the proposed I{RectangleRegion} I{rr} of the
-        annotation I{ann} overlapping with any other annotation.
+        Returns score for the proposed L{RectangleRegion} I{rr} possibly
+        overlapping with any annotation other than the specified one
+        I{ann}.
 
         The score increases with the number of overlaps.
         """
@@ -337,16 +282,40 @@ class PositionEvaluator(object):
             width, height = self.sizer(ann_other)
             rr_other = RectangleRegion(ann_other, dx, dy, width, height)
             if rr.overlaps_other(rr_other):
+                # Proposed rr overlaps the other annotation's text box
                 return 4.0
-            # Return somewhat less bad score if there is arrow overlap (TODO)
-            if False and rr.overlaps_arrow(rr_other):
+            if rr.overlaps_line(*rr_other.arrow_line):
+                # Proposed rr overlaps the other annotation's arrow line
                 score += 2.0
-            # TODO: Account for angled arrows, too
             if score >= self.awful:
                 break
         return score
+
+    def with_data(self, rr):
+        """
+        Returns score for the proposed L{RectangleRegion} I{rr} possibly
+        overlapping with my subplot's X,Y data.
+
+        The score increases with the number of plot lines overlapped.
+
+        This is by far the slowest analysis to run when there is a
+        typically large number of X,Y data points.
+        """
+        score = 0.0
+        for pair in self.pairs:
+            XY = pair.getXY(asArray=True)
+            XY = self.ax.transData.transform(XY)
+            xy_prev = None
+            for xy in XY:
+                if xy_prev is not None:
+                    if rr.overlaps_line(xy_prev, xy):
+                        score += 1.0
+                        break
+                xy_prev = xy
+            
+        return score
     
-    def score(self, ann, dx, dy, awful=1E9):
+    def score(self, ann, dx, dy, awful=100):
         """
         Computes the total overlap score for the annotation if it were
         positioned in my subplot at the specified offset I{dx} and
@@ -365,16 +334,17 @@ class PositionEvaluator(object):
         fig = ann.axes.get_figure()
         width, height = self.sizer(ann)
         rr = RectangleRegion(ann, dx, dy, width, height)
-        if rr.overlaps_datapoint():
+        if rr.overlaps_point(rr.Ax, rr.Ay):
+            # Overlaps its own data point
             return awful, rr
         self.awful = awful
-        score = self.with_boundary(ann, rr)
+        score = self.with_boundary(rr)
         print score,
         if score < awful:
-            score += self.with_others(ann, rr)
+            score += self.with_others(rr, ann)
             print score,
         if score < awful:
-            score += self.with_data(ann, rr)
+            score += self.with_data(rr)
             print score,
         return score, rr
 
@@ -595,7 +565,6 @@ class Annotator(object):
                 if db: db.add(rr)
                 #--- DEBUG ---------------------
                 print (dx, dy), rr
-                if dx < 0 and dy > 0: break
                 #-------------------------------
                 if not score: break
                 if score < best[0]: best = (score, dx, dy)
