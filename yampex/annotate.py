@@ -165,10 +165,11 @@ class RectangleRegion(object):
         its arrow.
         """
         Ax, Ay = self._annXY()
-        if self.x0 < Ax and self.x1 > Ax:
-            return True
-        if self.y0 < Ay and self.y1 > Ay:
-            return True
+        if Ax < self.x0 or Ax > self.x1:
+            return False
+        if Ay < self.y0 or Ay > self.y1:
+            return False
+        return True
     
     def overlaps_other(self, other):
         """
@@ -368,10 +369,13 @@ class PositionEvaluator(object):
             return awful, rr
         self.awful = awful
         score = self.with_boundary(ann, rr)
+        print score,
         if score < awful:
             score += self.with_others(ann, rr)
+            print score,
         if score < awful:
             score += self.with_data(ann, rr)
+            print score,
         return score, rr
 
 
@@ -479,12 +483,8 @@ class Annotator(object):
         'alpha':                0.8,
     }
     maxDepth = 10
-    # Set True to show positioning rectangles
-    verbose = True
-    
-    @classmethod
-    def setVerbose(cls, yes=True):
-        cls.verbose = yes
+    # Set True to draw positioning rectangles when updating annotations
+    verbose = False
     
     def __init__(self, ax, pairs, **kw):
         self.ax = ax
@@ -496,6 +496,9 @@ class Annotator(object):
         self.boxprops['boxstyle'] = sub(
             "round,pad={:0.3f}", self._paddingForSize())
         self.db = None
+
+    def setVerbose(self, yes=True):
+        self.verbose = yes
     
     def _paddingForSize(self):
         """
@@ -566,6 +569,7 @@ class Annotator(object):
         """
         x, y = ann.xy
         text = ann.get_text()
+        print "MOVE", x, y, dx, dy
         ann.set_position((dx, dy))
         
     def update(self, *args, **kw):
@@ -582,12 +586,17 @@ class Annotator(object):
         """
         replaced = set()
         db = DebugBoxer(self.ax.get_figure()) if self.verbose else None
+        print "UPDATE", db
         for ann in self.annotations:
             dx0, dy0 = getOffset(ann)
             best = (float('+inf'), dx0, dy0)
             for dx, dy in self._offseterator():
                 score, rr = self.pos.score(ann, dx, dy)
                 if db: db.add(rr)
+                #--- DEBUG ---------------------
+                print (dx, dy), rr
+                if dx < 0 and dy > 0: break
+                #-------------------------------
                 if not score: break
                 if score < best[0]: best = (score, dx, dy)
             else:

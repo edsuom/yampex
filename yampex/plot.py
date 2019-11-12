@@ -156,7 +156,7 @@ class Plotter(OptsBase):
     DPI = 100 # Don't change this, for reference only
     _settings = {'title', 'xlabel', 'ylabel'}
     figSize = None
-    # Show warnings?
+    # Show warnings and draw annotation positioning boxes?
     verbose = False
 
     @classmethod
@@ -269,8 +269,6 @@ class Plotter(OptsBase):
         self.sp = Subplotter(self, N, self.Nc, self.Nr)
         # The ID is an integer, not a reference to anything
         self.ID = self.ph.add(self)
-        # All Annotator instances are verbose if I am
-        if self.verbose: Annotator.setVerbose(True)
         self.kw = kw
         self.dims = {}
         self.xlabels = {}
@@ -458,6 +456,7 @@ class Plotter(OptsBase):
         if self.annotators:
             self.plt.draw()
             for annotator in self.annotators.values():
+                if self.verbose: annotator.setVerbose()
                 annotator.update()
         if fh is None:
             if filePath is None: filePath = self.filePath
