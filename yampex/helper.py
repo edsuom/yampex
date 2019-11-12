@@ -73,10 +73,15 @@ class Pair(object):
         if X.shape != self.X.shape: return False
         return np.all(np.equal(X, self.X))
 
-    def getXY(self):
+    def getXY(self, asArray=False):
         """
         Returns my I{X} and I{Y} vectors.
+
+        @keyword asArray: C{True} to get the vectors as a 2D Numpy
+            array.
         """
+        if asArray:
+            return np.column_stack([self.X, self.Y])
         return self.X, self.Y
         
 
@@ -90,11 +95,14 @@ class Pairs(list):
             np.append(item)
         return np
     
-    def getXY(self, k):
+    def getXY(self, k, asArray=False):
         """
         Returns the I{X} and I{Y} vectors of the L{Pair} at index I{k}.
+
+        @keyword asArray: C{True} to get the vectors as a 2D Numpy
+            array.
         """
-        return self[k].getXY()
+        return self[k].getXY(asArray)
 
     def firstX(self):
         """
@@ -140,7 +148,8 @@ class Pairs(list):
         """
         if not scale or scale == 1: return
         for pair in self:
-            # Can't do 'pair.X *= scale' because of Ngspice magic
+            # Can't do 'pair.X *= scale' for Ngspice compatibility in
+            # another project
             pair.X = scale * pair.X
 
 
@@ -460,10 +469,12 @@ class PlotHelper(object):
             annotator.add(x, y, text)
 
     def updateAnnotations(self):
-        self.p.plt.draw()
+        plt = self.p.plt
+        plt.draw()
         annotator = self.p.annotators[self.ax]
         if annotator.update():
-            self.p.plt.draw()
+            plt.pause(0.0001)
+            plt.draw()
         
     def doPlots(self):
         """

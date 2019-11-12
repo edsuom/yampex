@@ -44,7 +44,8 @@ class Figure(object):
     def plot(self):
         with self.p as sp:
             sp.use_grid()
-            sp.add_annotation(1, "Annotation")
+            #sp.add_annotation(1, "Annotation")
+            sp.add_annotation(2, "Another")
             sp([-1, 0, +1], [-1, 0, +1])
         self.p.show()
         
