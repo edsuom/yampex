@@ -39,8 +39,6 @@ def getOffset(ann):
     """
     Returns the offset of the supplied Matplotlib annotation object,
     in pixels from its data point location on its subplot.
-
-    OR IS IT ABSOLUTE????
     """
     return ann.get_position()
 
@@ -197,7 +195,7 @@ class RectangleRegion(object):
         if xa == xb:
             # Special case: Vertical line, must overlap
             return True
-        m = (yb-ya) / (xb-xa)
+        m = float(yb-ya) / (xb-xa)
         if ya < yb:
             # Ascending line segment
             if y(self.x0) > self.y1:
@@ -209,14 +207,14 @@ class RectangleRegion(object):
             # Overlaps
             return True
         # Descending line segment
-            if y(self.x1) > self.y1:
-                # My NE corner is below and to the left of it
-                return False
-            if y(self.x0) < self.y0:
-                # My SW corner is above and to the right of it
-                return False
-            # Overlaps
-            return True
+        if y(self.x1) > self.y1:
+            # My NE corner is below and to the left of it
+            return False
+        if y(self.x0) < self.y0:
+            # My SW corner is above and to the right of it
+            return False
+        # Overlaps
+        return True
 
 
 class PositionEvaluator(object):
@@ -280,7 +278,7 @@ class PositionEvaluator(object):
             rr_other = RectangleRegion(ann_other, dx, dy, width, height)
             if rr.overlaps_other(rr_other):
                 # Proposed rr overlaps the other annotation's text box
-                return 4.0
+                score += 4.0
             if rr.overlaps_line(*rr_other.arrow_line):
                 # Proposed rr overlaps the other annotation's arrow line
                 score += 2.0
@@ -288,7 +286,6 @@ class PositionEvaluator(object):
                 # Proposed annotation's arrow line overlaps the other
                 # annotation's text box
                 score += 2.0
-                import pdb; pdb.set_trace() 
             if score >= self.awful:
                 break
         return score
@@ -314,7 +311,6 @@ class PositionEvaluator(object):
                         score += 1.0
                         break
                 xy_prev = xy
-            
         return score
     
     def score(self, ann, dx, dy):
@@ -333,7 +329,6 @@ class PositionEvaluator(object):
         L{RectangleRegion} object I construct for its proposed
         location in my subplot.
         """
-        fig = ann.axes.get_figure()
         width, height = self.sizer(ann)
         rr = RectangleRegion(ann, dx, dy, width, height)
         Axy, Cxy = rr.arrow_line
