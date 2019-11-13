@@ -112,16 +112,21 @@ class RectangleRegion(object):
         --------------A<=== dx ==========>------------------------------------
                       |
                       |
+
+    @cvar margin: The number of pixels of whitespace to maintain
+        outside the annotations' visible borders.
     """
+    margin = 1
+    
     def __init__(self, ann, dx, dy, width, height):
         self.ann = ann
         self.Ax, self.Ay = self.ann.axes.transData.transform(ann.xy)
         self.Cx = self.Ax + dx
         self.Cy = self.Ay + dy
-        self.x0 = self.Cx - 0.5*width
-        self.x1 = self.Cx + 0.5*width
-        self.y0 = self.Cy - 0.5*height
-        self.y1 = self.Cy + 0.5*height
+        self.x0 = self.Cx - 0.5*width - self.margin
+        self.x1 = self.Cx + 0.5*width + self.margin
+        self.y0 = self.Cy - 0.5*height - self.margin
+        self.y1 = self.Cy + 0.5*height + self.margin
 
     def __repr__(self):
         args = [int(round(x)) for x in (self.Ax, self.Ay)]
@@ -189,7 +194,7 @@ class RectangleRegion(object):
         if self.x0 > xb or self.x1 < xa:
             # I am entirely to the left or right of the line segment
             return False
-        if self.y0 > yb or self.y1 < ya:
+        if self.y0 > max([ya, yb]) or self.y1 < min([ya, yb]):
             # I am entirely above or below the line segment
             return False
         if xa == xb:
@@ -227,8 +232,6 @@ class PositionEvaluator(object):
     units.
     """
     awful = 100
-    # Show warnings and trial position rectangles
-    verbose = False
     
     def __init__(self, ax, pairs, annotations):
         self.ax = ax
@@ -338,7 +341,6 @@ class PositionEvaluator(object):
         # Modest penalty for awkwardly short arrow
         x, y = [0.8*Axy[k]+0.2*Cxy[k] for k in (0,1)]
         score = 1.0 if rr.overlaps_point(x, y) else 0.0
-        print score, x, y
         score += self.with_boundary(rr)
         score += self.with_others(rr, ann)
         if score < self.awful:

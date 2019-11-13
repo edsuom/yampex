@@ -48,7 +48,7 @@ class MockBBox(object):
     A mock Matplotlib bounding box for a L{MockAnnotation} or window
     extents of a L{MockAxes}.
     """
-    def __init__(self, xy, xytext, width=20, height=8):
+    def __init__(self, xy, xytext, width, height):
         self._xy = xy
         self._xytext = xytext
         self.width = width
@@ -120,9 +120,11 @@ class MockAnnotation(object):
     The annotation pretends to be in a subplot defined by
     L{MockAxes}. Its text is always "XXX".
     """
-    def __init__(self, x=0, y=0, dx=0, dy=0):
+    def __init__(self, x=0, y=0, dx=0, dy=0, width=20, height=8):
         self.xy = x, y
         self.xytext = dx, dy
+        self.width = width
+        self.height = height
 
     @property
     def axes(self):
@@ -135,7 +137,7 @@ class MockAnnotation(object):
         return "XXX"
 
     def get_bbox_patch(self):
-        return MockBBox(self.xy, self.xytext)
+        return MockBBox(self.xy, self.xytext, self.width, self.height)
 
     def draw(self, renderer):
         """
@@ -179,7 +181,7 @@ class Test_RectangleRegion(TestCase):
         rr1 = a.RectangleRegion(MockAnnotation(), 0, 0, 20, 10)
         rr2 = a.RectangleRegion(MockAnnotation(), 18, 0, 20, 10) # Right 18
         yes(rr1, rr2)
-        rr3 = a.RectangleRegion(MockAnnotation(), 21, 0, 20, 10) # Right 21
+        rr3 = a.RectangleRegion(MockAnnotation(), 23, 0, 20, 10) # Right 23
         no(rr1, rr3)
         yes(rr2, rr3)
         rr4 = a.RectangleRegion(MockAnnotation(), 0, 8, 20, 10) # Up 8
@@ -237,7 +239,7 @@ class Test_RectangleRegion(TestCase):
         rr = a.RectangleRegion(MockAnnotation(), 0, 0, 20, 10)
         # Vertical lines
         no(-15, -15, -15, +15) # To the left
-        no(+15, -15, -15, +15) # To the right
+        no(+15, -15, +15, +15) # To the right
         yes(+5, -15, +5, +15) # Slightly off center
         # Horizontal lines
         no(-40, 0, -30, 0) # To the left
@@ -247,13 +249,27 @@ class Test_RectangleRegion(TestCase):
         no(-40, +7, +40, +7) # Above
         no(-40, -7, +40, -7) # Below
         # Ascending lines
-        no(0, +6, +15, +12) # Entirely above
+        no(0, +8, +15, +16) # Entirely above
         no(-20, 0, +0, +15) # Above and to the left
         yes(-20, 0, +0, +9) # Not enough above and to the left
         yes(-100, -100, +100, +100) # Straight thru middle
         yes(0, -10, +20, +0) # Not enough above and to the left
         no(0, -15, +20, +0) # Below and to the right
-        no(-15, -12, 0, -6) # Entirely below
+        no(-15, -16, 0, -8) # Entirely below
+
+    def test_overlaps_arrow(self):
+        # "Midway, lower", overlaps the other one's line
+        dx1, dy1 = 30, -30
+        w1, h1 = 89.41, 18.785
+        ann1 = MockAnnotation(0.01, -0.0899, dx1, dy1, w1, h1)
+        rr1 = a.RectangleRegion(ann1, dx1, dy1, w1, h1)
+        # "Near Midway, lower", vertical line overlaps the other
+        # annotation
+        dx2, dy2 = 0, -71
+        w2, h2 = 120.785, 18.785
+        ann2 = MockAnnotation(0.01, -0.0899, dx2, dy2, w2, h2)
+        rr2 = a.RectangleRegion(ann2, dx2, dy2, w2, h2)
+        self.assertTrue(rr1.overlaps_line(*rr2.arrow_line))
 
         
 class Test_PositionEvaluator(TestCase):
@@ -276,7 +292,7 @@ class Test_PositionEvaluator(TestCase):
         self.assertEqual(pos.with_boundary(rr), 0)
         #--- To the right ------------------------------------------------
         # Near but not touching right boundary
-        rr = a.RectangleRegion(ann, 240, 0, 20, 8)
+        rr = a.RectangleRegion(ann, 238, 0, 20, 8)
         self.assertEqual(pos.with_boundary(rr), 0)
         # Overlaps right subplot boundary  but not figure boundary
         rr = a.RectangleRegion(ann, 245, 0, 20, 8)
@@ -326,11 +342,11 @@ class Test_PositionEvaluator(TestCase):
         pos = a.PositionEvaluator(self.ax, self.pairs, annotations)
         # Above and to the right, overlaps with both ann1 and ann2,
         # and also arrow line of ann2
-        self.assertEqual(pos.with_others(rr(7, 7), ann3), 10.0)
-        # Below and to the right, overlaps with ann1
-        self.assertEqual(pos.with_others(rr(7, -7), ann3), 4.0)
+        self.assertEqual(pos.with_others(rr(18, 5), ann3), 10.0)
+        # Below and to the right, overlaps with ann1 and its arrow line
+        self.assertEqual(pos.with_others(rr(7, -7), ann3), 6.0)
         # Straight below, no overlaps
-        self.assertEqual(pos.with_others(rr(0, -10), ann3), 0.0)
+        self.assertEqual(pos.with_others(rr(0, -12), ann3), 0.0)
         
     def test_with_data(self):
         def rr(dx, dy):
@@ -341,7 +357,7 @@ class Test_PositionEvaluator(TestCase):
         # Overlaps data, not far enough to the right
         self.assertEqual(pos.with_data(rr(12, 0)), 1.0)
         # Further to the right, no overlap
-        self.assertEqual(pos.with_data(rr(15, 0)), 0.0)
+        self.assertEqual(pos.with_data(rr(17, 0)), 0.0)
         # Straight below, overlaps
         self.assertEqual(pos.with_data(rr(0, -5)), 1.0)
         # Above and to the left, no overlap

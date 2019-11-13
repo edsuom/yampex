@@ -38,8 +38,10 @@ from yampex.util import sub
 
 
 class Figure(object):
+    verbose = False
+    
     def __init__(self):
-        self.p = plot.Plotter(1, verbose=True, width=500, height=500)
+        self.p = plot.Plotter(1, verbose=self.verbose, width=500, height=500)
 
     def plot(self):
         with self.p as sp:

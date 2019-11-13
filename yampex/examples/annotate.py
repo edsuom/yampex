@@ -38,17 +38,19 @@ from yampex.util import sub
 
 
 class Figure(object):
+    verbose = False
+    
     def __init__(self):
-        self.p = plot.Plotter(1, verbose=True, width=1000, height=1000)
+        self.p = plot.Plotter(1, verbose=self.verbose, width=1000, height=1000)
 
     def plot(self):
         with self.p as sp:
             sp.use_grid()
-            #sp.add_annotation(-1.0, "Lower")
+            sp.add_annotation(-1.0, "Lower")
             sp.add_annotation(0.0, "Midway, lower")
             sp.add_annotation(0.05, "Near Midway, lower")
-            #sp.add_annotation(+1.0, "Upper")
-            #sp.add_annotation(0.0, "Midway, upper", kVector=1)
+            sp.add_annotation(+1.0, "Upper")
+            sp.add_annotation(0.0, "Midway, upper", kVector=1)
             X = np.linspace(-1, +1, 100)
             sp(X, X-0.1, X+0.1)
         self.p.show()
