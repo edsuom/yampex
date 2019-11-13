@@ -228,10 +228,7 @@ class PositionEvaluator(object):
     All subplot data is converted to, and computations done in, pixel
     units.
     """
-    rectanglePadding = 0 #2
-    # I hate fudge factors, but rectangle analysis region is shifted
-    # too far without this
-    ffShift = 0 #5
+    awful = 100
     # Show warnings and trial position rectangles
     verbose = False
     
@@ -287,6 +284,11 @@ class PositionEvaluator(object):
             if rr.overlaps_line(*rr_other.arrow_line):
                 # Proposed rr overlaps the other annotation's arrow line
                 score += 2.0
+            if rr_other.overlaps_line(*rr.arrow_line):
+                # Proposed annotation's arrow line overlaps the other
+                # annotation's text box
+                score += 2.0
+                import pdb; pdb.set_trace() 
             if score >= self.awful:
                 break
         return score
@@ -315,7 +317,7 @@ class PositionEvaluator(object):
             
         return score
     
-    def score(self, ann, dx, dy, awful=100):
+    def score(self, ann, dx, dy):
         """
         Computes the total overlap score for the annotation if it were
         positioned in my subplot at the specified offset I{dx} and
@@ -323,9 +325,9 @@ class PositionEvaluator(object):
 
         A higher overlap score is worse. A zero overlap score (best
         case) indicates no overlap with anything else at that
-        offset. A score of I{awful} is considered as bad as it gets,
-        and there's no point in differentiating between it and
-        anything worse.
+        offset. My I{awful} score is considered as bad as it gets:
+        There's no point in differentiating between it and anything
+        worse.
 
         Returns a 2-tuple with the overlap score and the
         L{RectangleRegion} object I construct for its proposed
@@ -334,18 +336,18 @@ class PositionEvaluator(object):
         fig = ann.axes.get_figure()
         width, height = self.sizer(ann)
         rr = RectangleRegion(ann, dx, dy, width, height)
-        if rr.overlaps_point(rr.Ax, rr.Ay):
+        Axy, Cxy = rr.arrow_line
+        if rr.overlaps_point(*Axy):
             # Overlaps its own data point
-            return awful, rr
-        self.awful = awful
-        score = self.with_boundary(rr)
-        print score,
-        if score < awful:
-            score += self.with_others(rr, ann)
-            print score,
-        if score < awful:
+            return self.awful, rr
+        # Modest penalty for awkwardly short arrow
+        x, y = [0.8*Axy[k]+0.2*Cxy[k] for k in (0,1)]
+        score = 1.0 if rr.overlaps_point(x, y) else 0.0
+        print score, x, y
+        score += self.with_boundary(rr)
+        score += self.with_others(rr, ann)
+        if score < self.awful:
             score += self.with_data(rr)
-            print score,
         return score, rr
 
 
@@ -363,8 +365,11 @@ class DebugBoxer(object):
 
     def __init__(self, fig):
         self.fig = fig
-        self.k = 0
-    
+        self.resetColor
+
+    def resetColor(self):
+        self.k = -1
+        
     def add(self, rr):
         """
         Adds a debugging box to my figure at the position of the supplied
@@ -539,7 +544,6 @@ class Annotator(object):
         """
         x, y = ann.xy
         text = ann.get_text()
-        print "MOVE", x, y, dx, dy
         ann.set_position((dx, dy))
         
     def update(self, *args, **kw):
@@ -556,16 +560,13 @@ class Annotator(object):
         """
         replaced = set()
         db = DebugBoxer(self.ax.get_figure()) if self.verbose else None
-        print "UPDATE", db
         for ann in self.annotations:
+            if db: db.resetColor()
             dx0, dy0 = getOffset(ann)
             best = (float('+inf'), dx0, dy0)
             for dx, dy in self._offseterator():
                 score, rr = self.pos.score(ann, dx, dy)
                 if db: db.add(rr)
-                #--- DEBUG ---------------------
-                print (dx, dy), rr
-                #-------------------------------
                 if not score: break
                 if score < best[0]: best = (score, dx, dy)
             else:

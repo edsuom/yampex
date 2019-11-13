@@ -469,7 +469,6 @@ class PlotHelper(object):
             annotator.add(x, y, text)
 
     def updateAnnotations(self):
-        print "UA"
         plt = self.p.plt
         plt.draw()
         annotator = self.p.annotators[self.ax]
