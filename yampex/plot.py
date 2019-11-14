@@ -317,35 +317,6 @@ class Plotter(OptsBase):
             newFigSize.append(float(dim)/self.DPI)
         # Use the converted dims unless neither was > 75
         return newFigSize if bigDim else figSize
-        
-    def subplots_adjust(self, *args):
-        """
-        Adjusts spacings.
-        """
-        dimThing = args[0] if args else self.fig.get_window_extent()
-        fWidth, fHeight = [getattr(dimThing, x) for x in ('width', 'height')]
-        self.adj.updateFigSize(fWidth, fHeight)
-        if self._figTitle:
-            kw = {
-                'm': 10,
-                'fontsize': self.fontsize('title', 14),
-                'alpha': 1.0,
-                'fDims': (fWidth, fHeight),
-            }
-            ax = self.fig.get_axes()[0]
-            if self.tbmTitle: self.tbmTitle.remove()
-            self.tbmTitle = TextBoxMaker(self.fig, **kw)("N", self._figTitle)
-            titleObj = self.tbmTitle.t
-        else: self.tbmTitle = titleObj = None
-        kw = self.adj(self._universal_xlabel, titleObj)
-        try:
-            self.fig.subplots_adjust(**kw)
-        except ValueError as e:
-            if self.verbose:
-                print(sub(
-                    "WARNING: ValueError '{}' doing subplots_adjust({})",
-                    e.message, ", ".join(
-                        [sub("{}={}", x, kw[x]) for x in kw])))
     
     @property
     def width(self):
@@ -409,6 +380,49 @@ class Plotter(OptsBase):
         self._isSubplot = False
         self.opts.goGlobal()
 
+    def subplots_adjust(self, *args):
+        """
+        Adjusts spacings.
+        """
+        dimThing = args[0] if args else self.fig.get_window_extent()
+        fWidth, fHeight = [getattr(dimThing, x) for x in ('width', 'height')]
+        self.adj.updateFigSize(fWidth, fHeight)
+        if self._figTitle:
+            kw = {
+                'm': 10,
+                'fontsize': self.fontsize('title', 14),
+                'alpha': 1.0,
+                'fDims': (fWidth, fHeight),
+            }
+            ax = self.fig.get_axes()[0]
+            if self.tbmTitle: self.tbmTitle.remove()
+            self.tbmTitle = TextBoxMaker(self.fig, **kw)("N", self._figTitle)
+            titleObj = self.tbmTitle.t
+        else: self.tbmTitle = titleObj = None
+        kw = self.adj(self._universal_xlabel, titleObj)
+        try:
+            self.fig.subplots_adjust(**kw)
+        except ValueError as e:
+            if self.verbose:
+                print(sub(
+                    "WARNING: ValueError '{}' doing subplots_adjust({})",
+                    e.message, ", ".join(
+                        [sub("{}={}", x, kw[x]) for x in kw])))
+        self.updateAnnotations()
+    
+    def updateAnnotations(self):
+        """
+        Updates the positions of all annotations in an already-drawn plot.
+        """
+        plt = self.plt
+        updated = False
+        for annotator in self.annotators.itervalues():
+            if annotator.update():
+                updated = True
+        if updated:
+            plt.pause(0.0001)
+            plt.draw()
+        
     def _doPlots(self):
         """
         This gets called by L{__call__} at the beginning of each call to
@@ -453,7 +467,7 @@ class Plotter(OptsBase):
         # Calling plt.draw massively slows things down when generating
         # plot images on Rpi. And without it, the (un-annotated) plot
         # still updates!
-        if self.annotators:
+        if False and self.annotators:
             self.plt.draw()
             for annotator in self.annotators.values():
                 if self.verbose: annotator.setVerbose()

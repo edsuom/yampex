@@ -23,13 +23,8 @@
 # governing permissions and limitations under the License.
 
 """
-Demo of Annotator. This is unfortunately the closest thing to a
-unit test for the yampex package.
-
-I figured it would be hard to write a proper test suite for an
-inherently graphical package. But after way too much time spent
-running little demo programs over and over to debug stuff, I regret
-not at least trying to unit test some lower-level classes.
+More complicated demo of annotations. Resize the plot window and
+watch the annotations get intelligently repositioned!
 """
 
 import numpy as np
@@ -41,18 +36,25 @@ class Figure(object):
     verbose = False
     
     def __init__(self):
-        self.p = plot.Plotter(1, verbose=self.verbose, width=1000, height=1000)
+        self.p = plot.Plotter(2, verbose=self.verbose, width=1000, height=1000)
+        self.p.use_timex()
+        self.p.use_grid()
 
+    def add_annotations(self, k, prefix):
+        for kVector in (0, 1):
+            text = sub("{}, {}", prefix, "upper" if kVector else "lower")
+            self.sp.add_annotation(k, text, kVector=kVector)
+        
     def plot(self):
-        with self.p as sp:
-            sp.use_grid()
-            sp.add_annotation(-1.0, "Lower")
-            sp.add_annotation(0.0, "Midway, lower")
-            sp.add_annotation(0.05, "Near Midway, lower")
-            sp.add_annotation(+1.0, "Upper")
-            sp.add_annotation(0.0, "Midway, upper", kVector=1)
-            X = np.linspace(-1, +1, 100)
-            sp(X, X-0.1, X+0.1)
+        X = np.linspace(0, 2e-6, 100)
+        with self.p as self.sp:
+            for m in (1, 3):
+                Y = np.tanh(m*2e6*(X-1e-6))
+                self.add_annotations(0, "Start")
+                self.add_annotations(50, "Midway")
+                self.add_annotations(55, "Near Midway")
+                self.add_annotations(99, "Finish")
+                self.sp(X, Y-0.1, Y+0.1)
         self.p.show()
         
 

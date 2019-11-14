@@ -34,6 +34,9 @@ arguments.
 import numpy as np
 from yampex import Plotter
 
+# Annotated Subplot
+sp_annotated = 3
+
 EQs = ("sin(10*t)*cos(10000*t)", "cos(10*t)*cos(10000*t)")
 
 N = 6
@@ -51,5 +54,11 @@ with pt as sp:
         Y1 = np.sin(10*X)*np.sin(10000*X)
         Y2 = np.cos(10*X)*np.cos(10000*X)
         sp.set_title("0 - {:.5g} seconds", X[-1])
+        if mult==sp_annotated:
+            # TODO: Fix the bug that causes this to fail one way with
+            # mult values of 0, 1, 2 and another way (putting last
+            # subplot onto next-to-last subplot's axes) with mult
+            # value of 4.
+            sp.add_annotation(0, "First")
         sp(X, Y1, Y2)
 pt.show()

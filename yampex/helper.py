@@ -469,6 +469,9 @@ class PlotHelper(object):
             annotator.add(x, y, text)
 
     def updateAnnotations(self):
+        """
+        Updates the positions of all my annotations.
+        """
         plt = self.p.plt
         plt.draw()
         annotator = self.p.annotators[self.ax]

@@ -256,7 +256,7 @@ class Test_RectangleRegion(TestCase):
         yes(0, -10, +20, +0) # Not enough above and to the left
         no(0, -15, +20, +0) # Below and to the right
         no(-15, -16, 0, -8) # Entirely below
-
+    
     def test_overlaps_arrow(self):
         # "Midway, lower", overlaps the other one's line
         dx1, dy1 = 30, -30

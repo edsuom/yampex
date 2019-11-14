@@ -433,7 +433,7 @@ class Annotator(object):
         (-26, +11),     # WNW
         (-11, +26),     # NNW
     ]
-    radii = [1.5, 2.5, 4.0, 6.0, 10.0, 12.0]
+    radii = [1.5, 2.5, 3.5, 5.0, 7.0, 9.0, 11.0, 14.0]
     
     fontsize = 12 # points
     # Estimated mapping of string fontsizes to points

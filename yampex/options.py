@@ -136,8 +136,10 @@ class Opts(object):
         """
         self.lo = {}
         self.loList.append(self.lo)
-
+        
     def useLocal(self, kSubplot):
+        kMax = len(self.loList) - 1
+        if kSubplot > kMax : kSubplot = kMax
         self.lo = self.loList[kSubplot]
 
     def usePrevLocal(self):
