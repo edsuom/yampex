@@ -23,13 +23,8 @@
 # governing permissions and limitations under the License.
 
 """
-Demo of Annotator. This is unfortunately the closest thing to a
-unit test for the yampex package.
-
-I figured it would be hard to write a proper test suite for an
-inherently graphical package. But after way too much time spent
-running little demo programs over and over to debug stuff, I regret
-not at least trying to unit test some lower-level classes.
+Demo of a very simple use case for L{annotate.Annotator}, with
+annotation trial positioning boxes shown.
 """
 
 import numpy as np
@@ -38,7 +33,7 @@ from yampex.util import sub
 
 
 class Figure(object):
-    verbose = False
+    verbose = True
     
     def __init__(self):
         self.p = plot.Plotter(1, verbose=self.verbose, width=500, height=500)

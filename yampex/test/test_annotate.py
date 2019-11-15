@@ -181,7 +181,7 @@ class Test_RectangleRegion(TestCase):
         rr1 = a.RectangleRegion(MockAnnotation(), 0, 0, 20, 10)
         rr2 = a.RectangleRegion(MockAnnotation(), 18, 0, 20, 10) # Right 18
         yes(rr1, rr2)
-        rr3 = a.RectangleRegion(MockAnnotation(), 23, 0, 20, 10) # Right 23
+        rr3 = a.RectangleRegion(MockAnnotation(), 25, 0, 20, 10) # Right 25
         no(rr1, rr3)
         yes(rr2, rr3)
         rr4 = a.RectangleRegion(MockAnnotation(), 0, 8, 20, 10) # Up 8
@@ -246,15 +246,15 @@ class Test_RectangleRegion(TestCase):
         no(+30, 0, +40, 0) # To the right
         yes(-30, +3, -5, +3) # Extending in from the left
         yes(+5, -3, +25, -3) # Extending in from the right
-        no(-40, +7, +40, +7) # Above
-        no(-40, -7, +40, -7) # Below
+        no(-40, +8, +40, +8) # Above
+        no(-40, -8, +40, -8) # Below
         # Ascending lines
         no(0, +8, +15, +16) # Entirely above
-        no(-20, 0, +0, +15) # Above and to the left
+        no(-20, 0, +0, +18) # Above and to the left
         yes(-20, 0, +0, +9) # Not enough above and to the left
         yes(-100, -100, +100, +100) # Straight thru middle
         yes(0, -10, +20, +0) # Not enough above and to the left
-        no(0, -15, +20, +0) # Below and to the right
+        no(0, -18, +20, +0) # Below and to the right
         no(-15, -16, 0, -8) # Entirely below
     
     def test_overlaps_arrow(self):
@@ -342,11 +342,11 @@ class Test_PositionEvaluator(TestCase):
         pos = a.PositionEvaluator(self.ax, self.pairs, annotations)
         # Above and to the right, overlaps with both ann1 and ann2,
         # and also arrow line of ann2
-        self.assertEqual(pos.with_others(rr(18, 5), ann3), 10.0)
+        self.assertEqual(pos.with_others(rr(20, 6), ann3), 10.0)
         # Below and to the right, overlaps with ann1 and its arrow line
         self.assertEqual(pos.with_others(rr(7, -7), ann3), 6.0)
         # Straight below, no overlaps
-        self.assertEqual(pos.with_others(rr(0, -12), ann3), 0.0)
+        self.assertEqual(pos.with_others(rr(0, -14), ann3), 0.0)
         
     def test_with_data(self):
         def rr(dx, dy):
@@ -357,7 +357,7 @@ class Test_PositionEvaluator(TestCase):
         # Overlaps data, not far enough to the right
         self.assertEqual(pos.with_data(rr(12, 0)), 1.0)
         # Further to the right, no overlap
-        self.assertEqual(pos.with_data(rr(17, 0)), 0.0)
+        self.assertEqual(pos.with_data(rr(19, 0)), 0.0)
         # Straight below, overlaps
         self.assertEqual(pos.with_data(rr(0, -5)), 1.0)
         # Above and to the left, no overlap

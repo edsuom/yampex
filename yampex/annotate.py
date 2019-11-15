@@ -116,7 +116,7 @@ class RectangleRegion(object):
     @cvar margin: The number of pixels of whitespace to maintain
         outside the annotations' visible borders.
     """
-    margin = 1
+    margin = 2
     
     def __init__(self, ann, dx, dy, width, height):
         self.ann = ann
@@ -301,7 +301,16 @@ class PositionEvaluator(object):
         The score increases with the number of plot lines overlapped.
 
         This is by far the slowest analysis to run when there is a
-        typically large number of X,Y data points.
+        typically large number of X,Y data points. However, it is made
+        considerably more efficient by skipping overlap checking for a
+        given set of X,Y data until the right end of the segment is to
+        the right of the left side of I{rr}, and by quitting further
+        checking after the right end of the segment goes beyond the
+        right side of I{rr}.
+
+        B{TODO}: Make even more efficient by using Numpy's testing and
+        selection capabilities to select the relevant slice of X,Y
+        data for possible segment overlap.
         """
         score = 0.0
         for pair in self.pairs:
@@ -310,8 +319,12 @@ class PositionEvaluator(object):
             xy_prev = None
             for xy in XY:
                 if xy_prev is not None:
-                    if rr.overlaps_line(xy_prev, xy):
+                    if xy[0] > rr.x0 and rr.overlaps_line(xy_prev, xy):
                         score += 1.0
+                        break
+                    if xy[0] > rr.x1:
+                        # Any remaining segments are entirely to the
+                        # right of the rectangle region
                         break
                 xy_prev = xy
         return score

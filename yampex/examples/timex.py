@@ -28,14 +28,12 @@ waveforms at different time scales.
 
 Illustrates the use of L{options.OptsBase.use_timex} and calls to a
 subplot-context instance of L{plot.Plotter} with multiple y-axis
-arguments.
+arguments. Also shows a couple of intelligently-positioned
+annotations.
 """
 
 import numpy as np
 from yampex import Plotter
-
-# Annotated Subplot
-sp_annotated = 3
 
 EQs = ("sin(10*t)*cos(10000*t)", "cos(10*t)*cos(10000*t)")
 
@@ -54,11 +52,7 @@ with pt as sp:
         Y1 = np.sin(10*X)*np.sin(10000*X)
         Y2 = np.cos(10*X)*np.cos(10000*X)
         sp.set_title("0 - {:.5g} seconds", X[-1])
-        if mult==sp_annotated:
-            # TODO: Fix the bug that causes this to fail one way with
-            # mult values of 0, 1, 2 and another way (putting last
-            # subplot onto next-to-last subplot's axes) with mult
-            # value of 4.
-            sp.add_annotation(0, "First")
+        if mult < 5 and np.any(Y2 < 0):
+            sp.add_annotation(0.0, "Zero Crossing", kVector=1, y=True)
         sp(X, Y1, Y2)
 pt.show()

@@ -156,20 +156,25 @@ class Plotter(OptsBase):
     DPI = 100 # Don't change this, for reference only
     _settings = {'title', 'xlabel', 'ylabel'}
     figSize = None
+    # Flag to indicate if using Agg rendererer (for generating PNG files)
+    usingAgg = False
     # Show warnings and draw annotation positioning boxes?
     verbose = False
 
     @classmethod
-    def setup(cls, useAgg=False):
+    def setupClass(cls, useAgg=False):
         """
         Called by each instance of me during instantiation. Sets a
         class-wide Matplotlib pyplot import the first time it's
         called.
+
+        If any instance of me is using the Agg renderer, all instances
+        will.
         """
-        if useAgg and not getattr(cls, '_usingAgg', False):
+        if useAgg and not cls.usingAgg:
             mpl = importlib.import_module("matplotlib")
             mpl.use('Agg')
-            cls._usingAgg = True
+            cls.usingAgg = True
         if not getattr(cls, 'plt', None):
             cls.plt = importlib.import_module("matplotlib.pyplot")
 
@@ -248,7 +253,7 @@ class Plotter(OptsBase):
         self.filePath = kw.pop('filePath', None)
         if 'verbose' in kw: self.verbose = kw.pop('verbose')
         useAgg = bool(self.filePath) or kw.pop('useAgg', False)
-        self.setup(useAgg=useAgg)
+        self.setupClass(useAgg=useAgg)
         figSize = kw.pop('figSize', self.figSize)
         if figSize is None:
             if useAgg:
@@ -263,8 +268,6 @@ class Plotter(OptsBase):
         if height: figSize[1] = height
         figSize = self._maybePixels(figSize)
         self.fig = self.plt.figure(figsize=figSize)
-        if not useAgg:
-            self.fig.canvas.mpl_connect('resize_event', self.subplots_adjust)
         self.figSize = figSize
         self.sp = Subplotter(self, N, self.Nc, self.Nr)
         # The ID is an integer, not a reference to anything
@@ -370,8 +373,12 @@ class Plotter(OptsBase):
     def __exit__(self, exc_type, exc_val, exc_tb):
         """
         Upon completion of context, turns minor ticks and grid on if
-        enabled for this subplot's axis, and restores global (all
+        enabled for this subplot's axis, restores global (all
         subplots) options.
+
+        If the Agg rendererer is not being used (for generating PNG
+        files), also sets a hook to adjust the subplot spacings and
+        annotation positions upon window resizing.
 
         @see: L{_doPlots}.
         """
@@ -379,6 +386,8 @@ class Plotter(OptsBase):
         self._doPlots()
         self._isSubplot = False
         self.opts.goGlobal()
+        if not self.usingAgg:
+            self.fig.canvas.mpl_connect('resize_event', self.subplots_adjust)
 
     def subplots_adjust(self, *args):
         """
@@ -610,7 +619,8 @@ class Plotter(OptsBase):
             plotter = self._plotter
             self._plotter = None
         if plotter: kw.setdefault('plotter', plotter)
-        ax = self.sp[kw.pop('k', None)]
+        k = kw.pop('k', None)
+        ax = self.sp[k]
         ax.helper.addCall(args, kw)
         return ax
 

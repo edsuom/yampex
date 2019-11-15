@@ -202,7 +202,6 @@ class Subplotter(object):
 
     def xBounds(self, ax=None, left=None, right=None):
         """
-         
         """
         if ax is None: ax = self.ax
         if left and left < ax.get_xlim()[0]:

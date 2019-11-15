@@ -34,9 +34,12 @@ from yampex.util import sub
 
 class Figure(object):
     verbose = False
+    multipliers = (1, 3)
     
     def __init__(self):
-        self.p = plot.Plotter(2, verbose=self.verbose, width=1000, height=1000)
+        self.p = plot.Plotter(
+            2*len(self.multipliers),
+            verbose=self.verbose, width=1000, height=1000)
         self.p.use_timex()
         self.p.use_grid()
 
@@ -48,13 +51,14 @@ class Figure(object):
     def plot(self):
         X = np.linspace(0, 2e-6, 100)
         with self.p as self.sp:
-            for m in (1, 3):
+            for m in self.multipliers:
                 Y = np.tanh(m*2e6*(X-1e-6))
-                self.add_annotations(0, "Start")
-                self.add_annotations(50, "Midway")
-                self.add_annotations(55, "Near Midway")
-                self.add_annotations(99, "Finish")
-                self.sp(X, Y-0.1, Y+0.1)
+                for sign in (+1, -1):
+                    self.add_annotations(0, "Start")
+                    self.add_annotations(50, "Midway")
+                    self.add_annotations(55, "Near Midway")
+                    self.add_annotations(99, "Finish")
+                    self.sp(X, sign*(Y-0.1), sign*(Y+0.1))
         self.p.show()
         
 
