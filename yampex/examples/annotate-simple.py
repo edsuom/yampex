@@ -24,7 +24,9 @@
 
 """
 Demo of a very simple use case for L{annotate.Annotator}, with
-annotation trial positioning boxes shown.
+annotation trial positioning boxes shown. (Those are for debugging
+only, but it's instructive to see them once to understand how
+positioning works.)
 """
 
 import numpy as np
@@ -36,7 +38,8 @@ class Figure(object):
     verbose = True
     
     def __init__(self):
-        self.p = plot.Plotter(1, verbose=self.verbose, width=500, height=500)
+        annotate.Annotator.verbose = True
+        self.p = plot.Plotter(1, width=500, height=500)
 
     def plot(self):
         with self.p as sp:

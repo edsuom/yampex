@@ -116,7 +116,7 @@ each subplot inside the context manager.
 
 ### License
 
-Copyright (C) 2017-2018 by Edwin A. Suominen,
+Copyright (C) 2017-2019 by Edwin A. Suominen,
 <http://edsuom.com/>:
 
     See edsuom.com for API documentation as well as information about

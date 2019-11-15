@@ -4,7 +4,7 @@
 # yampex:
 # Yet Another Matplotlib Extension
 #
-# Copyright (C) 2017-2018 by Edwin A. Suominen,
+# Copyright (C) 2017-2019 by Edwin A. Suominen,
 # http://edsuom.com/yampex
 #
 # See edsuom.com for API documentation as well as information about
@@ -37,7 +37,6 @@ import screeninfo
 
 import numpy as np
 
-from yampex.annotate import Annotator
 from yampex.textbox import TextBoxMaker
 from yampex.options import Opts, OptsBase
 from yampex.subplot import Subplotter
@@ -158,7 +157,7 @@ class Plotter(OptsBase):
     figSize = None
     # Flag to indicate if using Agg rendererer (for generating PNG files)
     usingAgg = False
-    # Show warnings and draw annotation positioning boxes?
+    # Show warnings? (Not for regular use.)
     verbose = False
 
     @classmethod
@@ -210,9 +209,6 @@ class Plotter(OptsBase):
 
         C{Plotter(N, V, Nc=x)}: Specify up to I{N} columns subplots
         with I{x} columns, with container object I{V}.
-
-        @keyword verbose: Set C{True} to put out a bit of info about
-            annotator positioning. Not for regular use.
 
         @keyword filePath: Specify the path of a PNG file to be
             created instead of a plot window being opened. (Implies
