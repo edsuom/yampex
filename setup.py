@@ -50,7 +50,8 @@ kw = {'version':'0.9.4',
       'maintainer_email':"foss@edsuom.com",
       
       'install_requires':required,
-      'packages':['yampex', 'yampex.scripts', 'yampex.examples'],
+      'packages':[
+          'yampex', 'yampex.scripts', 'yampex.examples', 'yampex.test'],
       'entry_points': {
           'console_scripts': [
               'yampex-examples = yampex.scripts.examples:extract',
