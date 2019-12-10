@@ -625,9 +625,13 @@ class OptsBase(object):
     
     def set_minorTicks(self, axisName, yes=True):
         """
-        Enables minor ticks for I{axisName} ("x" or "y").
+        Enables minor ticks for I{axisName} ("x" or "y"). Call with
+        C{False} after the I{axisName} to disable.
+
+        @see: L{use_minorTicks}, the preferred form of this call.
         """
-        self._axisOpt('ticks', axisName)['minor'] = yes
+        print("WARNING: Only use_minorTicks will be supported in the future!")
+        self.use_minorTicks(axisName, yes)
         
     def set_tickSpacing(self, axisName, major, minor=None):
         """
@@ -754,6 +758,13 @@ class OptsBase(object):
         """
         self.opts['useLabels'] = yes
 
+    def use_minorTicks(self, axisName, yes=True):
+        """
+        Enables minor ticks for I{axisName} ("x" or "y"). Call with
+        C{False} after the I{axisName} to disable.
+        """
+        self._axisOpt('ticks', axisName)['minor'] = yes
+        
     def use_timex(self, yes=True):
         """
         Uses intelligent time scaling for the x-axis, unless called with

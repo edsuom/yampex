@@ -537,6 +537,9 @@ class PlotHelper(object):
         self.p.sp.setTicks(self.ticks)
         if self.p.opts['grid']:
             self.ax.grid(True, which='major')
+            ticks = self.p.opts['ticks']
+            if ticks.get('x', False) or ticks.get('y', False):
+                self.ax.grid(True, which='minor', color='#D0D0D0', linestyle=':')
         self.p.opts.useLastLocal()
         # Have any annotations intelligently repositioned now that the
         # subplot is completed.
