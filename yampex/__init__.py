@@ -33,6 +33,29 @@ from contextlib import contextmanager
 
 from .plot import Plotter
 
+
+@contextmanager
+def xyc(*args, **kw):
+    """
+    Call L{xy} in context. Yields a L{SpecialAx} object for the
+    (single) subplot in context so you can add to it. Then shows the
+    plot.
+    """
+    plot = kw.pop('plot', None)
+    dots = kw.pop('dots', False)
+    pt = Plotter(1, **kw)
+    with pt as sp:
+        if dots:
+            sp.add_line(':')
+            sp.add_marker('o')
+        sp.use_grid()
+        if plot is None:
+            sp.set_zeroLine()
+            func = sp
+        else: func = getattr(sp, plot)
+        yield func(*args)
+    pt.show()
+    
 def xy(*args, **kw):
     """
     A quick way to do a simple plot with a grid and zero-crossing
@@ -54,45 +77,12 @@ def xy(*args, **kw):
     @keyword width: Specify the figure width part of I{figSize}.
         
     @keyword height: Specify the figure height part of I{figSize}.
-    """
-    plot = kw.pop('plot', None)
-    dots = kw.pop('dots', False)
-    pt = Plotter(1, **kw)
-    with pt as sp:
-        if dots:
-            sp.add_line(':')
-            sp.add_marker('o')
-        sp.use_grid()
-        if plot is None:
-            sp.set_zeroLine()
-            func = sp
-        else: func = getattr(sp, plot)
-        func(*args)
-    pt.show()
 
+    @see: L{xyc}, on which this function is based.
+    """
+    with xyc(*args, **kw) as sp:
+        pass
 
-@contextmanager
-def xyc(*args, **kw):
-    """
-    Call L{xy} in context. Yields a L{SpecialAx} object for the
-    (single) subplot in context so you can add to it. Then shows the
-    plot.
-    """
-    # Copy-paste code smell, I know...
-    plot = kw.pop('plot', None)
-    dots = kw.pop('dots', False)
-    pt = Plotter(1, **kw)
-    with pt as sp:
-        if dots:
-            sp.add_line(':')
-            sp.add_marker('o')
-        sp.use_grid()
-        if plot is None:
-            sp.set_zeroLine()
-            func = sp
-        else: func = getattr(sp, plot)
-        yield func(*args)
-    pt.show()
 
     
     

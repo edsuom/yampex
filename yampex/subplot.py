@@ -287,16 +287,18 @@ class Subplotter(object):
     def setTicks(self, ticksDict, ax=None):
         """
         Call with a dict defining ticks for 'x' and 'y' axes. Each axis
-        has a sub-dict with 'major' and 'minor' entries. Each entry,
-        if present, is an C{int} for a max number of tick intervals,
-        or a C{float} for spacing between intervals, or just C{True}
-        or C{False} to enable or disable ticks. (Major ticks are
-        always enabled.)
+        has a sub-dict that may include 'major' and 'minor' entries.
+
+        Each entry, if present, is an C{int} for a max number of tick
+        intervals, or a C{float} for spacing between intervals, or
+        just C{True} or C{False} to enable or disable ticks. (Major
+        ticks are always enabled.)
         """
         def get(axisName, name):
             return ticksDict.get(axisName, {}).get(name, None)
         
-        def setSpacing(which):
+        def setSpacing(axisName, which, spacing):
+            axis = getattr(ax, sub("{}axis", axisName))
             setter = getattr(axis, sub("set_{}_locator", which))
             if isinstance(spacing, int):
                 setter(self.ticker.MaxNLocator(spacing))
@@ -306,7 +308,6 @@ class Subplotter(object):
         if not hasattr(self, 'ticker'):
             self.ticker = importlib.import_module("matplotlib.ticker")
         for axisName in 'x', 'y':
-            axis = getattr(ax, sub("{}axis", axisName))
             for which in 'major', 'minor':
                 spacing = get(axisName, which)
                 if spacing is True:
@@ -315,7 +316,7 @@ class Subplotter(object):
                     if which == 'minor': ax.minorticks_off()
                 elif spacing is None:
                     continue
-                setSpacing(which)
+                setSpacing(axisName, which, spacing)
 
     def onTop(self, k=None):
         """

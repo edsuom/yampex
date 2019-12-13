@@ -245,8 +245,19 @@ class OptsBase(object):
     U{source<http://edsuom.com/yampex/yampex.options.py>} open in your
     editor, as a handy reference for all the plotting options you can
     set.
+
+    @ivar opts: A dict of options.
     """
     def _axisOpt(self, optName, axisName, value=None):
+        """
+        Sets axis option I{optName} for axis I{axisName} (either "x" or
+        "y") to I{value}. If no value supplied, returns a dict of the
+        options that are currently set (empty if none).
+
+        The axis options are in my I{opts} dict, keyed by option
+        name. Each entry is a sub-dict with at most one entry per
+        axis, keyed by axis name.
+        """
         axisName = axisName.lower()
         if axisName not in "xy":
             raise ValueError(sub("Invalid axisName '{}'", axisName))
@@ -758,11 +769,23 @@ class OptsBase(object):
         """
         self.opts['useLabels'] = yes
 
-    def use_minorTicks(self, axisName, yes=True):
+    def use_minorTicks(self, axisName=None, yes=True):
         """
-        Enables minor ticks for I{axisName} ("x" or "y"). Call with
-        C{False} after the I{axisName} to disable.
+        Enables minor ticks for I{axisName} ("x" or "y", omit for
+        both). Call with C{False} after the I{axisName} to disable.
+
+        To enable with a specific tick spacing, supply a float instead
+        of just C{True}. Or, for a specific number of ticks, supply
+        that as an int.
+
+        Note that, due to a Matplotlib limitation, you can't enable
+        minor ticks for just one axis, although you can independently
+        set the tick spacings.
         """
+        if axisName is None:
+            for axisName in ('x', 'y'):
+                self.use_minorTicks(axisName, yes)
+            return
         self._axisOpt('ticks', axisName)['minor'] = yes
         
     def use_timex(self, yes=True):

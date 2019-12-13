@@ -534,10 +534,10 @@ class PlotHelper(object):
             for quadrant in tbs:
                 tbm(quadrant, tbs[quadrant])
         # Decorate the subplot
-        self.p.sp.setTicks(self.ticks)
+        ticks = self.p.opts['ticks']
+        self.p.sp.setTicks(ticks)
         if self.p.opts['grid']:
             self.ax.grid(True, which='major')
-            ticks = self.p.opts['ticks']
             if ticks.get('x', False) or ticks.get('y', False):
                 self.ax.grid(True, which='minor', color='#D0D0D0', linestyle=':')
         self.p.opts.useLastLocal()
