@@ -130,6 +130,8 @@ class Subplotter(object):
     @ivar Nr: Number of rows.
     """
     def __init__(self, plotter, N, Nc, Nr):
+        if N > Nc*Nr:
+            raise ValueError("Number of subplots must be <= Nc*Nr")
         self.p = plotter
         self.N, self.Nc, self.Nr = N, Nc, Nr
         self.axes = []
@@ -318,32 +320,49 @@ class Subplotter(object):
                     continue
                 setSpacing(axisName, which, spacing)
 
+    def _kFix(self, k):
+        """
+        If subplot index I{k} is C{None}, changes it to the current
+        subplot, or the first one if there is not yet a current one.
+
+        Returns the (possibly) fixed subplot index.
+        """
+        if k is None:
+            k = 0 if self.kLast is None else self.kLast
+        return k
+                
     def onTop(self, k=None):
         """
         Returns C{True} if the current subplot (or one specified with a
         subplot index I{k}) will appear at the top of a column of
         subplots.
+
+        If there is just one subplot or one row of subplots, of course
+        this will return C{True}.
         """
-        if k is None:
-            k = 0 if self.kLast is None else self.kLast
-        return k < self.Nc
+        if self.Nr == 1: return True
+        return self._kFix(k) < self.Nc
                 
     def atBottom(self, k=None):
         """
         Returns C{True} if the current subplot (or one specified with a
         subplot index I{k}) will appear at the bottom of a column of
         subplots.
+
+        If there is just one subplot or one row of subplots, of course
+        this will return C{True}.
         """
-        if k is None:
-            k = 0 if self.kLast is None else self.kLast
-        return k >= self.Nc * (self.Nr - 1)
+        if self.Nr == 1: return True
+        return self._kFix(k) >= self.Nc * (self.Nr - 1)
     
     def onLeft(self, k=None):
         """
         Returns C{True} if the current subplot (or one specified with a
         subplot index I{k}) will appear in the leftmost column of
         subplots.
+
+        If there is just one subplot or one column of subplots, of
+        course this will return C{True}.
         """
-        if k is None:
-            k = 0 if self.kLast is None else self.kLast
-        return k % self.Nr == 0
+        if self.Nc == 1: return True
+        return self._kFix(k) % self.Nr == 0

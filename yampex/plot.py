@@ -102,6 +102,49 @@ class PlotterHolder(object):
                 except: OK = False
         return OK
 
+
+class Dims(object):
+    """
+    I store dimensions of things for each subplot. If my I{debug}
+    class attribute is set C{True}, I print info about what's being
+    set and get for debugging purposes.
+    """
+    debug = False
+
+    def __init__(self):
+        self.sp_dicts = {}
+
+    def clear(self):
+        """
+        Clears out all my info.
+        """
+        if self.debug:
+            print "DIMS cleared"
+        self.sp_dicts.clear()
+
+    def setDims(self, k, name, dims):
+        """
+        For subplot I{k} (index starts at zero), sets the X and Y
+        dimensions of an object with the specified I{name} to the
+        supplied sequence I{dims}.
+        """
+        dims = tuple(dims)
+        if self.debug:
+            print sub("DIMS {:d}: {} <-- {}", k, name, dims)
+        self.sp_dicts.setdefault(k, {})[name] = dims
+
+    def getDims(self, k, name):
+        """
+        For subplot I{k}, returns the dimension of the object with the
+        specified I{name} or C{None} if no such dimension has been
+        set.
+        """
+        if k not in self.sp_dicts: return
+        value = self.sp_dicts[k].get(name, None)
+        if self.debug:
+            print sub("DIMS {:d}: {} -> {}", k, name, value)
+        return value
+        
     
 class Plotter(OptsBase):
     """
@@ -146,8 +189,9 @@ class Plotter(OptsBase):
     U{source<http://edsuom.com/yampex/yampex.plot.py>}, to see all the
     plotting options you can set.
 
-    @ivar dims: A dict of sub-dicts of the dimensions of various text
-        objects, keyed first by subplot index then the object name.
+    @ivar dims: A dict (actually, a subclass of L{Dims}) of sub-dicts
+        of the dimensions of various text objects, keyed first by
+        subplot index then the object name.
     """
     ph = PlotterHolder()
     
@@ -269,7 +313,7 @@ class Plotter(OptsBase):
         # The ID is an integer, not a reference to anything
         self.ID = self.ph.add(self)
         self.kw = kw
-        self.dims = {}
+        self.dims = Dims()
         self.xlabels = {}
         self.annotators = {}
         self.adj = Adjuster(self)
@@ -546,7 +590,7 @@ class Plotter(OptsBase):
         """
         def bbAdd(textObj):
             dims = self.adj.tsc.dims(textObj)
-            self.dims.setdefault(k, {})[name] = dims
+            self.dims.setDims(k, name, dims)
 
         for name in self._settings:
             value = self.opts[name]

@@ -56,6 +56,8 @@ class CurvePlotter(object):
         self.pt.use_grid()
         self.pt.set_title(
             "Exponentials plotted from {:.1f} to {:.1f}", self.xMin, self.xMax)
+        self.pt.set_xlabel("X")
+        self.pt.set_ylabel("a*exp(-b*X)")
 
     def func(self, X, a, b):
         """

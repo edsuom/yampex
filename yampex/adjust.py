@@ -126,6 +126,10 @@ class HeightComputer(object):
         If there's both a title and an xlabel in the subplot above,
         the space for the title is scaled up to leave some whitespace
         between xlabel and title.
+
+        Also, for some reason, a bit more space is needed for x labels
+        between subplots, as opposed to an x label of subplots in the
+        bottom row.
         """
         ms = 0
         for k in range(self.sp.N):
@@ -133,7 +137,10 @@ class HeightComputer(object):
             s = self.spaceForTitle(k)
             kAbove = k - self.sp.Nc
             if kAbove >= 0:
-                s_xlabel = self.spaceForXlabel(kAbove)
+                # For some reason, a bit more space is needed for x
+                # labels between subplots, as opposed to an x label of
+                # subplots in the bottom row.
+                s_xlabel = 1.2*self.spaceForXlabel(kAbove)
                 if s and s_xlabel: s *= 1.5
                 s += s_xlabel
                 s += self.spaceForTicks(kAbove)
@@ -211,6 +218,11 @@ class TextSizeComputer(object):
         If you supply a string as the I{textObj}, you must also
         specify the font I{size}.
         """
+        def sin(degrees):
+            return np.sin(np.radians(degrees))
+        def cos(degrees):
+            return np.cos(np.radians(degrees))
+        
         if isinstance(textObj, str):
             if size is None:
                 raise ValueError("You must specify size of text in a string")
@@ -221,14 +233,17 @@ class TextSizeComputer(object):
         else:
             try:
                 bb = textObj.get_window_extent()
-                return bb.width, bb.height
+                angle = textObj.get_rotation()
+                width = bb.height*cos(90-angle) + bb.width*cos(angle)
+                height = bb.width*sin(angle) + bb.height*sin(90-angle)
+                return width, height
             except:
                 size = self.DPI * textObj.get_size() / 72
                 text = textObj.get_text()
         # Width
         dims = [size*self.width(text)]
         # Height
-        dims.append(size*(2+text.count("\n")))
+        dims.append(size*(1+text.count("\n")))
         return dims
 
     @staticmethod
@@ -280,14 +295,13 @@ class Adjuster(object):
                 maxTickWidth = thisWidth
         return maxTickWidth
     
-    def getDims(self, k, key):
+    def getDims(self, k, name):
         """
         Returns the dimensions of the artist referenced with the specified
-        I{key} in subplot I{k}, or C{None} if no such artist had its
+        I{name} in subplot I{k}, or C{None} if no such artist had its
         dimensions defined for that subplot.
         """
-        if k not in self.dims: return
-        return self.dims[k].get(key, None)
+        return self.dims.getDims(k, name)
     
     def wSpace(self, left=False):
         """
@@ -300,13 +314,16 @@ class Adjuster(object):
         maxWidth = 0
         for k in range(len(self.sp)):
             if left and not self.sp.onLeft(k):
+                # We are only looking for the space to the left of all
+                # subplots, and this subplot is not in the left
+                # column, so the stuff to its left doesn't matter.
                 continue
             thisWidth = self.tickWidth(k)
             dims = self.getDims(k, 'ylabel')
             if dims:
-                # Add twice the ylabel's font height (not width,
-                # because rotated 90)
-                thisWidth += 2*dims[1]
+                # Add 150% the ylabel's font height (not width,
+                # because the ylabel is rotated 90)
+                thisWidth += 1.5*dims[1]
             if thisWidth > maxWidth:
                 maxWidth = thisWidth
         return maxWidth
@@ -343,14 +360,21 @@ class Adjuster(object):
                 continue
             ax = self.sp.axes[k]
             ax.set_xlabel(xlabels[k])
+        # Space at the top, above all subplots
         kw['top'] = 1.0 - self.scaledHeight(
             hc.top(titleObj), margin=30, pmax=0.18)
-        kw['hspace'] = self.scaledHeight(
-            hc.between(), per_sp=True, margin=30, pmax=0.4)
+        if self.sp.Nr > 1:
+            # Vertical (height) space between subplots in a column
+            kw['hspace'] = self.scaledHeight(
+                hc.between(), per_sp=True, scale=1.1, margin=30, pmax=0.4)
+        # Space at the bottom, below all subplots
         kw['bottom'] = self.scaledHeight(
             hc.bottom(), margin=15, pmax=0.2)
-        kw['wspace'] = self.scaledWidth(
-            self.wSpace(), per_sp=True, scale=1.3, margin=15, pixmin=55)
+        if self.sp.Nc > 1:
+            # Horizontal (width) space between subplots in a row
+            kw['wspace'] = self.scaledWidth(
+                self.wSpace(), per_sp=True, scale=1.3, margin=15, pixmin=55)
+        # Space to the left of all subplots
         kw['left'] = self.scaledWidth(
             self.wSpace(left=True), scale=1.3, margin=15, pixmin=45)
         return kw
