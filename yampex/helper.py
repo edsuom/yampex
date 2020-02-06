@@ -484,7 +484,8 @@ class PlotHelper(object):
         Does all my plotting and then the follow-up work for it.
         """
         self.p.opts.useLocal(self.k)
-        self.pairs.scaleX(self.p.opts['xscale'])
+        xscale = self.p.opts['xscale']
+        self.pairs.scaleX(xscale)
         self.p.doSettings(self.k)
         self.plotVectors()
         Ymin, Ymax = self.pairs.minmax(useY=True)
@@ -509,7 +510,7 @@ class PlotHelper(object):
                     x = X0[axvline]
             else: x = axvline
             if x is None: continue
-            self.ax.axvline(x=x, linestyle='--', color="#404040")
+            self.ax.axvline(x=x*xscale, linestyle='--', color="#404040")
         # Zero line (which may be non-zero)
         yz = self.p.opts['zeroLine']
         if yz is True: yz = 0
