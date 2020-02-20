@@ -410,7 +410,7 @@ class Plotter(OptsBase):
         self.opts.newLocal()
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, *args):
         """
         Upon completion of context, turns minor ticks and grid on if
         enabled for this subplot's axis, restores global (all
@@ -420,6 +420,10 @@ class Plotter(OptsBase):
         files), also sets a hook to adjust the subplot spacings and
         annotation positions upon window resizing.
 
+        The args are just placeholders for the three args that
+        C{contextmanager} supplies at the end of context: I{exc_type},
+        I{exc_val}, I{exc_tb}. (None are useful here.)
+        
         @see: L{_doPlots}.
         """
         # Do the last (and perhaps only) call's plotting
@@ -429,6 +433,35 @@ class Plotter(OptsBase):
         if not self.usingAgg:
             self.fig.canvas.mpl_connect('resize_event', self.subplots_adjust)
 
+    def start(self):
+        """
+        An alternative to the context-manager way of using me. Just call
+        this method and a reference to myself as a subplotting tool
+        will be returned.
+
+        Call L{done} when finished, which is the same thing as exiting
+        my subplotting context.
+        """
+        if self._isSubplot:
+            raise Exception("You are already in a subplotting context!")
+        return self.__enter__()
+
+    def done(self):
+        """
+        Call this after a call to L{start} when done plotting. This is the
+        alternative to the context-manager way of using me.
+
+        B{Note}: If you don't call this to close out a plotting
+        session with the alternative method, the last subplot will not
+        get drawn!
+
+        @see: L{start}, which gets called to start the
+            alternative-method plotting session.
+        """
+        if not self._isSubplot:
+            raise Exception("You are not in a subplotting context!")
+        self.__exit__()
+            
     def subplots_adjust(self, *args):
         """
         Adjusts spacings.
@@ -607,8 +640,9 @@ class Plotter(OptsBase):
     
     def __call__(self, *args, **kw):
         """
-        In the next (perhaps first) subplot, plots the second supplied
-        vector (and any further ones) versus the first.
+        In the next (perhaps first) subplot, or one whose index is
+        specified with keyword I{k}, plots the second supplied vector
+        (and any further ones) versus the first.
 
         If you supply a container object that houses vectors and
         provides access to them as items as the first argument, you
@@ -651,6 +685,9 @@ class Plotter(OptsBase):
         object's I{ax} attribute. But none of its special features
         will apply to what you do that way.
 
+        @keyword k: Set this to the integer index of the subplot you
+            want the supplied vectors plotted in if not in sequence.
+        
         @see: L{_doPlots}.
         """
         # Do plotting for the previous call (if any)
