@@ -4,7 +4,7 @@
 # yampex:
 # Yet Another Matplotlib Extension
 #
-# Copyright (C) 2017-2019 by Edwin A. Suominen,
+# Copyright (C) 2017-2020 by Edwin A. Suominen,
 # http://edsuom.com/yampex
 #
 # See edsuom.com for API documentation as well as information about
@@ -273,6 +273,16 @@ class Plotter(OptsBase):
         @keyword width: Specify the figure width part of I{figSize}.
         
         @keyword height: Specify the figure height part of I{figSize}.
+
+        @keyword h2: A single index, or a sequence or set containing
+            one or more indices, of any rows (starting with 0 for the
+            top row) that have twice the normal height. If an invalid
+            index is included, an exception will be raised.
+    
+        @keyword w2: A single index, or a sequence or set containing
+            one or more indices, of any columns (starting with 0 for
+            the left column) that have twice the normal width. If an
+            invalid index is included, an exception will be raised.
         """
         args = list(args)
         Nc = kw.pop('Nc', None)
@@ -309,7 +319,8 @@ class Plotter(OptsBase):
         figSize = self._maybePixels(figSize)
         self.fig = self.plt.figure(figsize=figSize)
         self.figSize = figSize
-        self.sp = Subplotter(self, N, self.Nc, self.Nr)
+        self.sp = Subplotter(
+            self, N, self.Nc, self.Nr, kw.pop('h2', []), kw.pop('w2', []))
         # The ID is an integer, not a reference to anything
         self.ID = self.ph.add(self)
         self.kw = kw

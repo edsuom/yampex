@@ -4,7 +4,7 @@
 # yampex:
 # Yet Another Matplotlib Extension
 #
-# Copyright (C) 2017-2019 by Edwin A. Suominen,
+# Copyright (C) 2017-2020 by Edwin A. Suominen,
 # http://edsuom.com/yampex
 #
 # See edsuom.com for API documentation as well as information about
@@ -27,6 +27,9 @@ Simple subplotting.
 """
 
 import importlib
+
+import numpy as np
+import matplotlib.gridspec as gridspec
 
 from yampex.helper import PlotHelper
 from yampex.util import PLOTTER_NAMES, sub
@@ -118,7 +121,20 @@ class Subplotter(object):
     instance constructs me with a reference to itself and an integer
     number of columns and rows.
 
-    B{TODO}: Support axis twinning.
+    If you want one row (or multiple rows) to have twice the height of
+    normal rows, supply its index in a sequence or set with the I{h2}
+    constructor keyword. Similarly, if you want one column (or
+    multiple columns) to have twice the width of normal columns,
+    supply its index in a sequence or set with the I{w2} constructor
+    keyword.
+
+    This is a convenient way to put emphasis on one or some subplots
+    without making things overly complicated. And if you think you
+    need a subplot to be more than twice as high or wide as the
+    others, think again; your figure would look terrible.
+
+    B{TODO}: Support axis twinning, and a subplot spanning multple
+    columns in one row.
 
     @ivar p: An instance of L{Plotter} that handles all subplots in a
         Matplotlib C{Figure}.
@@ -128,14 +144,45 @@ class Subplotter(object):
     @ivar Nc: Number of columns.
     
     @ivar Nr: Number of rows.
+
+    @keyword h2: A single index, or a sequence or set containing one
+        or more indices, of any rows (starting with 0 for the top row)
+        that have twice the normal height. If an invalid index is
+        included, an exception will be raised.
+
+    @keyword w2: A single index, or a sequence or set containing one
+        or more indices, of any columns (starting with 0 for the left
+        column) that have twice the normal width. If an invalid index
+        is included, an exception will be raised.
     """
-    def __init__(self, plotter, N, Nc, Nr):
+    def __init__(self, plotter, N, Nc, Nr, h2=None, w2=None):
         if N > Nc*Nr:
             raise ValueError("Number of subplots must be <= Nc*Nr")
         self.p = plotter
         self.N, self.Nc, self.Nr = N, Nc, Nr
         self.axes = []
+        kw = {'figure': plotter.fig}
+        kw['width_ratios'] = self._doublings('column', w2, Nc)
+        kw['height_ratios'] = self._doublings('row', h2, Nr)
+        self.gs = gridspec.GridSpec(Nr, Nc, **kw)
 
+    def _doublings(self, which, seqset, N):
+        ratios = np.ones(N)
+        if seqset is None:
+            return ratios
+        if isinstance(seqset, int):
+            seqset = [seqset]
+        seqset = set(seqset)
+        if seqset:
+            kMax = max(seqset)
+            if kMax >= N:
+                raise ValueError(
+                    sub("Invalid {} index {:d} for {:d} {}s",
+                        which, kMax, N, which))
+        for k in seqset:
+            ratios[k] = 2
+        return ratios
+        
     def setup(self):
         """
         Clears the figure and sets up a new set of subplots.
@@ -145,7 +192,8 @@ class Subplotter(object):
         self.kLast = None
         self.p.fig.clear()
         for k in range(self.Nc*self.Nr):
-            ax = self.p.fig.add_subplot(self.Nr, self.Nc, k+1)
+            ky, kx = divmod(k, self.Nc)
+            ax = self.p.fig.add_subplot(self.gs[ky, kx])
             ax = SpecialAx(ax, self.p, k)
             self.axes.append(ax)
             if k == self.N-1: break

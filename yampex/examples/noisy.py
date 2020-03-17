@@ -4,7 +4,7 @@
 # yampex:
 # Yet Another Matplotlib Extension
 #
-# Copyright (C) 2017-2019 by Edwin A. Suominen,
+# Copyright (C) 2017-2020 by Edwin A. Suominen,
 # http://edsuom.com/yampex
 #
 # See edsuom.com for API documentation as well as information about
@@ -29,6 +29,9 @@ waveforms at different time scales.
 Illustrates the use of L{options.OptsBase.use_timex} and calls to a
 subplot-context instance of L{plot.Plotter} with multiple y-axis
 arguments.
+
+Also illustrates how simply a row can be made twice as high as the
+others.
 """
 
 import numpy as np
@@ -36,11 +39,15 @@ from yampex import Plotter
 
 N_sp = 4; N_pts = 200
 X = np.linspace(0, 4*np.pi, N_pts)
-pt = Plotter(1, 4, width=10, height=10)
+pt = Plotter(1, 4, width=10, height=10, h2=0)
 pt.set_title("Sin(X) with increasingly noisy versions")
 pt.set_zeroLine()
 with pt as sp:
+    Y = None
     for mult in np.logspace(-1.5, +0.5, N_sp):
+        if Y is None:
+            sp.add_textBox(
+                "SW", "This subplot is twice as high as the others.")
         Y = np.sin(X)
         Y_noisy = Y + mult*np.random.randn(N_pts)
         k = np.argmax(np.abs(Y-Y_noisy))

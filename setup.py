@@ -4,7 +4,7 @@
 # yampex:
 # Yet Another Matplotlib Extension
 #
-# Copyright (C) 2017-2019 by Edwin A. Suominen,
+# Copyright (C) 2017-2020 by Edwin A. Suominen,
 # http://edsuom.com/yampex
 #
 # See edsuom.com for API documentation as well as information about
@@ -34,7 +34,7 @@ required = ['numpy', 'matplotlib', 'screeninfo']
 
 
 ### Define setup options
-kw = {'version':'0.9.4',
+kw = {'version':'0.9.5',
       'license':'Apache License (2.0)',
       'platforms':'OS Independent',
 

@@ -4,7 +4,7 @@
 # yampex:
 # Yet Another Matplotlib Extension
 #
-# Copyright (C) 2017-2019 by Edwin A. Suominen,
+# Copyright (C) 2017-2020 by Edwin A. Suominen,
 # http://edsuom.com/yampex
 #
 # See edsuom.com for API documentation as well as information about
@@ -25,6 +25,9 @@
 """
 More complicated demo of annotations. Resize the plot window and
 watch the annotations get intelligently repositioned!
+
+Also illustrates how simple it is to have subplots in one column twice
+as wide as in the other column.
 """
 
 import numpy as np
@@ -39,7 +42,7 @@ class Figure(object):
     def __init__(self):
         self.p = plot.Plotter(
             2*len(self.multipliers),
-            verbose=self.verbose, width=1000, height=1000)
+            verbose=self.verbose, width=1500, height=1000, w2=1)
         self.p.use_timex()
         self.p.use_grid()
 
