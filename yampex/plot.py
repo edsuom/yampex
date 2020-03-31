@@ -233,7 +233,7 @@ class Plotter(OptsBase):
         # heck, clear it anyways
         cls.ph.removeAll()
             
-    def __init__(self, N, *args, **kw):
+    def __init__(self, *args, **kw):
         """
         Constructor possibilities (not including keywords, except I{Nc}):
         
@@ -284,20 +284,7 @@ class Plotter(OptsBase):
             the left column) that have twice the normal width. If an
             invalid index is included, an exception will be raised.
         """
-        args = list(args)
-        Nc = kw.pop('Nc', None)
-        if args and isinstance(args[0], int):
-            # Nc, Nr specified
-            if Nc:
-                raise ValueError(
-                    "You can't specify Nc as both a second arg and keyword")
-            self.Nc = N
-            self.Nr = args.pop(0)
-            N = self.Nc*self.Nr
-        else:
-            # N specified
-            self.Nc = Nc if Nc else 3 if N > 6 else 2 if N > 3 else 1
-            self.Nr = int(np.ceil(float(N)/self.Nc))
+        args, kw, N, self.Nc, self.Nr = self.parseArgs(*args, **kw)
         self.V = args[0] if args else None
         self.opts = Opts()
         self.filePath = kw.pop('filePath', None)
@@ -329,6 +316,32 @@ class Plotter(OptsBase):
         self.annotators = {}
         self.adj = Adjuster(self)
         self.reset()
+
+    @staticmethod
+    def parseArgs(*args, **kw):
+        """
+        Parse the supplied I{args} and I{kw} for a constructor call.
+
+        Returns a 5-tuple with a revised args list and kw dict, the
+        number of subplots, the number of columns, and the number of
+        rows.
+        """
+        N = args[0]
+        args = list(args[1:])
+        Nc = kw.pop('Nc', None)
+        if args and isinstance(args[0], int):
+            # Nc, Nr specified
+            if Nc:
+                raise ValueError(
+                    "You can't specify Nc as both a second arg and keyword")
+            Nc = N
+            Nr = args.pop(0)
+            N = Nc*Nr
+        else:
+            # N specified
+            Nc = Nc if Nc else 3 if N > 6 else 2 if N > 3 else 1
+            Nr = int(np.ceil(float(N)/Nc))
+        return args, kw, N, Nc, Nr
         
     def reset(self):
         """
@@ -566,7 +579,8 @@ class Plotter(OptsBase):
                 if self.verbose: annotator.setVerbose()
                 annotator.update()
         if fh is None:
-            if filePath is None: filePath = self.filePath
+            if not filePath:
+                filePath = self.filePath
             if filePath:
                 fh = open(filePath, 'wb+')
         if fh is None:

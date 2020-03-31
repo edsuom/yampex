@@ -94,9 +94,10 @@ class TextBoxMaker(object):
     kw = {
         'm':                    0.02,
         'fontsize':             10.0,
-        'alpha':                1.0,
         'backgroundcolor':      "white",
-        'zorder':               5,
+        # Plots and annotations should be drawn with a higher zorder
+        # than 2 (later, i.e., on top of text boxes)
+        'zorder':               2,
         'fDims':                None,
     }
 
@@ -110,6 +111,7 @@ class TextBoxMaker(object):
         self.kw = self.kw.copy()
         self.kw.update(kw)
         self.tsc = TextSizeComputer(kw.pop('DPI', None))
+        self.t = None
 
     def conformLocation(self, location):
         if not isinstance(location, int):
@@ -151,10 +153,14 @@ class TextBoxMaker(object):
             self._textAlignment[location]
         if self.ax:
             kw['transform'] = self.ax.transAxes
-            self.t = self.ax.text(x, y, text, **kw)
-        else: self.t = self.fig.text(x, y, text, **kw)
+            obj = self.ax
+        else: obj = self.fig
+        self.t = obj.text(x, y, text, **kw)
         if self.DEBUG:
-            self.t.set_bbox({'facecolor': "white", 'edgecolor': "red"})
+            rectprops = {}
+            rectprops['facecolor'] = "white"
+            rectprops['edgecolor'] = "red"
+            self.tList[0].set_bbox(rectprops)
         return self
 
     def remove(self):
@@ -162,6 +168,6 @@ class TextBoxMaker(object):
         Removes my text object from the figure, catching the exception
         raised if it's not there.
         """
-        try:
-            self.t.remove()
+        if self.t is None: return
+        try: self.t.remove()
         except: pass

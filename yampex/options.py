@@ -70,8 +70,8 @@ class Opts(object):
         'legend':               [],
         'annotations':          [],
         'textBoxes':            {},
-        'xscale':               None,
-        'yscale':               None,
+        'xscale':               1.0,
+        'yscale':               1.0,
         'axisExact':            {},
         'ticks':                {},
         'useLabels':            False,
@@ -82,7 +82,7 @@ class Opts(object):
         'ylabel':               "",
         'title':                "",
         'zeroBottom':           False,
-        'zeroLine':             False,
+        'zeroLine':             {},
         'fontsizes':            {},
     }
 
@@ -334,9 +334,11 @@ class OptsBase(object):
     def add_axvline(self, k):
         """
         Adds a vertical dashed line at the data point with integer index
-        I{k}.
+        I{k}. You can use negative indices, e.g., -1 for the last data
+        point.
 
-        To set it to an x value, use a float for I{k}.
+        To place the dashed line at (or at least near) an x value, use
+        a float for I{k}.
         """
         self.opts['axvlines'].append(k)
 
@@ -729,15 +731,23 @@ class OptsBase(object):
         """
         self.opts['zeroBottom'] = yes
 
-    def set_zeroLine(self, y=0):
+    def set_zeroLine(self, y=0, color="black", linestyle='--', linewidth=1):
         """
         Adds a horizontal line at the specified I{y} value (default is
         y=0) if the Y-axis range includes that value.
 
         If y is C{None} or C{False}, clears any previously set line.
-        """
-        self.opts['zeroLine'] = y
 
+        @keyword color: Set the line color (default: black).
+        @keyword linestyle: Set the line type (default: '--').
+        @keyword linewidth: Set the line width (default: 1).
+        """
+        self.opts['zeroLine'] = {
+            'y': y,
+            'color': color,
+            'linestyle': linestyle,
+            'linewidth': linewidth,
+        }
 
     def use_bump(self, yes=True):
         """

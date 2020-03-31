@@ -459,6 +459,8 @@ class PlotHelper(object):
                 if is_yValue:
                     k = np.argmin(np.abs(Y-k))
                 else: k = np.searchsorted(X, k)
+            if k < 0 or k >= len(X):
+                continue
             x = X[k]; y = Y[k]
             if isinstance(text, int):
                 text = sub("{:d}", text)
@@ -512,14 +514,14 @@ class PlotHelper(object):
             if x is None: continue
             self.ax.axvline(x=x*xscale, linestyle='--', color="#404040")
         # Zero line (which may be non-zero)
-        yz = self.p.opts['zeroLine']
+        kw = self.p.opts['zeroLine']
+        yz = kw.pop('y', False)
         if yz is True: yz = 0
         if yz is not None and yz is not False:
             y0, y1 = self.ax.get_ylim()
             if y0 < yz and y1 > yz:
-                self.ax.axhline(
-                    y=yz, linestyle='--',
-                    linewidth=1, color="black", zorder=-5)
+                kw['zorder'] = -5
+                self.ax.axhline(y=yz, **kw)
         # Legend, if not done with annotations
         if self.p.opts.useLegend():
             self.ax.legend(*self.lineInfo, **{
@@ -531,7 +533,7 @@ class PlotHelper(object):
         if tbs:
             tbm = TextBoxMaker(
                 self.ax, self.p.Nc, self.p.Nr,
-                alpha=0.8, fontsize=self.p.fontsize('textbox', "small"))
+                fontsize=self.p.fontsize('textbox', "small"))
             for quadrant in tbs:
                 tbm(quadrant, tbs[quadrant])
         # Decorate the subplot
