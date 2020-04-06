@@ -69,6 +69,7 @@ class TextBoxMaker(object):
         'W':    6,
         'NW':   7,
         'N':    8,
+        'M':    9,
     }
     _XY = {
         1:      (1.0,   1.0),
@@ -79,6 +80,7 @@ class TextBoxMaker(object):
         6:      (0.0,   0.5),
         7:      (0.0,   1.0),
         8:      (0.5,   1.0),
+        9:      (0.5,   0.5),
     }
     _textAlignment = {
         1: ('right',    'top'   ),
@@ -89,6 +91,7 @@ class TextBoxMaker(object):
         6: ('left',     'center'),
         7: ('left',     'top'   ),
         8: ('center',   'center'),
+        9: ('center',   'center'),
     }
 
     kw = {

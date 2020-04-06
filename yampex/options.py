@@ -606,7 +606,7 @@ class OptsBase(object):
         Sets the I{fontsize} of the specified artist I{name}.
 
         Recognized names are 'title', 'xlabel', 'ylabel', 'legend',
-        and 'annotations'.
+        'annotations', and 'textbox'.
         """
         self.opts['fontsizes'][name] = fontsize
 
