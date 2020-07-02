@@ -225,7 +225,7 @@ class Opts(object):
         if nd('linestyle', 'ls'):
             if self['linestyles']:
                 kw['linestyle'], width = self.getLast('linestyles', k)
-            elif kw['marker'] in (',', '.'):
+            elif kw['marker'] in (',', '.',):
                 kw['linestyle'] = ''
             else: kw['linestyle'] = '-'
         if nd('linewidth', 'lw'):
@@ -455,19 +455,21 @@ class OptsBase(object):
 
             1. "NE": right, top.
 
-            2. "E": right, center.
+            2. "E": right, middle.
 
             3. "SE": right, bottom.
 
-            4. "S": center, bottom.
+            4. "S": middle, bottom.
 
             5. "SW": left, bottom.
 
-            6. "W": left, center.
+            6. "W": left, middle.
 
             7. "NW": left, top.
 
-            8. "N": center, top.
+            8. "N": middle, top.
+
+            9. "M": middle of plot.
 
         If there's already a text box at the specified location, a
         line will be added to it.
@@ -733,7 +735,7 @@ class OptsBase(object):
 
     def set_zeroLine(self, y=0, color="black", linestyle='--', linewidth=1):
         """
-        Adds a horizontal line at the specified I{y} value (default is
+        Draws a horizontal line at the specified I{y} value (default is
         y=0) if the Y-axis range includes that value.
 
         If y is C{None} or C{False}, clears any previously set line.
