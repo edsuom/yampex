@@ -122,6 +122,10 @@ class TextBoxMaker(object):
         return location
 
     def get_XY(self, location, dims, margins):
+        """
+        Returns a 2-list with the center position of the annotation, as a
+        fraction of my axes or figure dimensions.
+        """
         xy = list(self._XY[location])
         for k, value in enumerate(xy):
             mk = margins[k]*self.NcNr[k] if self.NcNr else margins[k]

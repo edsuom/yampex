@@ -422,6 +422,28 @@ class PlotHelper(object):
                 continue
             self.lineInfo[1].append(legend)
             if self.p.opts['useLabels']: self.addLegend(k, legend)
+
+    def make_annotator(self):
+        """
+        Constructs an instance of L{Annotator} for the current C{Axes}
+        object, returning a reference to it.
+        """
+        # There will be no twinned axes as that's not yet supported;
+        # axList will always contain a single Axes object.
+        axList = self.p.sp.getTwins()
+        # Annotations have their own font size
+        fontsize = self.p.fontsize('annotations', 'small')
+        # This one Annotator will take care of all my annotations
+        annotator = self.p.annotators[self.ax] = Annotator(
+            axList[0], self.pairs, fontsize=fontsize)
+        return annotator
+
+    def get_annotator(self):
+        """
+        Returns the instance of L{Annotator} that was constructed for the
+        current I{Axes} object.
+        """
+        return self.p.annotators[self.ax]
     
     def addAnnotations(self):
         """
@@ -446,13 +468,7 @@ class PlotHelper(object):
         annotations need repositioning.
         """
         self.p.plt.draw()
-        # There will be no twinned axes as that's not yet supported;
-        # axList will always contain a single Axes object.
-        axList = self.p.sp.getTwins()
-        fontsize = self.p.fontsize('annotations', 'small')
-        # This one Annotator will take care of all my annotations
-        annotator = self.p.annotators[self.ax] = Annotator(
-            axList[0], self.pairs, fontsize=fontsize)
+        annotator = self.get_annotator()
         for k, text, kVector, is_yValue in self.p.opts['annotations']:
             X, Y = self.pairs[kVector].getXY()
             if not isinstance(k, int):
@@ -476,8 +492,7 @@ class PlotHelper(object):
         """
         plt = self.p.plt
         plt.draw()
-        annotator = self.p.annotators[self.ax]
-        if annotator.update():
+        if self.get_annotator().update():
             plt.pause(0.0001)
             plt.draw()
         
@@ -493,6 +508,8 @@ class PlotHelper(object):
         Ymin, Ymax = self.pairs.minmax(useY=True)
         axisExact = self.p.opts['axisExact']
         zeroBottom = self.p.opts['zeroBottom']
+        # Make an Annotator for my Axes
+        self.make_annotator()
         # Axis bounds
         if axisExact.get('x', False):
             self.ax.set_xlim(*self.pairs.minmax())
@@ -527,7 +544,6 @@ class PlotHelper(object):
             self.ax.legend(*self.lineInfo, **{
                 'loc': "best",
                 'fontsize': self.p.fontsize('legend', "small")})
-        self.addAnnotations()
         # Text boxes
         tbs = self.p.opts['textBoxes']
         if tbs:
@@ -536,6 +552,11 @@ class PlotHelper(object):
                 fontsize=self.p.fontsize('textbox', "small"))
             for quadrant in tbs:
                 tbm(quadrant, tbs[quadrant])
+                # TODO: Call annotator.avoid(...) to have annotations
+                # avoid overlapping the text box. But how to get
+                # actual position of text box patch?
+        # Annotations
+        self.addAnnotations()
         # Decorate the subplot
         ticks = self.p.opts['ticks']
         self.p.sp.setTicks(ticks)

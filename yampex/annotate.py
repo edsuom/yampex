@@ -88,16 +88,18 @@ class Sizer(object):
 
 class RectangleRegion(object):
     """
-    I am a rectangular plot region where an annotation is or might go.
+    I am a rectangular plot region where an annotation or textbox is
+    or might go.
 
-    Construct me with the annotation I{ann}, the number of pixels to
+    Construct me with the C{Axes} object I{ax} for the annotation or
+    textbox, along with its center position I{xy}, I{width}, and
+    I{height}. For an annotation, also include the number of pixels to
     the right I{dx} and up I{dy} from that annotation's data-point
-    location to the center of the proposed location, the I{width}, and
-    the I{height}.
+    location to the center of the proposed location.
 
-    The positioning of the region is like so, with "A" being the
-    annotation's data-point location, "C" being the center of my
-    rectangular region::
+    For an annotation, the positioning of the region is like so, with
+    "A" being the annotation's data-point location, "C" being the
+    center of my rectangular region::
 
                       |
                       |         +------------------+ y1   ^
@@ -118,9 +120,8 @@ class RectangleRegion(object):
     """
     margin = 2
     
-    def __init__(self, ann, dx, dy, width, height):
-        self.ann = ann
-        self.Ax, self.Ay = self.ann.axes.transData.transform(ann.xy)
+    def __init__(self, ax, xy, width, height, dx, dy):
+        self.Ax, self.Ay = ax.transData.transform(xy)
         self.Cx = self.Ax + dx
         self.Cy = self.Ay + dy
         self.x0 = self.Cx - 0.5*width - self.margin
@@ -278,7 +279,8 @@ class PositionEvaluator(object):
                 continue
             dx, dy = getOffset(ann_other)
             width, height = self.sizer(ann_other)
-            rr_other = RectangleRegion(ann_other, dx, dy, width, height)
+            rr_other = RectangleRegion(
+                ann_other.axes, ann_other.xy, width, height, dx, dy)
             if rr.overlaps_other(rr_other):
                 # Proposed rr overlaps the other annotation's text box
                 score += 4.0
@@ -346,7 +348,7 @@ class PositionEvaluator(object):
         location in my subplot.
         """
         width, height = self.sizer(ann)
-        rr = RectangleRegion(ann, dx, dy, width, height)
+        rr = RectangleRegion(ann.axes, ann.xy, width, height, dx, dy)
         Axy, Cxy = rr.arrow_line
         if rr.overlaps_point(*Axy):
             # Overlaps its own data point
@@ -518,6 +520,13 @@ class Annotator(object):
                 if radius > 2:
                     yield scaleOffset(radius, *self.moreOffsets[k])
 
+    def avoid(self, x0, y0, x1, y1):
+        """
+        TODO: Have annotations avoid the region defined by text box with
+        corners (x0,y0) and (x1, y1).
+        """
+        pass
+                    
     def add(self, x, y, text, dx=0, dy=0):
         """
         Adds an annotation with an arrow pointing at data-value
