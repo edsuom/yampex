@@ -484,7 +484,7 @@ class OptsBase(object):
         prevText = self.opts['textBoxes'].get(location, None)
         if prevText:
             text = prevText + "\n" + text
-        self.opts['textBoxes'][location] = text
+        self.opts['textBoxes'][location] = text.strip()
 
     
     def clear_annotations(self):

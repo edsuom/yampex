@@ -155,7 +155,15 @@ class TextBoxMaker(object):
                 raise ValueError(
                     "You must supply figure dims with integer margin")
             margins = [margin, margin]
+        # Tall text boxes (many lines) get too much y-axis margin;
+        # correct that.
+        N_lines = text.count('\n') + 1
+        if N_lines > 3:
+            margins[1] = margins[1]*(4.0/(4 + N_lines))
+        # Get the x, y location of the center of the box
         x, y  = self.get_XY(location, dims, margins)
+        # Come up with the appropriate keywords and then do the call
+        # to obj.text
         kw['horizontalalignment'], kw['verticalalignment'] = \
             self._textAlignment[location]
         if self.ax:
