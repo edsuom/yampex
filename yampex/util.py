@@ -44,3 +44,9 @@ def sub(proto, *args):
     """
     return proto.format(*args)
 
+def optkey(axisName, suffix):
+    """
+    Returns a string suitable for a key to an axis-opts sub-dict,
+    uniquely determined by the I{axisName} and I{suffix}.
+    """
+    return sub("{}_{}", axisName.lower(), suffix)

@@ -38,7 +38,7 @@ editor, as a handy reference for all the plotting options you can set.
 from copy import copy
 from contextlib import contextmanager
 
-from yampex.util import PLOTTER_NAMES, sub
+from yampex.util import *
 
 
 class Opts(object):
@@ -100,7 +100,9 @@ class Opts(object):
                 id(self)), maybeMore), "-"*50]
         for name in sorted(self.go.keys()):
             goVal = self.go[name]
-            loVal = sub(" ({})", self.lo[name]) if name in self.lo else ""
+            if self.lo is None or name not in self.lo:
+                loVal = ""
+            else: loVal = sub(" ({})", self.lo[name])
             lines.append(sub("{:>18s}  {}{}", name, goVal, loVal))
         return "\n".join(lines)
         
@@ -248,23 +250,6 @@ class OptsBase(object):
 
     @ivar opts: A dict of options.
     """
-    def _axisOpt(self, optName, axisName, value=None):
-        """
-        Sets axis option I{optName} for axis I{axisName} (either "x" or
-        "y") to I{value}. If no value supplied, returns a dict of the
-        options that are currently set (empty if none).
-
-        The axis options are in my I{opts} dict, keyed by option
-        name. Each entry is a sub-dict with at most one entry per
-        axis, keyed by axis name.
-        """
-        axisName = axisName.lower()
-        if axisName not in "xy":
-            raise ValueError(sub("Invalid axisName '{}'", axisName))
-        if value is None:
-            return self.opts[optName].setdefault(axisName, {})
-        self.opts[optName][axisName] = value
-        
     def set(self, name, value):
         """
         Before this subplot is drawn, do a C{set_name=value} command to the
@@ -569,7 +554,7 @@ class OptsBase(object):
         Forces the limits of the named axis ("x" or "y") to exactly the
         data range, unless called with C{False}.
         """
-        self._axisOpt('axisExact', axisName, yes)
+        self.opts['axisExact'][axisName] = yes
         
     def set_axvline(self, k):
         """
@@ -662,10 +647,11 @@ class OptsBase(object):
         ticks are set automatically by default, and cannot be turned
         off.)
         """
-        ticks = self._axisOpt('ticks', axisName)
-        ticks['major'] = major
-        if minor is not None:
-            ticks['minor'] = minor
+        key = optkey(axisName, 'major')
+        self.opts['ticks'][key] = major
+        if minor is None: return
+        key = optkey(axisName, 'minor')
+        self.opts['ticks'][key] = minor
 
     def set_timex(self, yes=True):
         """
@@ -798,7 +784,8 @@ class OptsBase(object):
             for axisName in ('x', 'y'):
                 self.use_minorTicks(axisName, yes)
             return
-        self._axisOpt('ticks', axisName)['minor'] = yes
+        key = optkey(axisName, 'minor')
+        self.opts['ticks'][key] = yes
         
     def use_timex(self, yes=True):
         """

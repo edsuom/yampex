@@ -51,7 +51,11 @@ pt.add_annotation(-1, "Last")
 # called.
 with pt as sp:
     # Do each plot, sin and then cos.
-    for funcName in funcNames:
+    for k, funcName in enumerate(funcNames):
+        if k == 0:
+            # The major ticks are at pi/2 intervals, but only for the
+            # top subplot to demonstrate that it can be different
+            pt.set_tickSpacing('x', np.pi/2)
         # Generate the 1-D Numpy array for this plot's y-axis.
         Y = getattr(np, funcName)(X)
         # The sin plot will have a dashed line instead of the default

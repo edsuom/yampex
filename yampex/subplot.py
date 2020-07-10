@@ -32,7 +32,7 @@ import numpy as np
 import matplotlib.gridspec as gridspec
 
 from yampex.helper import PlotHelper
-from yampex.util import PLOTTER_NAMES, sub
+from yampex.util import *
 
 
 class SpecialAx(object):
@@ -355,7 +355,7 @@ class Subplotter(object):
                ticks below and above it.
         """
         def get(axisName, name):
-            return ticksDict.get(axisName, {}).get(name, None)
+            return ticksDict.get(optkey(axisName, name), None)
 
         def locations(axisName, spacing):
             spacing, anchor = spacing
@@ -386,7 +386,7 @@ class Subplotter(object):
                     locations(axisName, spacing))
             else: locator = self.ticker.MultipleLocator(spacing)
             setter(locator)
-        
+
         if ax is None: ax = self.ax
         if not hasattr(self, 'ticker'):
             self.ticker = importlib.import_module("matplotlib.ticker")
@@ -394,9 +394,15 @@ class Subplotter(object):
             for which in 'major', 'minor':
                 spacing = get(axisName, which)
                 if spacing is True:
-                    if which == 'minor': ax.minorticks_on()
+                    if which == 'minor':
+                        ax.minorticks_on()
+                    # What about major ticks?
+                    continue
                 elif spacing is False:
-                    if which == 'minor': ax.minorticks_off()
+                    if which == 'minor':
+                        ax.minorticks_off()
+                    # What about major ticks?
+                    continue
                 elif spacing is None:
                     continue
                 setSpacing(axisName, which, spacing)
