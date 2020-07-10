@@ -339,20 +339,53 @@ class Subplotter(object):
         Call with a dict defining ticks for 'x' and 'y' axes. Each axis
         has a sub-dict that may include 'major' and 'minor' entries.
 
-        Each entry, if present, is an C{int} for a max number of tick
-        intervals, or a C{float} for spacing between intervals, or
-        just C{True} or C{False} to enable or disable ticks. (Major
-        ticks are always enabled.)
+        Each entry, if present, defines the tick intervals. It can
+        have one of four forms:
+
+            1. An C{int} for a max number of tick intervals.
+
+            2. A C{float} for spacing between intervals.
+
+            3. A C{Bool}, just C{True} or C{False} to enable or
+               disable ticks. (Major ticks are always enabled.)
+
+            4. A 2-sequence of floats containing (1) the spacing
+               between intervals and (2) an anchor point that must
+               have a tick, i.e., the starting point of intervals with
+               ticks below and above it.
         """
         def get(axisName, name):
             return ticksDict.get(axisName, {}).get(name, None)
+
+        def locations(axisName, spacing):
+            spacing, anchor = spacing
+            low, high = self.ax.helper.pairs.minmax(axisName=='y')
+            locs = [anchor]
+            # Below anchor
+            loc = anchor - spacing
+            while loc >= low:
+                locs.insert(0, loc)
+                loc -= spacing
+            # Above anchor
+            loc = anchor + spacing
+            while loc <= high:
+                locs.append(loc)
+                loc += spacing
+            return locs
         
         def setSpacing(axisName, which, spacing):
             axis = getattr(ax, sub("{}axis", axisName))
             setter = getattr(axis, sub("set_{}_locator", which))
             if isinstance(spacing, int):
-                setter(self.ticker.MaxNLocator(spacing))
-            else: setter(self.ticker.MultipleLocator(spacing))
+                locator = self.ticker.MaxNLocator(spacing)
+            elif hasattr(spacing, '__iter__'):
+                if len(spacing) != 2:
+                    raise ValueError(
+                        "Tick spacing (interval, anchor) requires 2 elements!")
+                locator = self.ticker.FixedLocator(
+                    locations(axisName, spacing))
+            else: locator = self.ticker.MultipleLocator(spacing)
+            setter(locator)
         
         if ax is None: ax = self.ax
         if not hasattr(self, 'ticker'):
