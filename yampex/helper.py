@@ -486,16 +486,6 @@ class PlotHelper(object):
             # they yet used
             annotator.add(x, y, text)
 
-    def updateAnnotations(self):
-        """
-        Updates the positions of all my annotations.
-        """
-        plt = self.p.plt
-        plt.draw()
-        if self.get_annotator().update():
-            plt.pause(0.0001)
-            plt.draw()
-        
     def doPlots(self):
         """
         Does all my plotting and then the follow-up work for it.
@@ -552,9 +542,7 @@ class PlotHelper(object):
                 fontsize=self.p.fontsize('textbox', "small"))
             for quadrant in tbs:
                 tbm(quadrant, tbs[quadrant])
-                # TODO: Call annotator.avoid(...) to have annotations
-                # avoid overlapping the text box. But how to get
-                # actual position of text box patch?
+        else: tbm = None
         # Annotations
         self.addAnnotations()
         # Decorate the subplot
@@ -567,4 +555,8 @@ class PlotHelper(object):
         self.p.opts.useLastLocal()
         # Have any annotations intelligently repositioned now that the
         # subplot is completed.
-        self.updateAnnotations()
+        annotator = self.get_annotator()
+        if tbm:
+            for obj in tbm.tList:
+                annotator.avoid(obj)
+        self.p.updateAnnotations(annotator)

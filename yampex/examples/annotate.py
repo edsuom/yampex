@@ -52,6 +52,9 @@ class Figure(object):
             self.sp.add_annotation(k, text, kVector=kVector)
         
     def plot(self):
+        def tb(text):
+            self.sp.add_textBox('S', text)
+        
         X = np.linspace(0, 2e-6, 100)
         with self.p as self.sp:
             for m in self.multipliers:
@@ -61,6 +64,10 @@ class Figure(object):
                     self.add_annotations(50, "Midway")
                     self.add_annotations(55, "Near Midway")
                     self.add_annotations(99, "Finish")
+                    if self.sp.Nsp == 3:
+                        tb("The \"Near Midway, upper\"")
+                        tb("needs to avoid this, which")
+                        tb("is fairly hard to do.")
                     self.sp(X, sign*(Y-0.1), sign*(Y+0.1))
         self.p.show()
         

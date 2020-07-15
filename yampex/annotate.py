@@ -222,6 +222,14 @@ class RectangleRegion(object):
         # Overlaps
         return True
 
+    def overlaps_obj(self, obj):
+        """
+        Returns C{True} if I overlap the supplied Matplotlib I{obj} having
+        a C{get_window_extent} method.
+        """
+        other = obj.get_window_extent()
+        return self._xOverlap(other) and self._yOverlap(other)
+
 
 class PositionEvaluator(object):
     """
@@ -232,13 +240,35 @@ class PositionEvaluator(object):
     All subplot data is converted to, and computations done in, pixel
     units.
     """
+    # Cutoff for not bothering to compute further score increases
     awful = 100
+    # Score increase for overlap with axis or figure boundary
+    weight_boundary = 3.0
+    # Score increase for overlap with another annotation's text box
+    weight_tb = 4.0
+    # Score increase for overlap with another annotation's arrow line
+    weight_arrow = 2.0
+    # Score increase for overlap with data points
+    weight_data = 1.0
+    # Score increase for overlap with other Matplot objects
+    weight_obj = 4.0
     
     def __init__(self, ax, pairs, annotations):
         self.ax = ax
         self.pairs = pairs
         self.annotations = annotations
         self.sizer = Sizer()
+        self.avoided = set()
+
+    def avoid(self, obj):
+        """
+        Call to have annotations avoid the region defined by any supplied
+        Matplotlib obj having a C{get_window_extent} method.
+        """
+        if not hasattr(obj, 'get_window_extent'):
+            raise TypeError(sub(
+                "Supplied object {} has no 'get_window_extent' method!", obj))
+        self.avoided.add(obj)
 
     def with_boundary(self, rr):
         """
@@ -258,9 +288,8 @@ class PositionEvaluator(object):
                rr.x1 > x1 or \
                rr.y0 < y0 or \
                rr.y1 > y1:
-                score += 3*(k+1)
-            else:
-                return score
+                score += self.weight_boundary*(k+1)
+            else: return score
         return score
     
     def with_others(self, rr, ann):
@@ -283,15 +312,15 @@ class PositionEvaluator(object):
                 ann_other.axes, ann_other.xy, width, height, dx, dy)
             if rr.overlaps_other(rr_other):
                 # Proposed rr overlaps the other annotation's text box
-                score += 4.0
+                score += self.weight_boundary
             if rr.overlaps_line(*rr_other.arrow_line):
                 # Proposed rr overlaps the other annotation's arrow line
-                score += 2.0
+                score += self.weight_arrow
             if rr_other.overlaps_line(*rr.arrow_line):
                 # Proposed annotation's arrow line overlaps the other
                 # annotation's text box
-                score += 2.0
-            if score >= self.awful:
+                score += self.weight_arrow
+            if score > self.awful:
                 break
         return score
 
@@ -322,13 +351,29 @@ class PositionEvaluator(object):
             for xy in XY:
                 if xy_prev is not None:
                     if xy[0] > rr.x0 and rr.overlaps_line(xy_prev, xy):
-                        score += 1.0
+                        score += self.weight_data
                         break
                     if xy[0] > rr.x1:
                         # Any remaining segments are entirely to the
                         # right of the rectangle region
                         break
                 xy_prev = xy
+            if score > self.awful: break
+        return score
+
+    def with_avoided(self, rr):
+        """
+        Returns score for the proposed L{RectangleRegion} I{rr} possibly
+        overlapping with Matplotlib objects that have been registered
+        to avoid with calls to L{avoid}.
+
+        The score increases with the number of overlaps.
+        """
+        score = 0.0
+        for obj in self.avoided:
+            if rr.overlaps_obj(obj):
+                score += self.weight_obj
+                if score > self.awful: break
         return score
     
     def score(self, ann, dx, dy):
@@ -360,6 +405,7 @@ class PositionEvaluator(object):
         score += self.with_others(rr, ann)
         if score < self.awful:
             score += self.with_data(rr)
+        score += self.with_avoided(rr)
         return score, rr
 
 
@@ -520,12 +566,12 @@ class Annotator(object):
                 if radius > 2:
                     yield scaleOffset(radius, *self.moreOffsets[k])
 
-    def avoid(self, x0, y0, x1, y1):
+    def avoid(self, obj):
         """
-        TODO: Have annotations avoid the region defined by text box with
-        corners (x0,y0) and (x1, y1).
+        Call to have annotations avoid the region defined by any supplied
+        Matplotlib obj having a C{get_window_extent} method.
         """
-        pass
+        self.pos.avoid(obj)
                     
     def add(self, x, y, text, dx=0, dy=0):
         """

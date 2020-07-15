@@ -34,6 +34,9 @@ from yampex.util import sub
 
 class TextBoxMaker(object):
     """
+    I make one or more text boxes for a subplot C{Axes} object or an
+    entire C{Figure}.
+
     Construct an instance with a Matplotlib C{Axes} object and, to add
     the textbox to a subplot instead of the whole figure, two more
     args: The number of columns and rows in the subplot.
@@ -41,6 +44,9 @@ class TextBoxMaker(object):
     Any keywords you supply to my constructor are used in the textbox,
     with the exception of I{m}.
 
+    @ivar tList: A list of the Matplotlib C{text} objects I have
+        created.
+    
     @keyword DPI: The dots per inch of the figure the text box will be
         going into.
     
@@ -114,7 +120,7 @@ class TextBoxMaker(object):
         self.kw = self.kw.copy()
         self.kw.update(kw)
         self.tsc = TextSizeComputer(kw.pop('DPI', None))
-        self.t = None
+        self.tList = []
 
     def conformLocation(self, location):
         if not isinstance(location, int):
@@ -170,12 +176,13 @@ class TextBoxMaker(object):
             kw['transform'] = self.ax.transAxes
             obj = self.ax
         else: obj = self.fig
-        self.t = obj.text(x, y, text, **kw)
+        t = obj.text(x, y, text, **kw)
         if self.DEBUG:
             rectprops = {}
             rectprops['facecolor'] = "white"
             rectprops['edgecolor'] = "red"
-            self.tList[0].set_bbox(rectprops)
+            t.set_bbox(rectprops)
+        self.tList.append(t)
         return self
 
     def remove(self):
@@ -183,6 +190,7 @@ class TextBoxMaker(object):
         Removes my text object from the figure, catching the exception
         raised if it's not there.
         """
-        if self.t is None: return
-        try: self.t.remove()
-        except: pass
+        while self.tList:
+            t = self.tList.pop()
+            try: t.remove()
+            except: pass

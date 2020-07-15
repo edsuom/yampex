@@ -192,6 +192,9 @@ class Plotter(OptsBase):
     @ivar dims: A dict (actually, a subclass of L{Dims}) of sub-dicts
         of the dimensions of various text objects, keyed first by
         subplot index then the object name.
+
+    @ivar Nsp: The number of subplots defined thus far defined with
+        calls to my instance.
     """
     ph = PlotterHolder()
     
@@ -355,6 +358,7 @@ class Plotter(OptsBase):
         self._isSubplot = False
         self._universal_xlabel = False
         self._plotter = None
+        self.Nsp = 0
 
     def __del__(self):
         """
@@ -399,12 +403,6 @@ class Plotter(OptsBase):
         """
         return self.fig.get_figheight()
     
-    def __nonzero__(self):
-        """
-        I evaluate as C{True} if I have any subplots defined yet.
-        """
-        return bool(len(self.sp))
-        
     def __getattr__(self, name):
         """
         You can access plotting methods and a given subplot's plotting
@@ -503,7 +501,7 @@ class Plotter(OptsBase):
             ax = self.fig.get_axes()[0]
             if self.tbmTitle: self.tbmTitle.remove()
             self.tbmTitle = TextBoxMaker(self.fig, **kw)("N", self._figTitle)
-            titleObj = self.tbmTitle.t
+            titleObj = self.tbmTitle.tList[0]
         else: self.tbmTitle = titleObj = None
         kw = self.adj(self._universal_xlabel, titleObj)
         try:
@@ -516,15 +514,20 @@ class Plotter(OptsBase):
                         [sub("{}={}", x, kw[x]) for x in kw])))
         self.updateAnnotations()
     
-    def updateAnnotations(self):
+    def updateAnnotations(self, annotator=None):
         """
         Updates the positions of all annotations in an already-drawn plot.
+
+        When L{PlotHelper} calls this, it will supply the annotator
+        for its subplot.
         """
         plt = self.plt
         updated = False
-        for annotator in self.annotators.itervalues():
-            if annotator.update():
-                updated = True
+        if annotator is None:
+            for annotator in self.annotators.itervalues():
+                if annotator.update():
+                    updated = True
+        elif annotator.update(): updated = True
         if updated:
             plt.pause(0.0001)
             plt.draw()
@@ -724,5 +727,6 @@ class Plotter(OptsBase):
         k = kw.pop('k', None)
         ax = self.sp[k]
         ax.helper.addCall(args, kw)
+        self.Nsp += 1
         return ax
 
