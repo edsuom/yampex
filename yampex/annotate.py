@@ -226,8 +226,13 @@ class RectangleRegion(object):
         """
         Returns C{True} if I overlap the supplied Matplotlib I{obj} having
         a C{get_window_extent} method.
+
+        If there is not yet a renderer, the overlap cannot be
+        determined and so C{False} is returned.
         """
-        other = obj.get_window_extent()
+        try:
+            other = obj.get_window_extent()
+        except: return False
         return self._xOverlap(other) and self._yOverlap(other)
 
 

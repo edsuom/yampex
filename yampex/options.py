@@ -63,7 +63,7 @@ class Opts(object):
         'marker':               ('', None),
         'markers':              [],
         'linestyles':           [],
-        'grid':                 False,
+        'grid':                 (None, None),
         'firstVectorTop':       False,
         'call':                 "plot",
         'autolegend':           False,
@@ -556,18 +556,6 @@ class OptsBase(object):
         """
         self.opts['axisExact'][axisName] = yes
         
-    def set_axvline(self, k):
-        """
-        Adds a vertical dashed line at the data point with integer index
-        I{k}.
-
-        To set it to an x value, use a float for I{k}.
-
-        @see: L{add_axvline}, the preferred form of this call.
-        """
-        print("WARNING: Only add_axvline will be supported in the future!")
-        self.add_axvline(k)
-        
     def set_colors(self, *args):
         """
         Sets the list of colors. Call with no args to clear the list and
@@ -597,15 +585,6 @@ class OptsBase(object):
         """
         self.opts['fontsizes'][name] = fontsize
 
-    def set_grid(self, yes=True):
-        """
-        Adds a grid, unless called with C{False}.
-
-        @see: L{use_grid}, the preferred form of this call.
-        """
-        print("WARNING: Only use_grid will be supported in the future!")
-        self.use_grid(yes)
-
     def set_legend(self, *args, **kw):
         """
         Sets the list of legend entries.
@@ -623,16 +602,6 @@ class OptsBase(object):
         if 'fontsize' in kw:
             self.opts['fontsizes']['legend'] = kw['fontsize']
     
-    def set_minorTicks(self, axisName, yes=True):
-        """
-        Enables minor ticks for I{axisName} ("x" or "y"). Call with
-        C{False} after the I{axisName} to disable.
-
-        @see: L{use_minorTicks}, the preferred form of this call.
-        """
-        print("WARNING: Only use_minorTicks will be supported in the future!")
-        self.use_minorTicks(axisName, yes)
-        
     def set_tickSpacing(self, axisName, major, minor=None):
         """
         Sets the major tick spacing for I{axisName} ("x" or "y"), and
@@ -653,16 +622,6 @@ class OptsBase(object):
         key = optkey(axisName, 'minor')
         self.opts['ticks'][key] = minor
 
-    def set_timex(self, yes=True):
-        """
-        Uses intelligent time scaling for the x-axis, unless called with
-        C{False}.
-
-        @see: L{use_timex}, the preferred form of this call.
-        """
-        print("WARNING: Only use_timex will be supported in the future!")
-        self.use_timex(yes)
-
     def set_title(self, proto, *args):
         """
         Sets a title for all subplots (if called out of context) or for
@@ -676,18 +635,6 @@ class OptsBase(object):
         if self._isSubplot:
             self.opts['title'] = text
         else: self._figTitle = text
-
-    def set_useLabels(self, yes=True):
-        """
-        Has annotation labels point to each plot line instead of a legend,
-        with text taken from the legend list.
-
-        Call with C{False} to revert to default legend-box behavior.
-
-        @see: L{use_labels}, the preferred form of this call.
-        """
-        print("WARNING: Only use_labels will be supported in the future!")
-        self.use_labels(yes)
 
     def set_xlabel(self, x):
         """
@@ -744,11 +691,60 @@ class OptsBase(object):
         """
         self.opts['bump'] = yes
         
-    def use_grid(self, yes=True):
+    def use_grid(self, *args):
         """
         Adds a grid, unless called with C{False}.
+
+        The behavior this method is a little different than it used to
+        be. You can still enable a default grid by calling it with no
+        arguments, or turn off the grid entirely by supplying C{False}
+        as that sole argument. But now specifying a custom grid has
+        become a lot more powerful.
+
+        To turn gridlines on for just one axis's major tics, supply
+        that axis name as an argument followed by 'major'. (Not
+        case-sensitive.) For example, C{use_grid('x', 'major')}
+        enables only vertical grid lines at major tics of the 'x'
+        axis.
+
+        To turn gridlines on for both major and minor ticks, use
+        'both', like this: C{use_grid('both')}. Or, for major and
+        minor ticks on just the 'y' axis, for example, C{use_grid('y',
+        'both')}. You can also use the term 'minor' to have grid lines
+        just at minor ticks, though it's not evident why you would
+        want that as opposed to 'both'.
+
+        To have different grid lines for different axes, supply each
+        axis name followed by its tick specifier. For example, to have
+        horizontal grid lines at both major and minor ticks of the 'y'
+        axis but vertical lines just at major tick locations on the
+        'x' axis, do this:::
+
+            use_grid('x', 'both', 'y', 'major')
+
         """
-        self.opts['grid'] = yes
+        x, y = self.opts['grid']
+        if not args:
+            # Default, no arg behavior
+            x = 'major'
+            y = 'major'
+        elif args[0]:
+            # Not just None or False
+            args = [x.lower() for x in args]
+            while args:
+                arg = args.pop(0)
+                if arg == 'x':
+                    if args:
+                        x = args.pop(0)
+                    else: x = None
+                elif arg == 'y':
+                    if args:
+                        y = args.pop(0)
+                    else: y = None
+                else:
+                    x = y = arg
+                    break
+        self.opts['grid'] = (x, y)
 
     def use_legend(self, yes=True):
         """
