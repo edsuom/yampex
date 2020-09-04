@@ -33,7 +33,9 @@ the plotting options you can set.
 import weakref
 import importlib
 
-import screeninfo
+try:
+    import screeninfo
+except: screeninfo = None
 
 import numpy as np
 
@@ -296,7 +298,7 @@ class Plotter(OptsBase):
         self.setupClass(useAgg=useAgg)
         figSize = kw.pop('figSize', self.figSize)
         if figSize is None:
-            if useAgg:
+            if useAgg or screeninfo is None:
                 figSize = [10.0, 7.0]
             else:
                 si = screeninfo.screeninfo.get_monitors()[0]
