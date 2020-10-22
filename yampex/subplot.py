@@ -407,12 +407,17 @@ class Subplotter(object):
                     continue
                 setSpacing(axisName, which, spacing)
 
-    def _kFix(self, k):
+    def kFix(self, k=None):
         """
-        If subplot index I{k} is C{None}, changes it to the current
+        If subplot index I{k} is C{None}, returns the index of the current
         subplot, or the first one if there is not yet a current one.
 
+        Does not actually adjust I{kLast}, just the returned value.
+        
         Returns the (possibly) fixed subplot index.
+
+        I{TODO}: Fix this for use outside just the internal methods
+        below.
         """
         if k is None:
             k = 0 if self.kLast is None else self.kLast
@@ -428,7 +433,7 @@ class Subplotter(object):
         this will return C{True}.
         """
         if self.Nr == 1: return True
-        return self._kFix(k) < self.Nc
+        return self.kFix(k) < self.Nc
                 
     def atBottom(self, k=None):
         """
@@ -440,7 +445,7 @@ class Subplotter(object):
         this will return C{True}.
         """
         if self.Nr == 1: return True
-        return self._kFix(k) >= self.Nc * (self.Nr - 1)
+        return self.kFix(k) >= self.Nc * (self.Nr - 1)
     
     def onLeft(self, k=None):
         """
@@ -452,4 +457,4 @@ class Subplotter(object):
         course this will return C{True}.
         """
         if self.Nc == 1: return True
-        return self._kFix(k) % self.Nr == 0
+        return self.kFix(k) % self.Nr == 0
