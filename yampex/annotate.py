@@ -423,28 +423,58 @@ class DebugBoxer(object):
     resistor color code indexed from 1, with the first attempted
     position being drawn in brown (#1), the second being red (#2),
     etc.
+
+    By default, all boxes are in a single group (ID=0) and will all be
+    removed when the color is reset with a call to
+    L{resetColor}. However, you can specify different color groups
+    with a call to L{newGroup} and then use the returned ID as an
+    argument to L{resetColor}. Then only that group will have its
+    color reset and its boxes removed. Any subsequent calls to L{add}
+    will be for that group until there is another call to L{resetColor}.
     """
     colors = ['brown', 'red', 'orange', 'yellow', 'green', 'blue', 'violet']
 
-    def __init__(self, fig):
-        self.fig = fig
-        self.resetColor
+    def __init__(self, ax):
+        self.ax = ax
+        self.K = {}
+        self.patches = {}
 
-    def resetColor(self):
-        self.k = -1
+    def ann2ID(self, ann):
+        return id(ann)
         
+    def newGroup(self, ann):
+        ID = self.ann2ID(ann)
+        self.patches[ID] = []
+        self.K[ID] = -1
+        
+    def resetColor(self, ann):
+        self.ID = self.ann2ID(ann)
+        self.K[self.ID] = -1
+        self.bb = self.ax.get_window_extent()
+        for patch in self.patches[self.ID]:
+            if patch in self.ax.patches:
+                self.ax.patches.remove(patch)
+    
     def add(self, rr):
         """
         Adds a debugging box to my figure at the position of the supplied
         L{RectangleRegion} object I{rr}.
         """
-        self.k = (self.k + 1) % len(self.colors)
+        ID = self.ID
+        self.K[ID] = (self.K[ID] + 1) % len(self.colors)
+        xy = [rr.x0, rr.y0]
+        if xy[0] < self.bb.xmin: return
+        if xy[1] < self.bb.ymin: return
+        width = rr.x1-rr.x0
+        if xy[0]+width > self.bb.xmax: return
+        height = rr.y1-rr.y0
+        if xy[1]+height > self.bb.ymax: return
         patch = patches.Rectangle(
-            [rr.x0, rr.y0], rr.x1-rr.x0, rr.y1-rr.y0,
-            color=self.colors[self.k], fill=False)
-        self.fig.patches.append(patch)
-    
-    
+            xy, width, height, color=self.colors[self.K[ID]], fill=False)
+        self.ax.patches.append(patch)
+        self.patches[ID].append(patch)
+
+
 class Annotator(object):
     """
     I manage the annotations for all axes in a single subplot. You'll
@@ -533,7 +563,7 @@ class Annotator(object):
         self.boxprops = self._boxprops.copy()
         self.boxprops['boxstyle'] = sub(
             "round,pad={:0.3f}", self._paddingForSize())
-        self.db = None
+        self.db = DebugBoxer(self.ax) if self.verbose else None
 
     def setVerbose(self, yes=True):
         self.verbose = yes
@@ -605,6 +635,7 @@ class Annotator(object):
             ha='center', va='center', zorder=100)
         ann.draw(self.ax.figure.canvas.get_renderer())
         self.annotations.append(ann)
+        if self.db: self.db.newGroup(ann)
         return ann
     
     def _move(self, ann, dx, dy):
@@ -629,14 +660,13 @@ class Annotator(object):
         whether to redraw.
         """
         replaced = set()
-        db = DebugBoxer(self.ax.get_figure()) if self.verbose else None
         for ann in self.annotations:
-            if db: db.resetColor()
+            if self.db: self.db.resetColor(ann)
             dx0, dy0 = getOffset(ann)
             best = (float('+inf'), dx0, dy0)
             for dx, dy in self._offseterator():
                 score, rr = self.pos.score(ann, dx, dy)
-                if db: db.add(rr)
+                if self.db: self.db.add(rr)
                 if not score: break
                 if score < best[0]: best = (score, dx, dy)
             else:
