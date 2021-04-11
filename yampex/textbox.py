@@ -173,7 +173,8 @@ class TextBoxMaker(object):
         kw['horizontalalignment'], kw['verticalalignment'] = \
             self._textAlignment[location]
         if self.ax:
-            kw['transform'] = self.ax.transAxes
+            kw['transform'] = self.ax.transAxes \
+                if hasattr(self.ax, 'transAxes') else self.ax.transFigure
             obj = self.ax
         else: obj = self.fig
         t = obj.text(x, y, text, **kw)

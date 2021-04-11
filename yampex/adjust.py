@@ -171,13 +171,13 @@ class TextSizeComputer(object):
     """
     DPI = 100
     charWidths = (
-        (37,  u"lij|' "),
-        (50,  u"![]fI.,:;/\\t"),
-        (60,  u"`-(){}r\""),
-        (85,  u"*^zcsJkvxy"),
-        (95,  u"aebdhnopqug#$L+<>=?_~FZT0123456789"),
-        (112, u"BSPEAKVXY&UwNRCHD"),
-        (135, u"QGOMm%W@\u22121"))
+        (37,  "lij|' "),
+        (50,  "![]fI.,:;/\\t"),
+        (60,  "`-(){}r\""),
+        (85,  "*^zcsJkvxy"),
+        (95,  "aebdhnopqug#$L+<>=?_~FZT0123456789"),
+        (112, "BSPEAKVXY&UwNRCHD"),
+        (135, "QGOMm%W@\u22121"))
     fontsizeMap = {
         'xx-small':     6.0,
         'x-small':      7.5,

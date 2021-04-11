@@ -96,7 +96,7 @@ class PlotterHolder(object):
         performed I{methodName}.
         """
         OK = False
-        for ID in self.pDict.keys():
+        for ID in list(self.pDict.keys()):
             if ID in self.pDict:
                 OK = True
                 try:
@@ -121,7 +121,7 @@ class Dims(object):
         Clears out all my info.
         """
         if self.debug:
-            print "DIMS cleared"
+            print("DIMS cleared")
         self.sp_dicts.clear()
 
     def setDims(self, k, name, dims):
@@ -132,7 +132,7 @@ class Dims(object):
         """
         dims = tuple(dims)
         if self.debug:
-            print sub("DIMS {:d}: {} <-- {}", k, name, dims)
+            print(sub("DIMS {:d}: {} <-- {}", k, name, dims))
         self.sp_dicts.setdefault(k, {})[name] = dims
 
     def getDims(self, k, name):
@@ -144,7 +144,7 @@ class Dims(object):
         if k not in self.sp_dicts: return
         value = self.sp_dicts[k].get(name, None)
         if self.debug:
-            print sub("DIMS {:d}: {} -> {}", k, name, value)
+            print(sub("DIMS {:d}: {} -> {}", k, name, value))
         return value
         
     
@@ -368,7 +368,7 @@ class Plotter(OptsBase):
         instance of L{PlotterHolder}.
         """
         # Only an integer is passed to the call
-        self.ph.remove(ID)
+        self.ph.remove(self.ID)
         # No new references were created, nothing retained
 
     def _maybePixels(self, figSize):
@@ -510,10 +510,10 @@ class Plotter(OptsBase):
             self.fig.subplots_adjust(**kw)
         except ValueError as e:
             if self.verbose:
-                print(sub(
+                print((sub(
                     "WARNING: ValueError '{}' doing subplots_adjust({})",
                     e.message, ", ".join(
-                        [sub("{}={}", x, kw[x]) for x in kw])))
+                        [sub("{}={}", x, kw[x]) for x in kw]))))
         self.updateAnnotations()
     
     def updateAnnotations(self, annotator=None):
@@ -526,12 +526,13 @@ class Plotter(OptsBase):
         plt = self.plt
         updated = False
         if annotator is None:
-            for annotator in self.annotators.itervalues():
+            for annotator in self.annotators.values():
                 if annotator.update():
                     updated = True
         elif annotator.update(): updated = True
         if updated:
-            plt.pause(0.0001)
+            # This raises a warning with newer matplotlib
+            #plt.pause(0.0001)
             plt.draw()
         
     def _doPlots(self):
@@ -573,14 +574,15 @@ class Plotter(OptsBase):
             if self.verbose:
                 proto = "WARNING: ValueError '{}' doing tight_layout "+\
                         "on {:.5g} x {:.5g} figure"
-                print(sub(proto, e.message, self.width, self.height))
+                print((sub(proto, e.message, self.width, self.height)))
         self.subplots_adjust()
         # Calling plt.draw massively slows things down when generating
         # plot images on Rpi. And without it, the (un-annotated) plot
         # still updates!
         if False and self.annotators:
+            # This is not actually run, see above comment
             self.plt.draw()
-            for annotator in self.annotators.values():
+            for annotator in list(self.annotators.values()):
                 if self.verbose: annotator.setVerbose()
                 annotator.update()
         if fh is None:

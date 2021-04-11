@@ -53,7 +53,7 @@ class Figure(object):
         
     def plot(self):
         def tb(text):
-            self.sp.add_textBox('S', text)
+            self.sp.add_textBox('SW', text)
         
         X = np.linspace(0, 2e-6, 100)
         with self.p as self.sp:
