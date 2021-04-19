@@ -54,7 +54,7 @@ class Sizer(object):
     which speeds things up and doesn't seem to incur any problems with
     mis-sizing of evaluation rectangles.
     """
-    maxTries = 3
+    maxTries = 2
     bogusHeightThreshold = 5 # pixels
 
     __slots__ = ['dims', 'legitDims']
@@ -75,14 +75,19 @@ class Sizer(object):
             return self.dims[text]
         bb = ann.get_bbox_patch().get_extents()
         theseDims = (bb.width, bb.height)
-        if theseDims[1] < self.bogusHeightThreshold and \
-           tryCount < self.maxTries:
-            ann.draw(ann.axes.figure.canvas.get_renderer())
-            return self(ann, tryCount+1)
+        # DEBUG: Why is theseDims (1.5, 1.5) for "Lower"?
+        #print("SIZER-1", text, theseDims)
+        if theseDims[1] < self.bogusHeightThreshold:
+            if tryCount < self.maxTries:
+                ann.draw(ann.axes.figure.canvas.get_renderer())
+                return self(ann, tryCount+1)
+            # No realistic size could be determined, sorry
+            return
         prevDims = self.dims.get(text, (0,0))
         if self.area(theseDims) > self.area(prevDims):
             self.dims[text] = theseDims
             self.legitDims.append(text)
+        #print("SIZER-2", self.dims)
         return self.dims[text]
 
 
@@ -257,6 +262,9 @@ class PositionEvaluator(object):
     weight_data = 1.0
     # Score increase for overlap with other Matplot objects
     weight_obj = 4.0
+    # Score penalty for unrealistic other-annotation size (hopefully
+    # not needed much)
+    size_penalty = 3.0
     
     def __init__(self, ax, pairs, annotations):
         self.ax = ax
@@ -312,7 +320,16 @@ class PositionEvaluator(object):
                 # ignore it
                 continue
             dx, dy = getOffset(ann_other)
-            width, height = self.sizer(ann_other)
+            size = self.sizer(ann_other)
+            if size is None:
+                # Unfortunately, we can't assess overlap if the
+                # other's size can't be realistically determined. So
+                # the best thing to do is give this position a penalty
+                # and move on to check overlap with the next existing
+                # annotation
+                score += self.size_penalty
+                continue
+            width, height = size
             rr_other = RectangleRegion(
                 ann_other.axes, ann_other.xy, width, height, dx, dy)
             if rr.overlaps_other(rr_other):
@@ -395,9 +412,22 @@ class PositionEvaluator(object):
 
         Returns a 2-tuple with the overlap score and the
         L{RectangleRegion} object I construct for its proposed
-        location in my subplot.
+        location in my subplot, or B{None} if no realistic size can be
+        determined for the region.
+
+        Sometimes my L{Sizer} simply cannot provide a realistic
+        estimate of the annotation's size. When the estimated size is
+        too small to be realistic, no L{RectangleRegion} is
+        constructed and C{None} is returned instead of the
+        2-tuple. Weirdly, a realistic size will often be computed at a
+        different position, so the workaround is to just proceed with
+        the next candidate position and re-do the score for this one
+        once a realistic size has been determined.
         """
-        width, height = self.sizer(ann)
+        size = self.sizer(ann)
+        if size is None:
+            return
+        width, height = size
         rr = RectangleRegion(ann.axes, ann.xy, width, height, dx, dy)
         Axy, Cxy = rr.arrow_line
         if rr.overlaps_point(*Axy):
@@ -469,6 +499,7 @@ class DebugBoxer(object):
         if xy[0]+width > self.bb.xmax: return
         height = rr.y1-rr.y0
         if xy[1]+height > self.bb.ymax: return
+        print("ADD:", xy, width, height)
         patch = patches.Rectangle(
             xy, width, height, color=self.colors[self.K[ID]], fill=False)
         self.ax.patches.append(patch)
@@ -659,19 +690,36 @@ class Annotator(object):
         everything stayed the same. You can use that info to decide
         whether to redraw.
         """
+        try_agains = []
         replaced = set()
         for ann in self.annotations:
             if self.db: self.db.resetColor(ann)
             dx0, dy0 = getOffset(ann)
             best = (float('+inf'), dx0, dy0)
             for dx, dy in self._offseterator():
-                score, rr = self.pos.score(ann, dx, dy)
+                score_rr = self.pos.score(ann, dx, dy)
+                if score_rr is None:
+                    # No realistic size (and thus no candidate score
+                    # or rr) was obtained. We will try this position
+                    # again later
+                    try_agains.append((dx, dy))
+                    continue
+                score, rr = score_rr
                 if self.db: self.db.add(rr)
                 if not score: break
                 if score < best[0]: best = (score, dx, dy)
             else:
                 # No clear position found, use the least bad one
                 dx, dy = best[1:]
+            # Now try again those that we couldn't determine the first time
+            for dx, dy in try_agains:
+                score_rr = self.pos.score(ann, dx, dy)
+                if score_rr is None:
+                    # Hopefully this rarely happens, if ever
+                    continue
+                score, rr = score_rr
+                if self.db: self.db.add(rr)
+                if score <= best[0]: best = (score, dx, dy)
             if (dx, dy) != (dx0, dy0):
                 # The best position changed, so an update is needed
                 replaced.add(self._move(ann, dx, dy))

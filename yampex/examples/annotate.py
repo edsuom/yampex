@@ -41,7 +41,8 @@ class Figure(object):
     
     def __init__(self):
         # DEBUG: Set True to see positioning rectangles
-        annotate.Annotator.verbose = False
+        if self.verbose:
+            annotate.Annotator.verbose = True
         self.p = plot.Plotter(
             2*len(self.multipliers),
             verbose=self.verbose, width=1500, height=1000, w2=1)
