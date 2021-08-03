@@ -219,10 +219,20 @@ class Plotter(OptsBase):
         If any instance of me is using the Agg renderer, all instances
         will.
         """
+        mpl = importlib.import_module("matplotlib")
         if useAgg and not cls.usingAgg:
-            mpl = importlib.import_module("matplotlib")
             mpl.use('Agg')
             cls.usingAgg = True
+        else:
+            try:
+                raise Exception(
+                    "Neither GTK3Agg nor PyQt5Agg actually work consistently")
+                mpl.use('GTK3Agg')
+            except:
+                try:
+                    mpl.use('tkagg')
+                except:
+                    print("WARNING: Neither GTK3Agg nor tkagg available!")
         if not getattr(cls, 'plt', None):
             cls.plt = importlib.import_module("matplotlib.pyplot")
 
@@ -609,7 +619,11 @@ class Plotter(OptsBase):
         dimensions. Removes my ID from the class-wide
         L{PlotterHolder}.
         """
-        self.fig.clear()
+        try:
+            # This causes stupid errors with tkagg, so just wrap it in
+            # try-except for now
+            self.fig.clear()
+        except: pass
         self.annotators.clear()
         self.dims.clear()
         self.ph.remove(self.ID)

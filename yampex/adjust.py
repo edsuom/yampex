@@ -30,6 +30,8 @@ its U{source<http://edsuom.com/yampex/yampex.options.py>}, to see all
 the plotting options you can set.
 """
 
+from functools import lru_cache
+
 import numpy as np
 
 from yampex.util import sub
@@ -178,6 +180,7 @@ class TextSizeComputer(object):
         (95,  "aebdhnopqug#$L+<>=?_~FZT0123456789"),
         (112, "BSPEAKVXY&UwNRCHD"),
         (135, "QGOMm%W@\u22121"))
+    width2height = 0.0065
     fontsizeMap = {
         'xx-small':     6.0,
         'x-small':      7.5,
@@ -187,14 +190,18 @@ class TextSizeComputer(object):
         'x-large':      18.0,
         'xx-large':     24.0,
     }
+    # Pixels to add to both estimated width and height to account for
+    # inaccuracy
+    estimate_padding = 2
 
     def __init__(self, DPI=None):
         if DPI: self.DPI = DPI
     
-    def width(self, text):
+    def width(self, text, size):
         """
         Returns an estimated width of the supplied I{text} proportional to
-        full height. For Arial font.
+        full height of a full-height letter of the specified
+        I{size}. For Arial font.
         
         Adapted from U{https://stackoverflow.com/a/16008023}.
         """
@@ -206,8 +213,63 @@ class TextSizeComputer(object):
                     break
             else: width += 50
         # Convert to full-height proportion
-        return 0.0065 * width
-        
+        return (self.width2height * size * width) + self.estimate_padding
+
+    def height(self, text, size):
+        """
+        Returns an estimated height of the supplied I{text} proportional
+        to that of a full-height letter of the specified I{size},
+        based on the number of lines it contains.
+        """
+        return (size * (1 + text.count("\n"))) + self.estimate_padding
+
+    def realistic_dims(self, textObj, size):
+        """
+        Returns the dimensions of the supplied I{textObj}, initially
+        computed from its bounding box but replaced by an estimate if
+        they weren't realistic.
+
+        You must supply a I{size} as a float. Call this method
+        indirectly via L{dims}.
+        """
+        def sin(degrees):
+            return np.sin(np.radians(degrees))
+        def cos(degrees):
+            return np.cos(np.radians(degrees))
+
+        width = height = 0
+        if isinstance(textObj, str):
+            # Already a string, estimate is all we will have
+            text = textObj
+        elif isinstance(textObj, bytes):
+            # I hate bytes being used as strings, but what do I know
+            text = textObj.decode()
+        else:
+            # Text object, attempt BB computation
+            try:
+                bb = textObj.get_window_extent()
+                angle = textObj.get_rotation()
+                width = bb.height*cos(90-angle) + bb.width*cos(angle)
+                height = bb.width*sin(angle) + bb.height*sin(90-angle)
+            except: pass
+            text = textObj.get_text()
+        # One way or another, we now have text and possibly bogus
+        # height, width
+        est_height = self.height(text, size)
+        if height < 0.5*est_height:
+            # Height is too short, force use of estimate for both
+            # width and height
+            width = 0
+            height = est_height
+        est_width = self.width(text, size)
+        if width < 0.5*est_width:
+            # Too narrow (perhaps forced), use estimate for both width
+            # and height
+            width = est_width
+            height = est_height
+        return width, height
+    
+    @lru_cache(maxsize=128)
     def dims(self, textObj, size=None):
         """
         Returns the dimensions of the supplied text object in pixels.
@@ -218,33 +280,22 @@ class TextSizeComputer(object):
         If you supply a string as the I{textObj}, you must also
         specify the font I{size}.
         """
-        def sin(degrees):
-            return np.sin(np.radians(degrees))
-        def cos(degrees):
-            return np.cos(np.radians(degrees))
-        
-        if isinstance(textObj, str):
-            if size is None:
+        if size is None:
+            # Size not specified
+            if isinstance(textObj, str):
                 raise ValueError("You must specify size of text in a string")
-            if size in self.fontsizeMap:
-                size = self.fontsizeMap[size]
-            size = self.DPI * float(size) / 72
-            text = textObj
-        else:
-            try:
-                bb = textObj.get_window_extent()
-                angle = textObj.get_rotation()
-                width = bb.height*cos(90-angle) + bb.width*cos(angle)
-                height = bb.width*sin(angle) + bb.height*sin(90-angle)
-                return width, height
-            except:
-                size = self.DPI * textObj.get_size() / 72
-                text = textObj.get_text()
-        # Width
-        dims = [size*self.width(text)]
-        # Height
-        dims.append(size*(1+text.count("\n")))
-        return dims
+            # Compute size from text object specified (not rendered) size
+            size = self.DPI * textObj.get_size() / 72
+        if size in self.fontsizeMap:
+            # Specified by name
+            size = self.fontsizeMap[size]
+        elif isinstance(size, int):
+            # Specified as an int
+            size = float(size)
+        elif not isinstance(size, float):
+            # Bogus size specification!
+            raise ValueError(sub("Unknown font size {}", size))
+        return self.realistic_dims(textObj, size)
 
     @staticmethod
     def pixels2fraction(dimsObj, dimsFig):

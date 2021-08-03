@@ -49,46 +49,18 @@ class Sizer(object):
     with a Matplotlib annotation object to get an estimate of its
     dimensions in pixels.
 
-    Burned up a lot of CPU cycles in the L{__call__} method, which is
-    called many thousands of times. Added use of I{legitDims} list,
-    which speeds things up and doesn't seem to incur any problems with
-    mis-sizing of evaluation rectangles.
+    Obtaining the exact size of annotation objects has proved
+    computationally very difficult. Many, many retries were
+    required. Switched to just estimating.
     """
-    maxTries = 2
-    bogusHeightThreshold = 5 # pixels
-
-    __slots__ = ['dims', 'legitDims']
-    
     def __init__(self):
-        self.dims = {}
-        self.legitDims = []
+        self.tsc = TextSizeComputer()
 
     def area(self, dims):
         return dims[0] * dims[1]
         
-    def __call__(self, ann, tryCount=0):
-        text = ann.get_text()
-        if text in self.legitDims:
-            # Taking a chance that a non-bogus size previously
-            # computed can be relied upon. Seems to work, and saves
-            # considerable processing time.
-            return self.dims[text]
-        bb = ann.get_bbox_patch().get_extents()
-        theseDims = (bb.width, bb.height)
-        # DEBUG: Why is theseDims (1.5, 1.5) for "Lower"?
-        #print("SIZER-1", text, theseDims)
-        if theseDims[1] < self.bogusHeightThreshold:
-            if tryCount < self.maxTries:
-                ann.draw(ann.axes.figure.canvas.get_renderer())
-                return self(ann, tryCount+1)
-            # No realistic size could be determined, sorry
-            return
-        prevDims = self.dims.get(text, (0,0))
-        if self.area(theseDims) > self.area(prevDims):
-            self.dims[text] = theseDims
-            self.legitDims.append(text)
-        #print("SIZER-2", self.dims)
-        return self.dims[text]
+    def __call__(self, ann):
+        return self.tsc.dims(ann)
 
 
 class RectangleRegion(object):
