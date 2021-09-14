@@ -30,7 +30,15 @@ its U{source<http://edsuom.com/yampex/yampex.options.py>}, to see all
 the plotting options you can set.
 """
 
-from functools import lru_cache
+try:
+    from functools import lru_cache
+except:
+    def lru_cache(**kw):
+        """
+        Dummy cache function for those few souls still slogging along with
+        Python 2.x.
+        """
+        return lambda func: func
 
 import numpy as np
 
@@ -190,10 +198,10 @@ class TextSizeComputer(object):
         'x-large':      18.0,
         'xx-large':     24.0,
     }
-    # Pixels to add to both estimated width and height to account for
+    # Pixels to add to estimated width and height to account for
     # inaccuracy
-    estimate_padding = 2
-
+    estimate_padding = (4, 3)
+    
     def __init__(self, DPI=None):
         if DPI: self.DPI = DPI
     
@@ -213,7 +221,7 @@ class TextSizeComputer(object):
                     break
             else: width += 50
         # Convert to full-height proportion
-        return (self.width2height * size * width) + self.estimate_padding
+        return (self.width2height * size * width) + self.estimate_padding[0]
 
     def height(self, text, size):
         """
@@ -221,7 +229,7 @@ class TextSizeComputer(object):
         to that of a full-height letter of the specified I{size},
         based on the number of lines it contains.
         """
-        return (size * (1 + text.count("\n"))) + self.estimate_padding
+        return (size * (1 + text.count("\n"))) + self.estimate_padding[1]
 
     def realistic_dims(self, textObj, size):
         """
