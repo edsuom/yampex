@@ -4,7 +4,7 @@
 # yampex:
 # Yet Another Matplotlib Extension
 #
-# Copyright (C) 2017-2020 by Edwin A. Suominen,
+# Copyright (C) 2017-2021 by Edwin A. Suominen,
 # http://edsuom.com/yampex
 #
 # See edsuom.com for API documentation as well as information about
@@ -196,28 +196,28 @@ class Test_RectangleRegion(TestCase):
         With dims and positions used in
         L{Test_PositionEvaluator.test_with_others}::
 
-                                     5
-                                     4
-                                     3
-                                     2             (267,261)
-                                  +-------------------+
-                                  |  0                |
-                                  |  9                |
-                                  |  8                |
-                                  |  7   (257,257)    |
-                                  |  6                |
-                                  |  5                |     (275,254)
-                                  |  4    +-----------|-------+
-                       (247,253)  +-------------------+       |
-                                     2    |                   |
-                                     1    |                   |
-        9876543210987654321012345678901234|6789012345678901234|678
-                                     9    |      (265,0)      |
-                                     8    |                   |
-                                     7    |                   |
-                                     6    +-------------------+
-                                     5  (255,246)
-                                     4
+                                         5
+                                         4
+                                         3
+                                         2             (267,261)
+                                      +-------------------+
+                                      |  0                |
+                                      |  9                |
+                                      |  8                |
+                                      |  7   (257,257)    |
+                                      |  6                |
+                                      |  5                |     (275,254)
+                                      |  4    +-----------|-------+
+                           (247,253)  +-------------------+       |
+                                         2    |                   |
+                                         1    |                   |
+            9876543210987654321012345678901234|6789012345678901234|678
+                                         9    |      (265,0)      |
+                                         8    |                   |
+                                         7    |                   |
+                                         6    +-------------------+
+                                         5  (255,246)
+                                         4
         """
         rr1 = a.RectangleRegion(MockAnnotation(), 15, 0, 20, 8)
         rr2 = a.RectangleRegion(MockAnnotation(), 7,  7, 20, 8)
@@ -313,6 +313,8 @@ class Test_PositionEvaluator(TestCase):
 
     def test_with_others(self):
         """
+        Here is how this test looks::
+        
                               |           O
               NW: (-15, 14)   |         O
               SE: (5,6)       |       O

@@ -4,7 +4,7 @@
 # yampex:
 # Yet Another Matplotlib Extension
 #
-# Copyright (C) 2017-2020 by Edwin A. Suominen,
+# Copyright (C) 2017-2021 by Edwin A. Suominen,
 # http://edsuom.com/yampex
 #
 # See edsuom.com for API documentation as well as information about
@@ -34,7 +34,7 @@ required = ['numpy', 'matplotlib', 'screeninfo']
 
 
 ### Define setup options
-kw = {'version':'0.9.6',
+kw = {'version':'1.0.0',
       'license':'Apache License (2.0)',
       'platforms':'OS Independent',
 
@@ -68,15 +68,16 @@ kw['keywords'] = [
 
 
 kw['classifiers'] = [
-    'Development Status :: 4 - Beta',
-
+    'Development Status :: 5 - Production/Stable',
+    
     'Intended Audience :: Developers',
     'Intended Audience :: Science/Research',
     
     'License :: OSI Approved :: Apache Software License',
     'Operating System :: OS Independent',
-    'Programming Language :: Python',
-
+    'Programming Language :: Python :: 2.7',
+    'Programming Language :: Python :: 3',
+    
     'Topic :: Software Development :: Libraries :: Python Modules',
     'Topic :: Scientific/Engineering :: Visualization',
 ]
@@ -113,6 +114,9 @@ shell script.
 
 There's also a quick example on the project
 [page](http://edsuom.com/yampex.html) at **edsuom.com**.
+
+Works on Python 3.x and (a little slower for plots with annotations)
+on Python 2.7.
 
 """
 
