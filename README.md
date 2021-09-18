@@ -112,10 +112,10 @@ crossing, and a minimum. Here's the result:
 Note how the annotation boxes are positioned so that they don't cover
 up the plots or each other, or trespass on the borders. A surprisingly
 large amount of thought and computation went into making that
-happen. If you're interested, you can check out the
-[gory details](http://edsuom.com/yampex/annotate.py.html) of the
-`Annotator` class and its `Sizer`, `Rectangle`, and `Positioner`
-helpers.
+happen. If you're interested, you can check out the [gory
+details](https://github.com/edsuom/yampex/blob/master/yampex/annotate.py)
+of the `Annotator` class and its `Sizer`, `Rectangle`, and
+`Positioner` helpers.
 
 A couple of other things you might notice: There's a dashed vertical
 line at the zero crossing after the last annotation. That was added by
