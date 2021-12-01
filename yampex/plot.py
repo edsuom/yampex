@@ -232,7 +232,8 @@ class Plotter(OptsBase):
                 try:
                     mpl.use('tkagg')
                 except:
-                    print("WARNING: Neither GTK3Agg nor tkagg available!")
+                    if verbose:
+                        print("WARNING: Neither GTK3Agg nor tkagg available!")
         if not getattr(cls, 'plt', None):
             cls.plt = importlib.import_module("matplotlib.pyplot")
 

@@ -35,7 +35,7 @@ U{source<http://edsuom.com/yampex/yampex.options.py>} open in your
 editor, as a handy reference for all the plotting options you can set.
 """
 
-from copy import copy
+from copy import copy, deepcopy
 from contextlib import contextmanager
 
 from yampex.util import *
@@ -87,7 +87,7 @@ class Opts(object):
     }
 
     def __init__(self):
-        self.go = self._opts.copy()
+        self.go = deepcopy(self._opts)
         self.lo = None
         self.loList = []
 
@@ -295,6 +295,11 @@ class OptsBase(object):
 
         You can set the annotation to the first y-axis value that
         crosses a float value of I{k} by setting I{y} C{True}.
+
+        B{Note}: Your code needs to make sure that you are really
+        passing an integer value of I{k} if that's what you intend. If
+        it's a float, the annotation will go where you don't expect it
+        to.
 
         @see: L{clear_annotations}.
         """

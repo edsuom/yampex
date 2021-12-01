@@ -34,7 +34,7 @@ required = ['numpy', 'matplotlib', 'screeninfo']
 
 
 ### Define setup options
-kw = {'version':'1.0.1',
+kw = {'version':'1.1.0',
       'license':'Apache License (2.0)',
       'platforms':'OS Independent',
 
@@ -69,6 +69,8 @@ kw['keywords'] = [
 
 kw['classifiers'] = [
     'Development Status :: 5 - Production/Stable',
+
+    'Framework :: Matplotlib',
     
     'Intended Audience :: Developers',
     'Intended Audience :: Science/Research',

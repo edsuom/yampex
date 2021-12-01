@@ -471,7 +471,7 @@ class PlotHelper(object):
         annotator = self.get_annotator()
         for k, text, kVector, is_yValue in self.p.opts['annotations']:
             X, Y = self.pairs[kVector].getXY()
-            if not isinstance(k, int):
+            if not isinstance(k, (int, np.int64)):
                 if is_yValue:
                     k = np.argmin(np.abs(Y-k))
                 else: k = np.searchsorted(X, k)
@@ -513,7 +513,7 @@ class PlotHelper(object):
         # Vertical lines
         for axvline in self.p.opts['axvlines']:
             x = None
-            if isinstance(axvline, int):
+            if isinstance(axvline, (int, np.int64)):
                 X0 = self.pairs.firstX()[0]
                 if X0 is not None and abs(axvline) < len(X0):
                     x = X0[axvline]

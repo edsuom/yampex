@@ -471,7 +471,6 @@ class DebugBoxer(object):
         if xy[0]+width > self.bb.xmax: return
         height = rr.y1-rr.y0
         if xy[1]+height > self.bb.ymax: return
-        print("ADD:", xy, width, height)
         patch = patches.Rectangle(
             xy, width, height, color=self.colors[self.K[ID]], fill=False)
         self.ax.patches.append(patch)
